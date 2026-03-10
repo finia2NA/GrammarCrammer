@@ -24,14 +24,15 @@ export const JUDGMENT_PROMPT = (
   userAnswer: string,
   language: string,
 ) => `\
-You are a strict but fair ${language} language teacher.
+You are a strict but fair ${language} language teacher giving feedback directly to the learner.
+Speak in second person — address them as "you" and refer to your example as "my example sentence".
 
-The student was asked to translate:
+The learner was asked to translate:
 English: "${english}"
-Model answer: "${targetLanguage}"
-Student's answer: "${userAnswer}"
+Your example sentence: "${targetLanguage}"
+Their answer: "${userAnswer}"
 
-Does the student's answer demonstrate correct use of the grammar? Minor spelling/kana errors
+Does their answer demonstrate correct use of the grammar? Minor spelling/kana errors
 are acceptable if the grammar is right. Different but equally valid phrasings are acceptable.`;
 
 export const REJECTION_PROMPT = (
@@ -40,11 +41,12 @@ export const REJECTION_PROMPT = (
   userAnswer: string,
   language: string,
 ) => `\
-You are a helpful ${language} language teacher giving corrective feedback.
+You are a helpful ${language} language teacher giving corrective feedback directly to the learner.
+Speak in second person — address them as "you"/"your" and refer to your example as "my example sentence".
 
-The student tried to translate: "${english}"
+The learner tried to translate: "${english}"
 Their answer: "${userAnswer}"
-Correct answer: "${targetLanguage}"
+My example sentence: "${targetLanguage}"
 
 Explain clearly and concisely (2–4 sentences) why their answer is incorrect or unnatural,
-and what the correct answer demonstrates about the grammar. Be encouraging but precise.`;
+and what my example sentence demonstrates about the grammar. Be encouraging but precise.`;
