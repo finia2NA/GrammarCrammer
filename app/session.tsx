@@ -42,7 +42,7 @@ const mdStyles = StyleSheet.create({
 
 // ─── Side panel ───────────────────────────────────────────────────────────────
 
-function SidePanel({ explanation }: { explanation: string }) {
+function SidePanel({ explanation, truncated }: { explanation: string; truncated: boolean }) {
   const [width, setWidth] = useState(320);
   const widthRef = useRef(320);
   const [isDragging, setIsDragging] = useState(false);
@@ -78,6 +78,11 @@ function SidePanel({ explanation }: { explanation: string }) {
             Grammar Reference
           </Text>
           <Markdown style={mdStyles}>{explanation}</Markdown>
+          {truncated && (
+            <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
+              <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -115,9 +120,11 @@ function SidePanel({ explanation }: { explanation: string }) {
 
 function ExplanationOverlay({
   explanation,
+  truncated,
   onDismiss,
 }: {
   explanation: string;
+  truncated: boolean;
   onDismiss: () => void;
 }) {
   return (
@@ -128,6 +135,11 @@ function ExplanationOverlay({
         </Text>
         <Text className="text-white text-2xl font-bold mb-6">Read before you practise</Text>
         <Markdown style={mdStyles}>{explanation}</Markdown>
+        {truncated && (
+          <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
+            <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
+          </View>
+        )}
         <View className="h-8" />
       </ScrollView>
       <View className="px-8 pb-10">
@@ -163,18 +175,23 @@ export default function Session() {
 
   // Content
   const [explanation, setExplanation] = useState('');
+  const [explanationTruncated, setExplanationTruncated] = useState(false);
   const [cards, setCards] = useState<Card[]>([]);
 
   // UI state
   const [showOverlay, setShowOverlay] = useState(sessionMode === '習得');
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
+  const [submittedAnswer, setSubmittedAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [wrongExplanation, setWrongExplanation] = useState('');
   const [showHint, setShowHint] = useState(false);
+  const [totalCost, setTotalCost] = useState(0);
 
   const inputRef = useRef<TextInput>(null);
   const apiKeyRef = useRef<string>('');
+
+  const addCost = (usd: number) => setTotalCost(prev => prev + usd);
 
   // ── Bootstrap ──────────────────────────────────────────────────────────────
 
@@ -186,11 +203,12 @@ export default function Session() {
         apiKeyRef.current = key;
 
         const [exp, generatedCards] = await Promise.all([
-          generateExplanation(key, topic!, language!),
-          generateCards(key, topic!, language!, cardCount),
+          generateExplanation(key, topic!, language!, addCost),
+          generateCards(key, topic!, language!, cardCount, addCost),
         ]);
 
-        setExplanation(exp);
+        setExplanation(exp.text);
+        setExplanationTruncated(exp.truncated);
         setCards(generatedCards);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
@@ -216,17 +234,18 @@ export default function Session() {
     if (!trimmed || cardPhase !== 'input') return;
 
     const current = cards[0];
+    setSubmittedAnswer(trimmed);
     setCardPhase('judging');
 
     try {
-      const result = await judgeAnswer(apiKeyRef.current, current, trimmed, language!);
+      const result = await judgeAnswer(apiKeyRef.current, current, trimmed, language!, addCost);
 
       if (result.correct) {
         setFeedback(result.reason);
         setCardPhase('correct');
       } else {
         setCardPhase('wrong_explaining');
-        const exp = await explainRejection(apiKeyRef.current, current, trimmed, language!);
+        const exp = await explainRejection(apiKeyRef.current, current, trimmed, language!, addCost);
         setWrongExplanation(exp);
         setCardPhase('wrong_shown');
       }
@@ -305,15 +324,20 @@ export default function Session() {
       <View className="flex-1 flex-row">
         {/* Side panel — always present after overlay dismissed */}
         {!showOverlay && (
-          <SidePanel explanation={explanation} />
+          <SidePanel explanation={explanation} truncated={explanationTruncated} />
         )}
 
         {/* Main area */}
         <View className="flex-1 items-center justify-center px-8 py-10">
-          {/* Progress */}
-          <Text className="text-slate-500 text-sm mb-6 self-start">
-            {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
-          </Text>
+          {/* Progress + cost */}
+          <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
+            <Text className="text-slate-500 text-sm">
+              {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
+            </Text>
+            <Text className="text-slate-600 text-xs font-mono">
+              ${totalCost.toFixed(4)}
+            </Text>
+          </View>
 
           {/* Card */}
           <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
@@ -399,6 +423,10 @@ export default function Session() {
                   <Text className="text-red-400 text-lg">✗</Text>
                   <Text className="text-red-400 font-semibold">Not quite</Text>
                 </View>
+                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+                  <Text className="text-slate-500 text-xs">Your answer</Text>
+                  <Text className="text-slate-300 text-sm">{submittedAnswer}</Text>
+                </View>
                 <Text className="text-slate-300 text-sm leading-6">{wrongExplanation}</Text>
                 <Text className="text-slate-500 text-xs">Model: {currentCard.targetLanguage}</Text>
                 <TouchableOpacity
@@ -417,6 +445,7 @@ export default function Session() {
         {showOverlay && (
           <ExplanationOverlay
             explanation={explanation}
+            truncated={explanationTruncated}
             onDismiss={() => setShowOverlay(false)}
           />
         )}
