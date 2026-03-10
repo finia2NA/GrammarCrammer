@@ -11,6 +11,19 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const SONNET = 'claude-sonnet-4-6';
 const HAIKU = 'claude-haiku-4-5-20251001';
 
+// ─── Cost calculation ─────────────────────────────────────────────────────────
+
+// Prices in USD per million tokens (as of 2025)
+const PRICE: Record<string, { input: number; output: number }> = {
+  [SONNET]: { input: 3.00, output: 15.00 },
+  [HAIKU]:  { input: 0.80, output:  4.00 },
+};
+
+export function calcCost(model: string, inputTokens: number, outputTokens: number): number {
+  const p = PRICE[model] ?? { input: 3.00, output: 15.00 };
+  return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
+}
+
 // ─── Base fetch helpers ───────────────────────────────────────────────────────
 
 function headers(apiKey: string) {
@@ -36,7 +49,8 @@ async function callText(
   system: string,
   userMessage: string,
   maxTokens: number,
-): Promise<string> {
+  onCost?: (usd: number) => void,
+): Promise<{ text: string; truncated: boolean }> {
   const res = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: headers(apiKey),
@@ -49,7 +63,11 @@ async function callText(
   });
   await checkResponse(res);
   const data = await res.json();
-  return data.content[0].text as string;
+  onCost?.(calcCost(model, data.usage.input_tokens, data.usage.output_tokens));
+  return {
+    text: data.content[0].text as string,
+    truncated: data.stop_reason === 'max_tokens',
+  };
 }
 
 /**
@@ -66,6 +84,7 @@ async function callTool<T>(
   toolDescription: string,
   inputSchema: object,
   maxTokens: number,
+  onCost?: (usd: number) => void,
 ): Promise<T> {
   const res = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -79,13 +98,13 @@ async function callTool<T>(
         description: toolDescription,
         input_schema: inputSchema,
       }],
-      // Force Claude to call this exact tool — no free-text fallback possible
       tool_choice: { type: 'tool', name: toolName },
       messages: [{ role: 'user', content: userMessage }],
     }),
   });
   await checkResponse(res);
   const data = await res.json();
+  onCost?.(calcCost(model, data.usage.input_tokens, data.usage.output_tokens));
   const toolUse = data.content.find((b: any) => b.type === 'tool_use');
   return toolUse.input as T;
 }
@@ -102,18 +121,20 @@ export async function validateApiKey(key: string): Promise<string | null> {
   }
 }
 
-/** Generates a grammar explanation for the given topic. Returns a text string. */
+/** Generates a grammar explanation for the given topic. */
 export async function generateExplanation(
   apiKey: string,
   topic: string,
   language: string,
-): Promise<string> {
+  onCost?: (usd: number) => void,
+): Promise<{ text: string; truncated: boolean }> {
   return callText(
     apiKey,
     SONNET,
     EXPLANATION_PROMPT(topic, language),
     'Please explain the grammar topic for my study session.',
-    1200,
+    4096,
+    onCost,
   );
 }
 
@@ -123,6 +144,7 @@ export async function generateCards(
   topic: string,
   language: string,
   count: number,
+  onCost?: (usd: number) => void,
 ): Promise<Card[]> {
   const result = await callTool<{ cards: Omit<Card, 'id'>[] }>(
     apiKey,
@@ -150,6 +172,7 @@ export async function generateCards(
       required: ['cards'],
     },
     2000,
+    onCost,
   );
 
   const cards: Card[] = result.cards.map((c, i) => ({ ...c, id: String(i) }));
@@ -168,6 +191,7 @@ export async function judgeAnswer(
   card: Card,
   userAnswer: string,
   language: string,
+  onCost?: (usd: number) => void,
 ): Promise<{ correct: boolean; reason: string }> {
   return callTool<{ correct: boolean; reason: string }>(
     apiKey,
@@ -185,6 +209,7 @@ export async function judgeAnswer(
       required: ['correct', 'reason'],
     },
     120,
+    onCost,
   );
 }
 
@@ -194,12 +219,15 @@ export async function explainRejection(
   card: Card,
   userAnswer: string,
   language: string,
+  onCost?: (usd: number) => void,
 ): Promise<string> {
-  return callText(
+  const { text } = await callText(
     apiKey,
     SONNET,
     REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
     'Please explain why my answer was wrong.',
     400,
+    onCost,
   );
+  return text;
 }
