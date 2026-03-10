@@ -398,7 +398,10 @@ export default function Session() {
                   <Text className="text-green-400 font-semibold">Correct!</Text>
                 </View>
                 <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
-                <Text className="text-slate-500 text-xs">Model: {currentCard.targetLanguage}</Text>
+                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+                  <Text className="text-slate-500 text-xs">My example sentence</Text>
+                  <Text className="text-white text-base font-medium">{currentCard.targetLanguage}</Text>
+                </View>
                 <TouchableOpacity
                   className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
                   onPress={handleConfirmCorrect}
@@ -427,8 +430,11 @@ export default function Session() {
                   <Text className="text-slate-500 text-xs">Your answer</Text>
                   <Text className="text-slate-300 text-sm">{submittedAnswer}</Text>
                 </View>
+                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+                  <Text className="text-slate-500 text-xs">My example sentence</Text>
+                  <Text className="text-white text-base font-medium">{currentCard.targetLanguage}</Text>
+                </View>
                 <Text className="text-slate-300 text-sm leading-6">{wrongExplanation}</Text>
-                <Text className="text-slate-500 text-xs">Model: {currentCard.targetLanguage}</Text>
                 <TouchableOpacity
                   className="bg-slate-700 rounded-xl py-3.5 items-center mt-2"
                   onPress={handleConfirmWrong}
