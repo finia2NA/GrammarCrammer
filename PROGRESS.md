@@ -9,7 +9,7 @@ user practices translating English sentences → Claude judges answers in real t
 
 ## Full Feature Description
 
-### Step 1 — Onboarding ✅ IN PROGRESS
+### Step 1 — Onboarding ✅ DONE
 On first launch, the app checks local storage for a Claude API key.
 If none is found, it shows an onboarding flow: a card carousel with placeholder text,
 ending with a card that asks for the Claude API key.
@@ -61,10 +61,11 @@ A button starts the study session.
 
 | Feature | Notes |
 |---|---|
-| Session history | Store past sessions (topic, cards, scores) in local storage for review |
-| Prompt history | Save previously used topics so the user can quickly re-run them |
-| Keep explanation across sessions | When generating new cards for the same topic, reuse the existing explanation rather than regenerating |
+| Session history | Store past sessions (topic, explanation, cards, scores) in local storage for future use |
 | Mobile apps | Build and publish native iOS / Android apps via Expo |
+|Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese
+| Full flashcard system | Grammar-point based scheduling, FSRS, notifications |
+| Backend | Store all state not only locally, but also in a db for sync between apps
 
 ---
 
