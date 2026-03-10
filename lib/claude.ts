@@ -42,15 +42,19 @@ async function checkResponse(res: Response) {
   }
 }
 
-/** Plain text call — used for free-form responses (explanations). */
-async function callText(
+/**
+ * Streaming text call. Fires onChunk for each text delta as it arrives.
+ * Returns when the stream is complete.
+ */
+async function callTextStream(
   apiKey: string,
   model: string,
   system: string,
   userMessage: string,
   maxTokens: number,
+  onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<{ text: string; truncated: boolean }> {
+): Promise<{ truncated: boolean }> {
   const res = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: headers(apiKey),
@@ -58,16 +62,47 @@ async function callText(
       model,
       max_tokens: maxTokens,
       system,
+      stream: true,
       messages: [{ role: 'user', content: userMessage }],
     }),
   });
   await checkResponse(res);
-  const data = await res.json();
-  onCost?.(calcCost(model, data.usage.input_tokens, data.usage.output_tokens));
-  return {
-    text: data.content[0].text as string,
-    truncated: data.stop_reason === 'max_tokens',
-  };
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let truncated = false;
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const jsonStr = line.slice(6).trim();
+      if (!jsonStr || jsonStr === '[DONE]') continue;
+      try {
+        const ev = JSON.parse(jsonStr);
+        if (ev.type === 'message_start') {
+          inputTokens = ev.message?.usage?.input_tokens ?? 0;
+        } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+          onChunk(ev.delta.text);
+        } else if (ev.type === 'message_delta') {
+          outputTokens = ev.usage?.output_tokens ?? outputTokens;
+          if (ev.delta?.stop_reason === 'max_tokens') truncated = true;
+        }
+      } catch { /* malformed event — skip */ }
+    }
+  }
+
+  onCost?.(calcCost(model, inputTokens, outputTokens));
+  return { truncated };
 }
 
 /**
@@ -114,26 +149,28 @@ async function callTool<T>(
 /** Validates an API key. Returns null on success, error message on failure. */
 export async function validateApiKey(key: string): Promise<string | null> {
   try {
-    await callText(key, HAIKU, 'You are a helpful assistant.', 'Hi', 8);
+    await callTextStream(key, HAIKU, 'You are a helpful assistant.', 'Hi', 8, () => {});
     return null;
   } catch (e) {
     return e instanceof Error ? e.message : 'Unknown error';
   }
 }
 
-/** Generates a grammar explanation for the given topic. */
+/** Generates a grammar explanation, streaming chunks via onChunk as they arrive. */
 export async function generateExplanation(
   apiKey: string,
   topic: string,
   language: string,
+  onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<{ text: string; truncated: boolean }> {
-  return callText(
+): Promise<{ truncated: boolean }> {
+  return callTextStream(
     apiKey,
     SONNET,
     EXPLANATION_PROMPT(topic, language),
     'Please explain the grammar topic for my study session.',
     4096,
+    onChunk,
     onCost,
   );
 }
@@ -213,21 +250,22 @@ export async function judgeAnswer(
   );
 }
 
-/** Generates an explanation of why the answer was rejected. */
+/** Streams an explanation of why the answer was rejected. */
 export async function explainRejection(
   apiKey: string,
   card: Card,
   userAnswer: string,
   language: string,
+  onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<string> {
-  const { text } = await callText(
+): Promise<void> {
+  await callTextStream(
     apiKey,
     SONNET,
     REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
     'Please explain why my answer was wrong.',
     400,
+    onChunk,
     onCost,
   );
-  return text;
 }
