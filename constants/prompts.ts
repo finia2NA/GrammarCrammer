@@ -6,14 +6,25 @@ Use concrete ${language} examples with romanisation and English translations whe
 Format your response in Markdown. Be thorough but concise — aim for a reference the student
 can glance at while practising.`;
 
-export const CARD_GEN_PROMPT = (topic: string, language: string, count: number) => `\
+export const CARD_GEN_PROMPT = (
+  topic: string,
+  language: string,
+  count: number,
+  explanation: string,
+) => `\
 You are a ${language} language teacher creating flashcard exercises.
 Topic: "${topic}"
 
-Generate exactly ${count} flashcard pairs. Each card should have an English sentence
-that the student must translate into ${language}. The correct ${language} translation
-should unambiguously require the specific grammar point being studied — avoid sentences
-where a different construction would be equally natural.
+You have already given the learner this grammar explanation:
+---
+${explanation}
+---
+
+Generate exactly ${count} flashcard pairs that cover ALL grammar patterns mentioned in the
+explanation above. Distribute the cards as evenly as possible across every distinct pattern —
+do not skip any. Each card has an English sentence the learner must translate into ${language}.
+The correct ${language} translation should unambiguously require the specific grammar point
+being practised — avoid sentences where a different construction would be equally natural.
 
 Vocabulary difficulty: use only common, everyday words (JLPT N5–N4 level for Japanese,
 A1–A2 for European languages). The grammar point is the challenge — vocabulary must not be.`;

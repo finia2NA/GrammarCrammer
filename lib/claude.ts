@@ -181,12 +181,13 @@ export async function generateCards(
   topic: string,
   language: string,
   count: number,
+  explanation: string,
   onCost?: (usd: number) => void,
 ): Promise<Card[]> {
   const result = await callTool<{ cards: Omit<Card, 'id'>[] }>(
     apiKey,
     HAIKU,
-    CARD_GEN_PROMPT(topic, language, count),
+    CARD_GEN_PROMPT(topic, language, count, explanation),
     'Generate the flashcards now.',
     'generate_flashcards',
     'Output the requested flashcard pairs.',
@@ -195,12 +196,14 @@ export async function generateCards(
       properties: {
         cards: {
           type: 'array',
+          minItems: count,
+          maxItems: count,
           items: {
             type: 'object',
             properties: {
-              english:        { type: 'string' },
-              targetLanguage: { type: 'string' },
-              notes:          { type: 'string' },
+              english:        { type: 'string', description: 'The English sentence the learner must translate.' },
+              targetLanguage: { type: 'string', description: `The correct ${language} translation of the English sentence — must be an actual ${language} sentence, not a label or description.` },
+              notes:          { type: 'string', description: 'Optional very brief grammar note, e.g. which pattern is used.' },
             },
             required: ['english', 'targetLanguage'],
           },

@@ -171,6 +171,7 @@ export default function Session() {
 
   // Loading
   const [loading, setLoading] = useState(true);
+  const [loadPhase, setLoadPhase] = useState<'explanation' | 'cards'>('explanation');
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Content
@@ -202,16 +203,23 @@ export default function Session() {
         if (!key) { router.replace('/onboarding'); return; }
         apiKeyRef.current = key;
 
-        // Explanation streams in immediately — does NOT gate the loading spinner
-        generateExplanation(
+        // Step 1: stream explanation — accumulate full text for passing to card gen
+        let fullExplanation = '';
+        const { truncated } = await generateExplanation(
           key, topic!, language!,
-          (chunk) => setExplanation(prev => prev + chunk),
+          (chunk) => {
+            fullExplanation += chunk;
+            setExplanation(prev => prev + chunk);
+          },
           addCost,
-        ).then(({ truncated }) => setExplanationTruncated(truncated))
-         .catch((e) => setLoadError(e instanceof Error ? e.message : 'Failed to load explanation.'));
+        );
+        setExplanationTruncated(truncated);
 
-        // Loading spinner clears as soon as cards (Haiku, fast) are ready
-        const generatedCards = await generateCards(key, topic!, language!, cardCount, addCost);
+        // Step 2: generate cards informed by the full explanation
+        setLoadPhase('cards');
+        const generatedCards = await generateCards(
+          key, topic!, language!, cardCount, fullExplanation, addCost,
+        );
         setCards(generatedCards);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
@@ -287,9 +295,26 @@ export default function Session() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center gap-4">
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text className="text-slate-400 text-sm">Generating your session…</Text>
+      <View className="flex-1 bg-slate-950">
+        <ScrollView
+          className="flex-1 px-8 py-12"
+          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+        >
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-6">
+            {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
+          </Text>
+          {explanation ? (
+            <Markdown style={mdStyles}>{explanation}</Markdown>
+          ) : (
+            <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+          )}
+          {loadPhase === 'cards' && (
+            <View className="flex-row items-center gap-2 mt-6">
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text className="text-slate-500 text-sm">Generating flashcards…</Text>
+            </View>
+          )}
+        </ScrollView>
       </View>
     );
   }
@@ -407,6 +432,10 @@ export default function Session() {
                   <Text className="text-green-400 text-lg">✓</Text>
                   <Text className="text-green-400 font-semibold">Correct!</Text>
                 </View>
+                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+                  <Text className="text-slate-500 text-xs">Your answer</Text>
+                  <Text className="text-slate-300 text-sm">{submittedAnswer}</Text>
+                </View>
                 <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
                 <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
                   <Text className="text-slate-500 text-xs">My example sentence</Text>
@@ -444,7 +473,7 @@ export default function Session() {
                   <Text className="text-slate-500 text-xs">My example sentence</Text>
                   <Text className="text-white text-base font-medium">{currentCard.targetLanguage}</Text>
                 </View>
-                <Text className="text-slate-300 text-sm leading-6">{wrongExplanation}</Text>
+                <Markdown style={mdStyles}>{wrongExplanation}</Markdown>
                 <TouchableOpacity
                   className="bg-slate-700 rounded-xl py-3.5 items-center mt-2"
                   onPress={handleConfirmWrong}
