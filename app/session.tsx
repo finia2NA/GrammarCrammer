@@ -8,11 +8,37 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from 'react-native';
+import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getApiKey } from '@/lib/storage';
 import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
 import type { Card, Mode } from '@/lib/types';
+
+// ─── Markdown styles ──────────────────────────────────────────────────────────
+
+const mdStyles = StyleSheet.create({
+  body:          { color: '#e2e8f0' },
+  heading1:      { color: '#f8fafc', fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  heading2:      { color: '#f1f5f9', fontSize: 17, fontWeight: '700', marginTop: 14, marginBottom: 6 },
+  heading3:      { color: '#e2e8f0', fontSize: 15, fontWeight: '600', marginTop: 12, marginBottom: 4 },
+  paragraph:     { fontSize: 13, lineHeight: 22, marginBottom: 10 },
+  strong:        { color: '#f8fafc', fontWeight: '700' },
+  em:            { fontStyle: 'italic', color: '#cbd5e1' },
+  code_inline:   { backgroundColor: '#1e293b', color: '#a5b4fc', fontFamily: 'monospace', fontSize: 12, borderRadius: 4, paddingHorizontal: 4 },
+  fence:         { backgroundColor: '#1e293b', borderRadius: 8, padding: 12, marginVertical: 8 },
+  code_block:    { backgroundColor: '#1e293b', borderRadius: 8, padding: 12, marginVertical: 8, color: '#a5b4fc', fontFamily: 'monospace', fontSize: 12 },
+  bullet_list:   { marginBottom: 8 },
+  ordered_list:  { marginBottom: 8 },
+  list_item:     { marginBottom: 4 },
+  hr:            { backgroundColor: '#334155', height: 1, marginVertical: 12 },
+  blockquote:    { backgroundColor: '#1e293b', borderLeftColor: '#6366f1', borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4, marginVertical: 8 },
+  table:         { borderColor: '#334155' },
+  th:            { backgroundColor: '#1e293b', padding: 6 },
+  td:            { borderColor: '#334155', padding: 6 },
+  tr:            { borderColor: '#334155' },
+});
 
 // ─── Side panel ───────────────────────────────────────────────────────────────
 
@@ -51,7 +77,7 @@ function SidePanel({ explanation }: { explanation: string }) {
           <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
             Grammar Reference
           </Text>
-          <Text className="text-slate-200 text-sm leading-6">{explanation}</Text>
+          <Markdown style={mdStyles}>{explanation}</Markdown>
         </ScrollView>
       </View>
 
@@ -101,7 +127,7 @@ function ExplanationOverlay({
           Grammar Explanation
         </Text>
         <Text className="text-white text-2xl font-bold mb-6">Read before you practise</Text>
-        <Text className="text-slate-200 text-base leading-7">{explanation}</Text>
+        <Markdown style={mdStyles}>{explanation}</Markdown>
         <View className="h-8" />
       </ScrollView>
       <View className="px-8 pb-10">
