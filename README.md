@@ -2,6 +2,13 @@
 
 An AI-powered grammar flashcard app. You name a grammar topic, Claude generates a tailored explanation and a set of flashcards, then judges your answers in real time.
 
+## Why
+Anki is a truly great and extensible application. But using it for grammar studying is a drag. You need to make enough cards so that you will actually generalize to the grammar and not just learn the sentence by heart, and each card needs to be massive so that in case you get it wrong, you can read about the rule right in the card.
+
+Wouldn't it be nice to have a flashcard-like app that generates a full explanation of whatever concept you want to study, and tests you on it in a more dynamic way, with changing sentences for you to solve and personalized breakdowns of what you can improve?
+
+This is the problem grammar crammer is trying to solve.
+
 ## How it works
 
 1. **Enter a topic** — anything from "Japanese conditional forms" to "Spanish subjunctive".
