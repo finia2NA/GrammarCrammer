@@ -202,13 +202,16 @@ export default function Session() {
         if (!key) { router.replace('/onboarding'); return; }
         apiKeyRef.current = key;
 
-        const [exp, generatedCards] = await Promise.all([
-          generateExplanation(key, topic!, language!, addCost),
-          generateCards(key, topic!, language!, cardCount, addCost),
-        ]);
+        // Explanation streams in immediately — does NOT gate the loading spinner
+        generateExplanation(
+          key, topic!, language!,
+          (chunk) => setExplanation(prev => prev + chunk),
+          addCost,
+        ).then(({ truncated }) => setExplanationTruncated(truncated))
+         .catch((e) => setLoadError(e instanceof Error ? e.message : 'Failed to load explanation.'));
 
-        setExplanation(exp.text);
-        setExplanationTruncated(exp.truncated);
+        // Loading spinner clears as soon as cards (Haiku, fast) are ready
+        const generatedCards = await generateCards(key, topic!, language!, cardCount, addCost);
         setCards(generatedCards);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
@@ -245,9 +248,16 @@ export default function Session() {
         setCardPhase('correct');
       } else {
         setCardPhase('wrong_explaining');
-        const exp = await explainRejection(apiKeyRef.current, current, trimmed, language!, addCost);
-        setWrongExplanation(exp);
-        setCardPhase('wrong_shown');
+        setWrongExplanation('');
+        let firstChunk = true;
+        await explainRejection(
+          apiKeyRef.current, current, trimmed, language!,
+          (chunk) => {
+            if (firstChunk) { setCardPhase('wrong_shown'); firstChunk = false; }
+            setWrongExplanation(prev => prev + chunk);
+          },
+          addCost,
+        );
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'API error.');
