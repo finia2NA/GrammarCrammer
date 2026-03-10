@@ -52,8 +52,8 @@ A button starts the study session.
 | Phase 0 — Project bootstrap | ✅ Done | Expo 54, NativeWind v4.2, AsyncStorage |
 | Step 1 — Onboarding | ✅ Done | 3-card carousel, API key validation, storage |
 | Step 2 — Home screen | ✅ Done | topic input, language/mode/count dropdowns, start button |
-| Step 3a — Explanation phase | ⬜ Todo | |
-| Step 3b — Flashcard loop | ⬜ Todo | |
+| Step 3a — Explanation phase | ✅ Done | 習得 overlay → side panel; 練習 skips overlay |
+| Step 3b — Flashcard loop | ✅ Done | Haiku judges, Sonnet explains rejections, shuffle+requeue |
 
 ---
 

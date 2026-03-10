@@ -1,21 +1,400 @@
-import { View, Text } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { getApiKey } from '@/lib/storage';
+import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
+import type { Card, Mode } from '@/lib/types';
 
-// Placeholder — Step 3 not yet implemented
-export default function Session() {
-  const { topic, language, mode, count } = useLocalSearchParams<{
-    topic: string;
-    language: string;
-    mode: string;
-    count: string;
-  }>();
+// ─── Side panel ───────────────────────────────────────────────────────────────
+
+function SidePanel({ explanation }: { explanation: string }) {
+  const [width, setWidth] = useState(320);
+  const widthRef = useRef(320);
+  const [isDragging, setIsDragging] = useState(false);
+
+  function onDragHandlePress(e: any) {
+    const startX: number = e.nativeEvent.clientX ?? e.nativeEvent.pageX;
+    const startWidth = widthRef.current;
+    setIsDragging(true);
+
+    function onMouseMove(ev: MouseEvent) {
+      ev.preventDefault();
+      const next = Math.max(180, Math.min(600, startWidth + ev.clientX - startX));
+      setWidth(next);
+      widthRef.current = next;
+    }
+
+    function onMouseUp() {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
 
   return (
-    <View className="flex-1 items-center justify-center bg-slate-950 px-6">
-      <Text className="text-white text-xl font-semibold mb-4">Session (coming soon)</Text>
-      <Text className="text-slate-400 text-sm text-center">
-        {mode} · {language} · {count} cards{'\n'}{topic}
-      </Text>
+    <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
+      {/* Panel content */}
+      <View className="bg-slate-900 flex-1">
+        <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
+            Grammar Reference
+          </Text>
+          <Text className="text-slate-200 text-sm leading-6">{explanation}</Text>
+        </ScrollView>
+      </View>
+
+      {/* Drag handle — replaces the static border */}
+      <View
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={onDragHandlePress}
+        style={{
+          width: 6,
+          cursor: 'col-resize',
+          backgroundColor: isDragging ? '#6366f1' : '#1e293b',
+          alignItems: 'center',
+          justifyContent: 'center',
+        } as any}
+      >
+        {/* Grip dots */}
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              width: 2,
+              height: 2,
+              borderRadius: 1,
+              backgroundColor: isDragging ? '#a5b4fc' : '#475569',
+              marginVertical: 2,
+            }}
+          />
+        ))}
+      </View>
     </View>
+  );
+}
+
+// ─── Explanation overlay (習得 mode only) ─────────────────────────────────────
+
+function ExplanationOverlay({
+  explanation,
+  onDismiss,
+}: {
+  explanation: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <View className="absolute inset-0 bg-slate-950 z-50 flex-1">
+      <ScrollView className="flex-1 px-8 py-12 max-w-2xl" style={{ alignSelf: 'center', width: '100%' }}>
+        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+          Grammar Explanation
+        </Text>
+        <Text className="text-white text-2xl font-bold mb-6">Read before you practise</Text>
+        <Text className="text-slate-200 text-base leading-7">{explanation}</Text>
+        <View className="h-8" />
+      </ScrollView>
+      <View className="px-8 pb-10">
+        <TouchableOpacity
+          className="bg-indigo-600 rounded-2xl py-4 items-center"
+          onPress={onDismiss}
+        >
+          <Text className="text-white font-bold text-base">Start Practising →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ─── Card states ─────────────────────────────────────────────────────────────
+
+type CardPhase = 'input' | 'judging' | 'correct' | 'wrong_explaining' | 'wrong_shown';
+
+// ─── Session screen ───────────────────────────────────────────────────────────
+
+export default function Session() {
+  const router = useRouter();
+  const { topic, language, mode, count } = useLocalSearchParams<{
+    topic: string; language: string; mode: string; count: string;
+  }>();
+
+  const sessionMode = (mode ?? '練習') as Mode;
+  const cardCount = parseInt(count ?? '10', 10);
+
+  // Loading
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Content
+  const [explanation, setExplanation] = useState('');
+  const [cards, setCards] = useState<Card[]>([]);
+
+  // UI state
+  const [showOverlay, setShowOverlay] = useState(sessionMode === '習得');
+  const [cardPhase, setCardPhase] = useState<CardPhase>('input');
+  const [answer, setAnswer] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [wrongExplanation, setWrongExplanation] = useState('');
+  const [showHint, setShowHint] = useState(false);
+
+  const inputRef = useRef<TextInput>(null);
+  const apiKeyRef = useRef<string>('');
+
+  // ── Bootstrap ──────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const key = await getApiKey();
+        if (!key) { router.replace('/onboarding'); return; }
+        apiKeyRef.current = key;
+
+        const [exp, generatedCards] = await Promise.all([
+          generateExplanation(key, topic!, language!),
+          generateCards(key, topic!, language!, cardCount),
+        ]);
+
+        setExplanation(exp);
+        setCards(generatedCards);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // ── Focus input when card phase resets ────────────────────────────────────
+
+  useEffect(() => {
+    if (cardPhase === 'input' && !showOverlay) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [cardPhase, showOverlay, cards]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  async function handleSubmitAnswer() {
+    const trimmed = answer.trim();
+    if (!trimmed || cardPhase !== 'input') return;
+
+    const current = cards[0];
+    setCardPhase('judging');
+
+    try {
+      const result = await judgeAnswer(apiKeyRef.current, current, trimmed, language!);
+
+      if (result.correct) {
+        setFeedback(result.reason);
+        setCardPhase('correct');
+      } else {
+        setCardPhase('wrong_explaining');
+        const exp = await explainRejection(apiKeyRef.current, current, trimmed, language!);
+        setWrongExplanation(exp);
+        setCardPhase('wrong_shown');
+      }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'API error.');
+      setCardPhase('input');
+    }
+  }
+
+  function handleConfirmCorrect() {
+    // Remove card from stack
+    setCards((prev) => prev.slice(1));
+    setAnswer('');
+    setFeedback('');
+    setShowHint(false);
+    setCardPhase('input');
+  }
+
+  function handleConfirmWrong() {
+    // Move card to end of stack
+    setCards((prev) => [...prev.slice(1), prev[0]]);
+    setAnswer('');
+    setWrongExplanation('');
+    setShowHint(false);
+    setCardPhase('input');
+  }
+
+  // ── Render: loading ───────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center gap-4">
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-slate-400 text-sm">Generating your session…</Text>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4">
+        <Text className="text-red-400 text-base text-center">{loadError}</Text>
+        <TouchableOpacity className="bg-slate-800 rounded-xl px-6 py-3" onPress={() => router.back()}>
+          <Text className="text-white font-semibold">← Go back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ── Render: done ──────────────────────────────────────────────────────────
+
+  if (cards.length === 0) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-6">
+        <Text className="text-5xl">🎉</Text>
+        <Text className="text-white text-2xl font-bold">Session complete!</Text>
+        <Text className="text-slate-400 text-base text-center">
+          You cleared all the cards. Great work.
+        </Text>
+        <TouchableOpacity className="bg-indigo-600 rounded-2xl px-8 py-4" onPress={() => router.replace('/home')}>
+          <Text className="text-white font-bold text-base">Back to home</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const currentCard = cards[0];
+
+  // ── Render: session ───────────────────────────────────────────────────────
+
+  return (
+    <KeyboardAvoidingView
+      className="flex-1 bg-slate-950"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View className="flex-1 flex-row">
+        {/* Side panel — always present after overlay dismissed */}
+        {!showOverlay && (
+          <SidePanel explanation={explanation} />
+        )}
+
+        {/* Main area */}
+        <View className="flex-1 items-center justify-center px-8 py-10">
+          {/* Progress */}
+          <Text className="text-slate-500 text-sm mb-6 self-start">
+            {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
+          </Text>
+
+          {/* Card */}
+          <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
+            <Text className="text-slate-400 text-xs uppercase tracking-widest mb-3">Translate to {language}</Text>
+            <Text className="text-white text-xl font-semibold leading-8 mb-6">
+              {currentCard.english}
+            </Text>
+
+            {/* Input phase */}
+            {(cardPhase === 'input' || cardPhase === 'judging') && (
+              <>
+                <TextInput
+                  ref={inputRef}
+                  className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-base mb-4"
+                  placeholder="Your translation…"
+                  placeholderTextColor="#475569"
+                  value={answer}
+                  onChangeText={setAnswer}
+                  onSubmitEditing={handleSubmitAnswer}
+                  editable={cardPhase === 'input'}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  className={`py-3.5 rounded-xl items-center mb-3 ${
+                    cardPhase === 'judging' ? 'bg-slate-700' : 'bg-indigo-600'
+                  }`}
+                  onPress={handleSubmitAnswer}
+                  disabled={cardPhase === 'judging'}
+                >
+                  {cardPhase === 'judging' ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-white font-semibold">Check answer</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Hint */}
+                {showHint ? (
+                  <View className="bg-slate-800 rounded-lg px-3 py-2">
+                    {currentCard.notes && (
+                      <Text className="text-slate-400 text-xs mb-1">{currentCard.notes}</Text>
+                    )}
+                    <Text className="text-slate-300 text-sm font-medium">{currentCard.targetLanguage}</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowHint(true)}>
+                    <Text className="text-slate-600 text-xs text-center">Show hint</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            {/* Correct */}
+            {cardPhase === 'correct' && (
+              <View className="gap-3">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Text className="text-green-400 text-lg">✓</Text>
+                  <Text className="text-green-400 font-semibold">Correct!</Text>
+                </View>
+                <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
+                <Text className="text-slate-500 text-xs">Model: {currentCard.targetLanguage}</Text>
+                <TouchableOpacity
+                  className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
+                  onPress={handleConfirmCorrect}
+                >
+                  <Text className="text-white font-semibold">Next card →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Wrong — explaining */}
+            {cardPhase === 'wrong_explaining' && (
+              <View className="items-center gap-3 py-2">
+                <ActivityIndicator color="#f87171" />
+                <Text className="text-slate-400 text-sm">Getting feedback…</Text>
+              </View>
+            )}
+
+            {/* Wrong — shown */}
+            {cardPhase === 'wrong_shown' && (
+              <View className="gap-3">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Text className="text-red-400 text-lg">✗</Text>
+                  <Text className="text-red-400 font-semibold">Not quite</Text>
+                </View>
+                <Text className="text-slate-300 text-sm leading-6">{wrongExplanation}</Text>
+                <Text className="text-slate-500 text-xs">Model: {currentCard.targetLanguage}</Text>
+                <TouchableOpacity
+                  className="bg-slate-700 rounded-xl py-3.5 items-center mt-2"
+                  onPress={handleConfirmWrong}
+                >
+                  <Text className="text-white font-semibold">Try again later →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+        </View>
+
+        {/* 習得 overlay — rendered on top */}
+        {showOverlay && (
+          <ExplanationOverlay
+            explanation={explanation}
+            onDismiss={() => setShowOverlay(false)}
+          />
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
