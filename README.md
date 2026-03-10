@@ -46,12 +46,4 @@ On first launch the app will ask for your API key and verify it with a test requ
 
 ## Current state
 
-All core features are implemented and working:
-
-- Onboarding with API key validation
-- Home screen: topic input, language selector, mode toggle, card count
-- Streaming grammar explanation (renders as Markdown during load)
-- Flashcard loop with shuffle and requeue on wrong answers
-- Resizable grammar reference side panel
-- Per-session cost display (top right)
-- Hint toggle to reveal the model answer before submitting
+Core MVP features of the language study loop are implemented. To become a true studying app, collection management and scheduling would be next - check `PROGRESS.md` for current goals.
