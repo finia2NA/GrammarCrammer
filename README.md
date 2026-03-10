@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+# GrammarCrammer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An AI-powered grammar flashcard app. You name a grammar topic, Claude generates a tailored explanation and a set of flashcards, then judges your answers in real time.
 
-## Get started
+## How it works
 
-1. Install dependencies
+1. **Enter a topic** — anything from "Japanese conditional forms" to "Spanish subjunctive".
+2. **Choose your mode**:
+   - **習得 (learn)** — read the full grammar explanation first, then practise.
+   - **練習 (practise)** — skip straight to the cards; the explanation stays available as a side reference.
+3. **Translate sentences** — each card gives you an English sentence; you type the target-language version.
+4. **Get instant feedback** — Claude judges your answer. Correct answers are confirmed with a brief note. Wrong answers get a detailed Markdown explanation of what went wrong and what the correct form demonstrates. Wrong cards cycle back to the end of the stack.
+5. **Finish the stack** — the session ends when every card has been answered correctly.
 
-   ```bash
-   npm install
-   ```
+Cards are generated after the explanation is complete, so they cover all the grammar patterns in the reference — not just the headline topic.
 
-2. Start the app
+## Setup
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+You need your own [Anthropic API key](https://console.anthropic.com/). The app calls the API directly from your browser; no backend or account is required beyond the key itself.
 
 ```bash
-npm run reset-project
+npm install
+npx expo start --web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+On first launch the app will ask for your API key and verify it with a test request. The key is stored locally in your browser and never leaves your device.
 
-## Learn more
+## Tech stack
 
-To learn more about developing your project with Expo, look at the following resources:
+| Concern | Choice |
+|---|---|
+| Framework | Expo 54 (React Native + Web) |
+| Navigation | Expo Router (file-based) |
+| Styling | NativeWind v4 (Tailwind CSS) |
+| Storage | AsyncStorage (local, no backend) |
+| AI | Direct fetch to Anthropic API |
+| Explanation / rejection | Claude Sonnet 4.6 (streaming) |
+| Card generation / judgment | Claude Haiku 4.5 (tool use) |
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Current state
 
-## Join the community
+All core features are implemented and working:
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Onboarding with API key validation
+- Home screen: topic input, language selector, mode toggle, card count
+- Streaming grammar explanation (renders as Markdown during load)
+- Flashcard loop with shuffle and requeue on wrong answers
+- Resizable grammar reference side panel
+- Per-session cost display (top right)
+- Hint toggle to reveal the model answer before submitting
