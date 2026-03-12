@@ -7,13 +7,16 @@ import {
   ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   StyleSheet,
   Animated,
+  PanResponder,
   useWindowDimensions,
 } from 'react-native';
 import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getApiKey } from '@/lib/storage';
 import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
 import type { Card, CardPhase } from '@/lib/types';
@@ -45,6 +48,7 @@ const mdStyles = StyleSheet.create({
 // ─── Side panel ───────────────────────────────────────────────────────────────
 
 function SidePanel({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+  const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(320);
   const widthRef = useRef(320);
   const [isDragging, setIsDragging] = useState(false);
@@ -75,7 +79,8 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
     <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
       {/* Panel content */}
       <View className="bg-slate-900 flex-1">
-        <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: insets.top + 8 }}>
           <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
             Grammar Reference
           </Text>
@@ -120,18 +125,51 @@ const PEEK_HEIGHT = 72;
 
 function BottomSheet({ explanation, truncated }: { explanation: string; truncated: boolean }) {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState(false);
   const animHeight = useRef(new Animated.Value(0)).current;
 
+  // Refs so PanResponder closures always see current values
+  const expandedRef = useRef(false);
+  const peekH = PEEK_HEIGHT + insets.bottom;
+  const expandH = height * 0.65;
+  const peekHRef = useRef(peekH);
+  const expandHRef = useRef(expandH);
+  useEffect(() => { peekHRef.current = peekH; }, [peekH]);
+  useEffect(() => { expandHRef.current = expandH; }, [expandH]);
+
   useEffect(() => {
-    Animated.spring(animHeight, { toValue: PEEK_HEIGHT, useNativeDriver: false, bounciness: 4 }).start();
+    Animated.spring(animHeight, { toValue: peekH, useNativeDriver: false, bounciness: 4 }).start();
   }, []);
 
-  const toggle = () => {
-    const target = expanded ? PEEK_HEIGHT : height * 0.65;
-    Animated.spring(animHeight, { toValue: target, useNativeDriver: false, bounciness: 4 }).start();
-    setExpanded(e => !e);
-  };
+  function snapTo(open: boolean) {
+    expandedRef.current = open;
+    setExpanded(open);
+    if (open) Keyboard.dismiss();
+    Animated.spring(animHeight, {
+      toValue: open ? expandHRef.current : peekHRef.current,
+      useNativeDriver: false,
+      bounciness: 4,
+    }).start();
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 5,
+      onPanResponderGrant: () => { animHeight.stopAnimation(); },
+      onPanResponderMove: (_, { dy }) => {
+        const base = expandedRef.current ? expandHRef.current : peekHRef.current;
+        const next = Math.max(peekHRef.current, Math.min(expandHRef.current, base - dy));
+        animHeight.setValue(next);
+      },
+      onPanResponderRelease: (_, { dy, vy }) => {
+        if (vy < -0.5 || dy < -40) snapTo(true);
+        else if (vy > 0.5 || dy > 40) snapTo(false);
+        else snapTo(expandedRef.current);
+      },
+    })
+  ).current;
 
   return (
     <Animated.View
@@ -149,29 +187,28 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         overflow: 'hidden',
       }}
     >
-      {/* Handle + header */}
-      <TouchableOpacity onPress={toggle} className="items-center pt-2 pb-1">
-        <View className="w-10 h-1 bg-slate-600 rounded-full" />
-      </TouchableOpacity>
-      <View className="flex-row items-center justify-between px-5 pb-2">
-        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest">
-          Grammar Reference
-        </Text>
-        {expanded && (
-          <TouchableOpacity onPress={toggle}>
-            <Text className="text-slate-500 text-xs">↓ Dismiss</Text>
-          </TouchableOpacity>
-        )}
+      {/* Handle + header — drag and tap target */}
+      <View {...panResponder.panHandlers}>
+        <TouchableOpacity onPress={() => snapTo(!expandedRef.current)} className="items-center pt-2 pb-1" activeOpacity={1}>
+          <View className="w-10 h-1 bg-slate-600 rounded-full" />
+        </TouchableOpacity>
+        <View className="flex-row items-center justify-between px-5 pb-2">
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest">
+            Grammar Reference
+          </Text>
+          {expanded && (
+            <TouchableOpacity onPress={() => snapTo(false)}>
+              <Text className="text-slate-500 text-xs">↓ Dismiss</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Scrollable content */}
-      {expanded && (
-        <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 24 }}>
-          <Markdown style={mdStyles}>{explanation}</Markdown>
-          {truncated && <TruncationWarning />}
-        </ScrollView>
-      )}
+      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+        <Markdown style={mdStyles}>{explanation}</Markdown>
+        {truncated && <TruncationWarning />}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -215,6 +252,7 @@ export default function Session() {
   }>();
 
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isSmallScreen = width < 768;
 
   const cardCount = parseInt(count ?? '10', 10);
@@ -357,8 +395,8 @@ export default function Session() {
     return (
       <View className="flex-1 bg-slate-950">
         <ScrollView
-          className="flex-1 px-8 py-12"
-          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+          className="flex-1 px-8"
+          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
         >
           <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-6">
             {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
@@ -381,7 +419,7 @@ export default function Session() {
 
   if (loadError) {
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4">
+      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-red-400 text-base text-center">{loadError}</Text>
         <TouchableOpacity className="bg-slate-800 rounded-xl px-6 py-3" onPress={() => router.back()}>
           <Text className="text-white font-semibold">← Go back</Text>
@@ -394,7 +432,7 @@ export default function Session() {
 
   if (cards.length === 0) {
     return (
-      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-6">
+      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-5xl">🎉</Text>
         <Text className="text-white text-2xl font-bold">Session complete!</Text>
         <Text className="text-slate-400 text-base text-center">
@@ -540,8 +578,8 @@ export default function Session() {
         showOverlay ? (
           <View className="flex-1 bg-slate-950">
             <ScrollView
-              className="flex-1 px-8 py-12"
-              contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+              className="flex-1 px-8"
+              contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
             >
               <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
                 Grammar Explanation
@@ -561,8 +599,8 @@ export default function Session() {
             </View>
           </View>
         ) : (
-          <View className="flex-1" style={{ paddingBottom: PEEK_HEIGHT }}>
-            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32 }}>
+          <View className="flex-1" style={{ paddingBottom: PEEK_HEIGHT + insets.bottom }}>
+            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: 32 }}>
               {cardsJsx}
             </ScrollView>
             <BottomSheet explanation={explanation} truncated={explanationTruncated} />
@@ -584,8 +622,8 @@ export default function Session() {
                 : { width: panelNarrowed ? SIDEBAR_WIDTH : '100%' },
             ]}>
               <ScrollView
-                className="flex-1 px-8 py-12"
-                contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+                className="flex-1 px-8"
+                contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
               >
                 <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
                   Grammar Explanation

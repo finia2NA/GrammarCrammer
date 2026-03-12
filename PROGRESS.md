@@ -84,3 +84,4 @@ A button starts the study session.
 | Feature       | Notes                                                                                                                                                       |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unify theming | Right now, colors are defined inine - eg the indigo-400 used for failure. Need to put this in a theme somewhere is I don't need to keep all that in my head |
+| emojis on ios | do not work rn
