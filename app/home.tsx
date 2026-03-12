@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ function PillDropdown<T extends string | number>({
 
 export default function Home() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(10);
@@ -83,7 +85,14 @@ export default function Home() {
   return (
     <ScrollView
       className="flex-1 bg-slate-950"
-      contentContainerClassName="min-h-full items-center justify-center px-6 py-12"
+      contentContainerStyle={{
+        flexGrow: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 24,
+        paddingBottom: insets.bottom + 24,
+      }}
       keyboardShouldPersistTaps="handled"
     >
       <View className="w-full max-w-2xl">
