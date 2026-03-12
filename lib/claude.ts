@@ -75,30 +75,34 @@ async function callTextStream(
   let inputTokens = 0;
   let outputTokens = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const jsonStr = line.slice(6).trim();
-      if (!jsonStr || jsonStr === '[DONE]') continue;
-      try {
-        const ev = JSON.parse(jsonStr);
-        if (ev.type === 'message_start') {
-          inputTokens = ev.message?.usage?.input_tokens ?? 0;
-        } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
-          onChunk(ev.delta.text);
-        } else if (ev.type === 'message_delta') {
-          outputTokens = ev.usage?.output_tokens ?? outputTokens;
-          if (ev.delta?.stop_reason === 'max_tokens') truncated = true;
-        }
-      } catch { /* malformed event — skip */ }
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const ev = JSON.parse(jsonStr);
+          if (ev.type === 'message_start') {
+            inputTokens = ev.message?.usage?.input_tokens ?? 0;
+          } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+            onChunk(ev.delta.text);
+          } else if (ev.type === 'message_delta') {
+            outputTokens = ev.usage?.output_tokens ?? outputTokens;
+            if (ev.delta?.stop_reason === 'max_tokens') truncated = true;
+          }
+        } catch { /* malformed event — skip */ }
+      }
     }
+  } finally {
+    reader.cancel();
   }
 
   onCost?.(calcCost(model, inputTokens, outputTokens));
