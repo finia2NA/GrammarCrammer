@@ -599,10 +599,7 @@ export default function Session() {
   // ── Render: session + overlay (unified) ───────────────────────────────────
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-slate-950"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View className="flex-1 bg-slate-950">
       {isSmallScreen ? (
         // ── Small screen: full-screen overlay → cards + bottom sheet ──────────
         showOverlay ? (
@@ -616,14 +613,17 @@ export default function Session() {
             {overlayFooter(loading, () => setShowOverlay(false))}
           </View>
         ) : (
-          <View className="flex-1" style={{ paddingBottom: PEEK_HEIGHT + insets.bottom }}>
-            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: 32 }}>
+          <View className="flex-1">
+            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: PEEK_HEIGHT + insets.bottom + 32 }}>
               {cardsJsx}
             </ScrollView>
-            <BottomSheet explanation={explanation} truncated={explanationTruncated} />
           </View>
         )
       ) : (
+    <KeyboardAvoidingView
+      className="flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
         // ── Large screen: explanation panel animates to sidebar ───────────────
         <View className="flex-1 flex-row bg-slate-950">
           {transitionDone ? (
@@ -664,5 +664,10 @@ export default function Session() {
         </View>
       )}
     </KeyboardAvoidingView>
+      )}
+      {isSmallScreen && !showOverlay && (
+        <BottomSheet explanation={explanation} truncated={explanationTruncated} />
+      )}
+    </View>
   );
 }
