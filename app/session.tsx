@@ -194,6 +194,7 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
 
   return (
     <Animated.View
+      {...panResponder.panHandlers}
       style={{
         height: animHeight,
         position: 'absolute',
@@ -208,8 +209,8 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         overflow: 'hidden',
       }}
     >
-      {/* Handle + header — drag and tap target */}
-      <View {...panResponder.panHandlers}>
+      {/* Handle + header — tap target */}
+      <View>
         <TouchableOpacity onPress={() => snapTo(!expandedRef.current)} className="items-center pt-2 pb-1" activeOpacity={1}>
           <View className="w-10 h-1 bg-slate-600 rounded-full" />
         </TouchableOpacity>
@@ -225,8 +226,12 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+      <ScrollView
+        scrollEnabled={expanded}
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      >
         <Markdown style={mdStyles}>{explanation}</Markdown>
         {truncated && <TruncationWarning />}
       </ScrollView>
