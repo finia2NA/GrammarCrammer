@@ -46,6 +46,12 @@ npx expo run:ios
 Opens in the iOS Simulator. To run on a physical device,
 first run `npx expo prebuild && open ios/GrammarCrammer.xcworkspace`, then open the generated workspace in Xcode and select it from the scheme bar in Xcode after the project generates.
 
+> **Note:** after adding any new native package (e.g. via `npx expo install`), re-run `pod install` from the `ios/` directory before building in Xcode — `npx expo prebuild` alone won't pick up packages installed after the last prebuild.
+>
+> ```bash
+> cd ios && pod install
+> ```
+
 ### macOS (via Mac Catalyst)
 
 Runs the iPad layout natively on macOS — no simulator needed. Requires macOS with Xcode installed.
