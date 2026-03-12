@@ -67,8 +67,8 @@ A button starts the study session.
 | Full flashcard system             | Grammar-point based scheduling, FSRS, notifications                                                                                                                                    |
 | Backend                           | Store all state not only locally, but also in a db for sync between apps                                                                                                               |
 | Difficulty level                  | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
-| 🔄 More models                     | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
-
+| More models                       | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
+| Continue chatting                 | Ask follow-up questions about a card                                                                                                                                                   |
 ---
 
 ## Tech Stack
@@ -85,3 +85,4 @@ A button starts the study session.
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unify theming | Right now, colors are defined inine - eg the indigo-400 used for failure. Need to put this in a theme somewhere is I don't need to keep all that in my head |
 | emojis on ios | do not work rn                                                                                                                                              |
+| ios build     | works, but need to specify the steps needed in xcode to build the production version                                                                        |
