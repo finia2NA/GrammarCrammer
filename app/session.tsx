@@ -53,7 +53,8 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
   const widthRef = useRef(320);
   const [isDragging, setIsDragging] = useState(false);
 
-  function onDragHandlePress(e: any) {
+  // ── Web: pointer-event drag (mouse + Apple Pencil on iPad web) ─────────────
+  function onDragHandlePressWeb(e: any) {
     const startX: number = e.nativeEvent.clientX ?? e.nativeEvent.pageX;
     const startWidth = widthRef.current;
     setIsDragging(true);
@@ -75,6 +76,28 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
     document.addEventListener('pointerup', onPointerUp);
   }
 
+  // ── Native (Catalyst, iOS, Android): PanResponder drag ────────────────────
+  const dragStartWidthRef = useRef(320);
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragStartWidthRef.current = widthRef.current;
+        setIsDragging(true);
+      },
+      onPanResponderMove: (_, { dx }) => {
+        const next = Math.max(180, Math.min(600, dragStartWidthRef.current + dx));
+        setWidth(next);
+        widthRef.current = next;
+      },
+      onPanResponderRelease: () => setIsDragging(false),
+    })
+  ).current;
+
+  const dragHandleProps = Platform.OS === 'web'
+    ? { onStartShouldSetResponder: () => true, onResponderGrant: onDragHandlePressWeb }
+    : panResponder.panHandlers;
+
   return (
     <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
       {/* Panel content */}
@@ -89,10 +112,9 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
         </ScrollView>
       </View>
 
-      {/* Drag handle — replaces the static border */}
+      {/* Drag handle */}
       <View
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={onDragHandlePress}
+        {...dragHandleProps}
         style={{
           width: 6,
           cursor: 'col-resize',
@@ -101,7 +123,6 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
           justifyContent: 'center',
         } as any}
       >
-        {/* Grip dots */}
         {[0, 1, 2].map((i) => (
           <View
             key={i}
@@ -391,32 +412,6 @@ export default function Session() {
 
   // ── Render: loading ───────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <View className="flex-1 bg-slate-950">
-        <ScrollView
-          className="flex-1 px-8"
-          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
-        >
-          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-6">
-            {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
-          </Text>
-          {explanation ? (
-            <Markdown style={mdStyles}>{explanation}</Markdown>
-          ) : (
-            <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
-          )}
-          {loadPhase === 'cards' && (
-            <View className="flex-row items-center gap-2 mt-6">
-              <ActivityIndicator size="small" color="#6366f1" />
-              <Text className="text-slate-500 text-sm">Generating flashcards…</Text>
-            </View>
-          )}
-        </ScrollView>
-      </View>
-    );
-  }
-
   if (loadError) {
     return (
       <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
@@ -430,7 +425,7 @@ export default function Session() {
 
   // ── Render: done ──────────────────────────────────────────────────────────
 
-  if (cards.length === 0) {
+  if (!loading && cards.length === 0) {
     return (
       <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-5xl">🎉</Text>
@@ -445,7 +440,42 @@ export default function Session() {
     );
   }
 
-  const currentCard = cards[0];
+  const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
+
+  // ── Shared overlay scroll body (same during loading and ready) ────────────
+
+  const overlayBody = (
+    <>
+      <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+        Grammar Explanation
+      </Text>
+      <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
+      {explanation ? (
+        <Markdown style={mdStyles}>{explanation}</Markdown>
+      ) : (
+        <ActivityIndicator color="#6366f1" style={{ marginTop: 40 }} />
+      )}
+      {!loading && explanationTruncated && <TruncationWarning />}
+      <View className="h-8" />
+    </>
+  );
+
+  const overlayFooter = (loading: boolean, onStart: () => void) => (
+    <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
+      {loading ? (
+        <View className="flex-row items-center justify-center gap-3 py-4">
+          <ActivityIndicator size="small" color="#6366f1" />
+          <Text className="text-slate-500 text-sm">
+            {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
+          </Text>
+        </View>
+      ) : (
+        <TouchableOpacity className="bg-indigo-600 rounded-2xl py-4 items-center" onPress={onStart}>
+          <Text className="text-white font-bold text-base">Start Practising →</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
   console.log('[card]', JSON.stringify(currentCard, null, 2));
 
   // ── Cards JSX (shared between small and large layouts) ────────────────────
@@ -581,22 +611,9 @@ export default function Session() {
               className="flex-1 px-8"
               contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
             >
-              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
-                Grammar Explanation
-              </Text>
-              <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
-              <Markdown style={mdStyles}>{explanation}</Markdown>
-              {explanationTruncated && <TruncationWarning />}
-              <View className="h-8" />
+              {overlayBody}
             </ScrollView>
-            <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
-              <TouchableOpacity
-                className="bg-indigo-600 rounded-2xl py-4 items-center"
-                onPress={() => setShowOverlay(false)}
-              >
-                <Text className="text-white font-bold text-base">Start Practising →</Text>
-              </TouchableOpacity>
-            </View>
+            {overlayFooter(loading, () => setShowOverlay(false))}
           </View>
         ) : (
           <View className="flex-1" style={{ paddingBottom: PEEK_HEIGHT + insets.bottom }}>
@@ -625,22 +642,9 @@ export default function Session() {
                 className="flex-1 px-8"
                 contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%', paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }}
               >
-                <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
-                  Grammar Explanation
-                </Text>
-                <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
-                <Markdown style={mdStyles}>{explanation}</Markdown>
-                {explanationTruncated && <TruncationWarning />}
-                <View className="h-8" />
+                {overlayBody}
               </ScrollView>
-              <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
-                <TouchableOpacity
-                  className="bg-indigo-600 rounded-2xl py-4 items-center"
-                  onPress={handleStartPractising}
-                >
-                  <Text className="text-white font-bold text-base">Start Practising →</Text>
-                </TouchableOpacity>
-              </View>
+              {overlayFooter(loading, handleStartPractising)}
             </View>
           )}
 
