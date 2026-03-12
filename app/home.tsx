@@ -4,8 +4,6 @@ import { useRouter } from 'expo-router';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Mode = '練習' | '習得';
-
 const LANGUAGES = [
   'Japanese', 'Spanish', 'French', 'German',
   'Korean', 'Mandarin', 'Italian', 'Portuguese', 'Other',
@@ -69,7 +67,6 @@ export default function Home() {
   const router = useRouter();
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
-  const [mode, setMode] = useState<Mode>('習得');
   const [cardCount, setCardCount] = useState<CardCount>(10);
 
   const canStart = topic.trim().length > 0;
@@ -79,7 +76,7 @@ export default function Home() {
     if (!trimmed) return;
     router.push({
       pathname: '/session',
-      params: { topic: trimmed, language, mode, count: String(cardCount) },
+      params: { topic: trimmed, language, count: String(cardCount) },
     });
   }
 
@@ -104,7 +101,6 @@ export default function Home() {
             style={{ top: 12, right: 12, zIndex: 20 }}
           >
             <PillDropdown value={language} options={LANGUAGES} onChange={setLanguage} />
-            <PillDropdown value={mode} options={['習得', '練習'] as Mode[]} onChange={setMode} />
             <PillDropdown
               value={cardCount}
               options={CARD_COUNTS}
