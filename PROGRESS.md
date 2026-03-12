@@ -69,6 +69,7 @@ A button starts the study session.
 | Difficulty level                  | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
 | More models                       | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
 | Continue chatting                 | Ask follow-up questions about a card                                                                                                                                                   |
+| Better styling                    | Change the look from the very default-tailwindy one to something more unique                                                                                                           |
 ---
 
 ## Tech Stack

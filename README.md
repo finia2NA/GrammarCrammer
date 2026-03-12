@@ -43,7 +43,8 @@ Requires macOS with Xcode installed.
 npx expo run:ios
 ```
 
-Opens in the iOS Simulator. To run on a physical device, select it from the scheme bar in Xcode after the project generates.
+Opens in the iOS Simulator. To run on a physical device,
+first run `npx expo prebuild && open ios/GrammarCrammer.xcworkspace`, then open the generated workspace in Xcode and select it from the scheme bar in Xcode after the project generates.
 
 ### macOS (via Mac Catalyst)
 
@@ -85,15 +86,15 @@ npx expo run:android
 
 ## Tech stack
 
-| Concern | Choice |
-|---|---|
-| Framework | Expo 54 (React Native + Web) |
-| Navigation | Expo Router (file-based) |
-| Styling | NativeWind v4 (Tailwind CSS) |
-| Storage | AsyncStorage (local, no backend) |
-| AI | Direct fetch to Anthropic API |
-| Explanation / rejection | Claude Sonnet 4.6 (streaming) |
-| Card generation / judgment | Claude Haiku 4.5 (tool use) |
+| Concern                    | Choice                           |
+| -------------------------- | -------------------------------- |
+| Framework                  | Expo 54 (React Native + Web)     |
+| Navigation                 | Expo Router (file-based)         |
+| Styling                    | NativeWind v4 (Tailwind CSS)     |
+| Storage                    | AsyncStorage (local, no backend) |
+| AI                         | Direct fetch to Anthropic API    |
+| Explanation / rejection    | Claude Sonnet 4.6 (streaming)    |
+| Card generation / judgment | Claude Haiku 4.5 (tool use)      |
 
 ## Current state
 
