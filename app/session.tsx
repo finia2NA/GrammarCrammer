@@ -174,10 +174,10 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
     }).start();
   }
 
-  const panResponder = useRef(
-    PanResponder.create({
+  function makePanHandlers(shouldClaim: () => boolean) {
+    return PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, { dy }) => Math.abs(dy) > 5,
+      onMoveShouldSetPanResponder: (_, { dy }) => shouldClaim() && Math.abs(dy) > 5,
       onPanResponderGrant: () => { animHeight.stopAnimation(); },
       onPanResponderMove: (_, { dy }) => {
         const base = expandedRef.current ? expandHRef.current : peekHRef.current;
@@ -189,11 +189,17 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         else if (vy > 0.5 || dy > 40) snapTo(false);
         else snapTo(expandedRef.current);
       },
-    })
-  ).current;
+    });
+  }
+
+  // Outer sheet: only claims when collapsed (body drag to expand)
+  const outerPan = useRef(makePanHandlers(() => !expandedRef.current)).current;
+  // Header: only claims when expanded (header drag to dismiss)
+  const headerPan = useRef(makePanHandlers(() => expandedRef.current)).current;
 
   return (
     <Animated.View
+      {...outerPan.panHandlers}
       style={{
         height: animHeight,
         position: 'absolute',
@@ -208,8 +214,8 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         overflow: 'hidden',
       }}
     >
-      {/* Handle + header — drag and tap target */}
-      <View {...panResponder.panHandlers}>
+      {/* Handle + header — tap + drag target */}
+      <View {...headerPan.panHandlers}>
         <TouchableOpacity onPress={() => snapTo(!expandedRef.current)} className="items-center pt-2 pb-1" activeOpacity={1}>
           <View className="w-10 h-1 bg-slate-600 rounded-full" />
         </TouchableOpacity>
@@ -225,8 +231,12 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+      <ScrollView
+        scrollEnabled={expanded}
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      >
         <Markdown style={mdStyles}>{explanation}</Markdown>
         {truncated && <TruncationWarning />}
       </ScrollView>
