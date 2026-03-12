@@ -87,3 +87,4 @@ A button starts the study session.
 | Unify theming | Right now, colors are defined inine - eg the indigo-400 used for failure. Need to put this in a theme somewhere is I don't need to keep all that in my head |
 | emojis on ios | do not work rn                                                                                                                                              |
 | ios build     | works, but need to specify the steps needed in xcode to build the production version                                                                        |
+| Cleanup       | code quality has dropped. As expected starting out by building it as an mvp, but now we should go back and properly seperate the components.                |
