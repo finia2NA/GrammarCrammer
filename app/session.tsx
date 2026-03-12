@@ -14,7 +14,7 @@ import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getApiKey } from '@/lib/storage';
 import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
-import type { Card, Mode, LoadPhase, CardPhase } from '@/lib/types';
+import type { Card, LoadPhase, CardPhase } from '@/lib/types';
 
 // ─── Markdown styles ──────────────────────────────────────────────────────────
 
@@ -112,40 +112,6 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
   );
 }
 
-// ─── Explanation overlay (習得 mode only) ─────────────────────────────────────
-
-function ExplanationOverlay({
-  explanation,
-  truncated,
-  onDismiss,
-}: {
-  explanation: string;
-  truncated: boolean;
-  onDismiss: () => void;
-}) {
-  return (
-    <View className="absolute inset-0 bg-slate-950 z-50 flex-1">
-      <ScrollView className="flex-1 px-8 py-12 max-w-2xl" style={{ alignSelf: 'center', width: '100%' }}>
-        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
-          Grammar Explanation
-        </Text>
-        <Text className="text-white text-2xl font-bold mb-6">Read before you practise</Text>
-        <Markdown style={mdStyles}>{explanation}</Markdown>
-        {truncated && <TruncationWarning />}
-        <View className="h-8" />
-      </ScrollView>
-      <View className="px-8 pb-10">
-        <TouchableOpacity
-          className="bg-indigo-600 rounded-2xl py-4 items-center"
-          onPress={onDismiss}
-        >
-          <Text className="text-white font-bold text-base">Start Practising →</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
 // ─── Small reusable pieces ────────────────────────────────────────────────────
 
 function TruncationWarning() {
@@ -178,11 +144,10 @@ function ExampleBox({ example }: { example: string }) {
 
 export default function Session() {
   const router = useRouter();
-  const { topic, language, mode, count } = useLocalSearchParams<{
-    topic: string; language: string; mode: string; count: string;
+  const { topic, language, count } = useLocalSearchParams<{
+    topic: string; language: string; count: string;
   }>();
 
-  const sessionMode = (mode ?? '練習') as Mode;
   const cardCount = parseInt(count ?? '10', 10);
 
   // Loading
@@ -196,7 +161,7 @@ export default function Session() {
   const [cards, setCards] = useState<Card[]>([]);
 
   // UI state
-  const [showOverlay, setShowOverlay] = useState(sessionMode === '習得');
+  const [showOverlay, setShowOverlay] = useState(true);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
   const [submittedAnswer, setSubmittedAnswer] = useState('');
@@ -365,6 +330,35 @@ export default function Session() {
 
   const currentCard = cards[0];
 
+  // ── Render: explanation overlay ───────────────────────────────────────────
+
+  if (showOverlay) {
+    return (
+      <View className="flex-1 bg-slate-950">
+        <ScrollView
+          className="flex-1 px-8 py-12"
+          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+        >
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+            Grammar Explanation
+          </Text>
+          <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
+          <Markdown style={mdStyles}>{explanation}</Markdown>
+          {explanationTruncated && <TruncationWarning />}
+          <View className="h-8" />
+        </ScrollView>
+        <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}>
+          <TouchableOpacity
+            className="bg-indigo-600 rounded-2xl py-4 items-center"
+            onPress={() => setShowOverlay(false)}
+          >
+            <Text className="text-white font-bold text-base">Start Practising →</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // ── Render: session ───────────────────────────────────────────────────────
 
   return (
@@ -373,10 +367,7 @@ export default function Session() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View className="flex-1 flex-row">
-        {/* Side panel — always present after overlay dismissed */}
-        {!showOverlay && (
-          <SidePanel explanation={explanation} truncated={explanationTruncated} />
-        )}
+        <SidePanel explanation={explanation} truncated={explanationTruncated} />
 
         {/* Main area */}
         <View className="flex-1 items-center justify-center px-8 py-10">
@@ -489,15 +480,6 @@ export default function Session() {
           </View>
 
         </View>
-
-        {/* 習得 overlay — rendered on top */}
-        {showOverlay && (
-          <ExplanationOverlay
-            explanation={explanation}
-            truncated={explanationTruncated}
-            onDismiss={() => setShowOverlay(false)}
-          />
-        )}
       </View>
     </KeyboardAvoidingView>
   );
