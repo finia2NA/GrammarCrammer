@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import type { Card } from './types';
 import {
   EXPLANATION_PROMPT,
@@ -43,10 +44,11 @@ async function checkResponse(res: Response) {
 }
 
 /**
- * Streaming text call. Fires onChunk for each text delta as it arrives.
- * Returns when the stream is complete.
+ * Streaming text call. Uses fetch+ReadableStream on web (finest granularity)
+ * and XHR+onprogress on iOS/Android (ReadableStream unavailable there).
+ * Fires onChunk for each text delta as it arrives via SSE.
  */
-async function callTextStream(
+function callTextStream(
   apiKey: string,
   model: string,
   system: string,
@@ -55,58 +57,101 @@ async function callTextStream(
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
 ): Promise<{ truncated: boolean }> {
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: headers(apiKey),
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      stream: true,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
+  const body = JSON.stringify({
+    model,
+    max_tokens: maxTokens,
+    system,
+    stream: true,
+    messages: [{ role: 'user', content: userMessage }],
   });
-  await checkResponse(res);
 
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let truncated = false;
-  let inputTokens = 0;
-  let outputTokens = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const jsonStr = line.slice(6).trim();
-        if (!jsonStr || jsonStr === '[DONE]') continue;
-        try {
-          const ev = JSON.parse(jsonStr);
-          if (ev.type === 'message_start') {
-            inputTokens = ev.message?.usage?.input_tokens ?? 0;
-          } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
-            onChunk(ev.delta.text);
-          } else if (ev.type === 'message_delta') {
-            outputTokens = ev.usage?.output_tokens ?? outputTokens;
-            if (ev.delta?.stop_reason === 'max_tokens') truncated = true;
-          }
-        } catch { /* malformed event — skip */ }
-      }
+  function parseSseLines(
+    lines: string[],
+    state: { inputTokens: number; outputTokens: number; truncated: boolean },
+  ) {
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const jsonStr = line.slice(6).trim();
+      if (!jsonStr || jsonStr === '[DONE]') continue;
+      try {
+        const ev = JSON.parse(jsonStr);
+        if (ev.type === 'message_start') {
+          state.inputTokens = ev.message?.usage?.input_tokens ?? 0;
+        } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+          onChunk(ev.delta.text);
+        } else if (ev.type === 'message_delta') {
+          state.outputTokens = ev.usage?.output_tokens ?? state.outputTokens;
+          if (ev.delta?.stop_reason === 'max_tokens') state.truncated = true;
+        }
+      } catch { /* malformed event — skip */ }
     }
-  } finally {
-    reader.cancel();
   }
 
-  onCost?.(calcCost(model, inputTokens, outputTokens));
-  return { truncated };
+  console.log('[claude] callTextStream platform:', Platform.OS);
+
+  // Web: fetch + ReadableStream (finest chunk granularity)
+  if (Platform.OS === 'web') {
+    return (async () => {
+      console.log('[claude] using fetch+ReadableStream path');
+      const res = await fetch(ANTHROPIC_API_URL, { method: 'POST', headers: headers(apiKey), body });
+      await checkResponse(res);
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      const state = { inputTokens: 0, outputTokens: 0, truncated: false };
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          parseSseLines(lines, state);
+        }
+      } finally {
+        reader.cancel();
+      }
+      onCost?.(calcCost(model, state.inputTokens, state.outputTokens));
+      return { truncated: state.truncated };
+    })();
+  }
+
+  // Native (iOS/Android): XHR + onprogress
+  console.log('[claude] using XHR+onprogress path');
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', ANTHROPIC_API_URL);
+    const hdrs = headers(apiKey);
+    (Object.keys(hdrs) as (keyof typeof hdrs)[]).forEach(k => xhr.setRequestHeader(k, hdrs[k]));
+
+    let buffer = '';
+    let lastIndex = 0;
+    const state = { inputTokens: 0, outputTokens: 0, truncated: false };
+
+    function processNew() {
+      const newText = xhr.responseText.slice(lastIndex);
+      lastIndex = xhr.responseText.length;
+      buffer += newText;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      parseSseLines(lines, state);
+    }
+
+    xhr.onprogress = processNew;
+    xhr.onload = () => {
+      console.log('[claude] XHR onload status:', xhr.status);
+      processNew();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onCost?.(calcCost(model, state.inputTokens, state.outputTokens));
+        resolve({ truncated: state.truncated });
+      } else {
+        try { reject(new Error(JSON.parse(xhr.responseText)?.error?.message ?? `HTTP ${xhr.status}`)); }
+        catch { reject(new Error(`HTTP ${xhr.status}`)); }
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send(body);
+  });
 }
 
 /**

@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Animated,
+  useWindowDimensions,
 } from 'react-native';
 import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -52,21 +54,21 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
     const startWidth = widthRef.current;
     setIsDragging(true);
 
-    function onMouseMove(ev: MouseEvent) {
+    function onPointerMove(ev: PointerEvent) {
       ev.preventDefault();
       const next = Math.max(180, Math.min(600, startWidth + ev.clientX - startX));
       setWidth(next);
       widthRef.current = next;
     }
 
-    function onMouseUp() {
+    function onPointerUp() {
       setIsDragging(false);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
     }
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
   }
 
   return (
@@ -112,6 +114,68 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
   );
 }
 
+// ─── Bottom sheet (small screens) ─────────────────────────────────────────────
+
+const PEEK_HEIGHT = 72;
+
+function BottomSheet({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+  const { height } = useWindowDimensions();
+  const [expanded, setExpanded] = useState(false);
+  const animHeight = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(animHeight, { toValue: PEEK_HEIGHT, useNativeDriver: false, bounciness: 4 }).start();
+  }, []);
+
+  const toggle = () => {
+    const target = expanded ? PEEK_HEIGHT : height * 0.65;
+    Animated.spring(animHeight, { toValue: target, useNativeDriver: false, bounciness: 4 }).start();
+    setExpanded(e => !e);
+  };
+
+  return (
+    <Animated.View
+      style={{
+        height: animHeight,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#0f172a',
+        borderTopWidth: 1,
+        borderTopColor: '#1e293b',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Handle + header */}
+      <TouchableOpacity onPress={toggle} className="items-center pt-2 pb-1">
+        <View className="w-10 h-1 bg-slate-600 rounded-full" />
+      </TouchableOpacity>
+      <View className="flex-row items-center justify-between px-5 pb-2">
+        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest">
+          Grammar Reference
+        </Text>
+        {expanded && (
+          <TouchableOpacity onPress={toggle}>
+            <Text className="text-slate-500 text-xs">↓ Dismiss</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Scrollable content */}
+      {expanded && (
+        <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}>
+          <Markdown style={mdStyles}>{explanation}</Markdown>
+          {truncated && <TruncationWarning />}
+        </ScrollView>
+      )}
+    </Animated.View>
+  );
+}
+
 // ─── Small reusable pieces ────────────────────────────────────────────────────
 
 function TruncationWarning() {
@@ -142,11 +206,16 @@ function ExampleBox({ example }: { example: string }) {
 
 // ─── Session screen ───────────────────────────────────────────────────────────
 
+const SIDEBAR_WIDTH = 320;
+
 export default function Session() {
   const router = useRouter();
   const { topic, language, count } = useLocalSearchParams<{
     topic: string; language: string; count: string;
   }>();
+
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = width < 768;
 
   const cardCount = parseInt(count ?? '10', 10);
 
@@ -162,6 +231,10 @@ export default function Session() {
 
   // UI state
   const [showOverlay, setShowOverlay] = useState(true);
+  // panelNarrowed triggers the CSS width transition; showOverlay/transitionDone
+  // follow after the animation finishes so content never swaps mid-animation.
+  const [panelNarrowed, setPanelNarrowed] = useState(false);
+  const [transitionDone, setTransitionDone] = useState(false);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
   const [submittedAnswer, setSubmittedAnswer] = useState('');
@@ -254,8 +327,15 @@ export default function Session() {
     }
   }
 
+  function handleStartPractising() {
+    setPanelNarrowed(true); // kick off the CSS width transition
+    setTimeout(() => {
+      setShowOverlay(false);   // swap content after animation
+      setTransitionDone(true); // release the wrapper so drag-resize works
+    }, 420);
+  }
+
   function handleConfirmCorrect() {
-    // Remove card from stack
     setCards((prev) => prev.slice(1));
     setAnswer('');
     setFeedback('');
@@ -264,7 +344,6 @@ export default function Session() {
   }
 
   function handleConfirmWrong() {
-    // Move card to end of stack
     setCards((prev) => [...prev.slice(1), prev[0]]);
     setAnswer('');
     setWrongExplanation('');
@@ -331,161 +410,217 @@ export default function Session() {
   const currentCard = cards[0];
   console.log('[card]', JSON.stringify(currentCard, null, 2));
 
-  // ── Render: explanation overlay ───────────────────────────────────────────
+  // ── Cards JSX (shared between small and large layouts) ────────────────────
 
-  if (showOverlay) {
-    return (
-      <View className="flex-1 bg-slate-950">
-        <ScrollView
-          className="flex-1 px-8 py-12"
-          contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
-        >
-          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
-            Grammar Explanation
-          </Text>
-          <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
-          <Markdown style={mdStyles}>{explanation}</Markdown>
-          {explanationTruncated && <TruncationWarning />}
-          <View className="h-8" />
-        </ScrollView>
-        <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}>
-          <TouchableOpacity
-            className="bg-indigo-600 rounded-2xl py-4 items-center"
-            onPress={() => setShowOverlay(false)}
-          >
-            <Text className="text-white font-bold text-base">Start Practising →</Text>
-          </TouchableOpacity>
-        </View>
+  const cardsJsx = (
+    <>
+      {/* Progress + cost */}
+      <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
+        <Text className="text-slate-500 text-sm">
+          {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
+        </Text>
+        <Text className="text-slate-600 text-xs font-mono">
+          ${totalCost.toFixed(4)}
+        </Text>
       </View>
-    );
-  }
 
-  // ── Render: session ───────────────────────────────────────────────────────
+      {/* Card */}
+      <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
+        <Text className="text-slate-400 text-xs uppercase tracking-widest mb-3">Translate to {language}</Text>
+        <Text className="text-white text-xl font-semibold leading-8 mb-2">
+          {currentCard.english}
+        </Text>
+        {currentCard.sentenceContext && (
+          <View className="self-end bg-indigo-950 border border-indigo-700 rounded-md px-2 py-0.5 mb-4">
+            <Text className="text-indigo-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
+          </View>
+        )}
+
+        {/* Input phase */}
+        {(cardPhase === 'input' || cardPhase === 'judging') && (
+          <>
+            <TextInput
+              ref={inputRef}
+              className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-base mb-4"
+              placeholder="Your translation…"
+              placeholderTextColor="#475569"
+              value={answer}
+              onChangeText={setAnswer}
+              onSubmitEditing={handleSubmitAnswer}
+              editable={cardPhase === 'input'}
+              autoFocus
+            />
+            <TouchableOpacity
+              className={`py-3.5 rounded-xl items-center mb-3 ${
+                cardPhase === 'judging' ? 'bg-slate-700' : 'bg-indigo-600'
+              }`}
+              onPress={handleSubmitAnswer}
+              disabled={cardPhase === 'judging'}
+            >
+              {cardPhase === 'judging' ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-white font-semibold">Check answer</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Hint */}
+            {currentCard.notes && (
+              showHint ? (
+                <View className="bg-slate-800 rounded-lg px-3 py-2">
+                  <Text className="text-slate-400 text-xs">{currentCard.notes}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setShowHint(true)}>
+                  <Text className="text-slate-600 text-xs text-center">Show hint</Text>
+                </TouchableOpacity>
+              )
+            )}
+          </>
+        )}
+
+        {/* Correct */}
+        {cardPhase === 'correct' && (
+          <View className="gap-3">
+            <View className="flex-row items-center gap-2 mb-1">
+              <Text className="text-green-400 text-lg">✓</Text>
+              <Text className="text-green-400 font-semibold">Correct!</Text>
+            </View>
+            <AnswerBox answer={submittedAnswer} />
+            <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
+            <ExampleBox example={currentCard.targetLanguage} />
+            <TouchableOpacity
+              className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
+              onPress={handleConfirmCorrect}
+            >
+              <Text className="text-white font-semibold">Next card →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Wrong — explaining */}
+        {cardPhase === 'wrong_explaining' && (
+          <View className="items-center gap-3 py-2">
+            <ActivityIndicator color="#f87171" />
+            <Text className="text-slate-400 text-sm">Getting feedback…</Text>
+          </View>
+        )}
+
+        {/* Wrong — shown */}
+        {cardPhase === 'wrong_shown' && (
+          <View className="gap-3">
+            <View className="flex-row items-center gap-2 mb-1">
+              <Text className="text-red-400 text-lg">✗</Text>
+              <Text className="text-red-400 font-semibold">Not quite</Text>
+            </View>
+            <AnswerBox answer={submittedAnswer} />
+            <ExampleBox example={currentCard.targetLanguage} />
+            <Markdown style={mdStyles}>{wrongExplanation}</Markdown>
+            <TouchableOpacity
+              className="bg-amber-700 rounded-xl py-3.5 items-center mt-2"
+              onPress={handleConfirmWrong}
+            >
+              <Text className="text-white font-semibold">Try again later →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
+  // ── Render: session + overlay (unified) ───────────────────────────────────
 
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-slate-950"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View className="flex-1 flex-row">
-        <SidePanel explanation={explanation} truncated={explanationTruncated} />
-
-        {/* Main area */}
-        <View className="flex-1 items-center justify-center px-8 py-10">
-          {/* Progress + cost */}
-          <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
-            <Text className="text-slate-500 text-sm">
-              {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
-            </Text>
-            <Text className="text-slate-600 text-xs font-mono">
-              ${totalCost.toFixed(4)}
-            </Text>
+      {isSmallScreen ? (
+        // ── Small screen: full-screen overlay → cards + bottom sheet ──────────
+        showOverlay ? (
+          <View className="flex-1 bg-slate-950">
+            <ScrollView
+              className="flex-1 px-8 py-12"
+              contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+            >
+              <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                Grammar Explanation
+              </Text>
+              <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
+              <Markdown style={mdStyles}>{explanation}</Markdown>
+              {explanationTruncated && <TruncationWarning />}
+              <View className="h-8" />
+            </ScrollView>
+            <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
+              <TouchableOpacity
+                className="bg-indigo-600 rounded-2xl py-4 items-center"
+                onPress={() => setShowOverlay(false)}
+              >
+                <Text className="text-white font-bold text-base">Start Practising →</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          {/* Card */}
-          <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
-            <Text className="text-slate-400 text-xs uppercase tracking-widest mb-3">Translate to {language}</Text>
-            <Text className="text-white text-xl font-semibold leading-8 mb-2">
-              {currentCard.english}
-            </Text>
-            {currentCard.sentenceContext && (
-              <View className="self-end bg-indigo-950 border border-indigo-700 rounded-md px-2 py-0.5 mb-4">
-                <Text className="text-indigo-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
-              </View>
-            )}
-
-            {/* Input phase */}
-            {(cardPhase === 'input' || cardPhase === 'judging') && (
-              <>
-                <TextInput
-                  ref={inputRef}
-                  className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-base mb-4"
-                  placeholder="Your translation…"
-                  placeholderTextColor="#475569"
-                  value={answer}
-                  onChangeText={setAnswer}
-                  onSubmitEditing={handleSubmitAnswer}
-                  editable={cardPhase === 'input'}
-                  autoFocus
-                />
-                <TouchableOpacity
-                  className={`py-3.5 rounded-xl items-center mb-3 ${
-                    cardPhase === 'judging' ? 'bg-slate-700' : 'bg-indigo-600'
-                  }`}
-                  onPress={handleSubmitAnswer}
-                  disabled={cardPhase === 'judging'}
-                >
-                  {cardPhase === 'judging' ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-semibold">Check answer</Text>
-                  )}
-                </TouchableOpacity>
-
-                {/* Hint */}
-                {currentCard.notes && (
-                  showHint ? (
-                    <View className="bg-slate-800 rounded-lg px-3 py-2">
-                      <Text className="text-slate-400 text-xs">{currentCard.notes}</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity onPress={() => setShowHint(true)}>
-                      <Text className="text-slate-600 text-xs text-center">Show hint</Text>
-                    </TouchableOpacity>
-                  )
-                )}
-              </>
-            )}
-
-            {/* Correct */}
-            {cardPhase === 'correct' && (
-              <View className="gap-3">
-                <View className="flex-row items-center gap-2 mb-1">
-                  <Text className="text-green-400 text-lg">✓</Text>
-                  <Text className="text-green-400 font-semibold">Correct!</Text>
-                </View>
-                <AnswerBox answer={submittedAnswer} />
-                <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
-                <ExampleBox example={currentCard.targetLanguage} />
-                <TouchableOpacity
-                  className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
-                  onPress={handleConfirmCorrect}
-                >
-                  <Text className="text-white font-semibold">Next card →</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Wrong — explaining */}
-            {cardPhase === 'wrong_explaining' && (
-              <View className="items-center gap-3 py-2">
-                <ActivityIndicator color="#f87171" />
-                <Text className="text-slate-400 text-sm">Getting feedback…</Text>
-              </View>
-            )}
-
-            {/* Wrong — shown */}
-            {cardPhase === 'wrong_shown' && (
-              <View className="gap-3">
-                <View className="flex-row items-center gap-2 mb-1">
-                  <Text className="text-red-400 text-lg">✗</Text>
-                  <Text className="text-red-400 font-semibold">Not quite</Text>
-                </View>
-                <AnswerBox answer={submittedAnswer} />
-                <ExampleBox example={currentCard.targetLanguage} />
-                <Markdown style={mdStyles}>{wrongExplanation}</Markdown>
-                <TouchableOpacity
-                  className="bg-amber-700 rounded-xl py-3.5 items-center mt-2"
-                  onPress={handleConfirmWrong}
-                >
-                  <Text className="text-white font-semibold">Try again later →</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        ) : (
+          <View className="flex-1" style={{ paddingBottom: PEEK_HEIGHT }}>
+            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingVertical: 32 }}>
+              {cardsJsx}
+            </ScrollView>
+            <BottomSheet explanation={explanation} truncated={explanationTruncated} />
           </View>
+        )
+      ) : (
+        // ── Large screen: explanation panel animates to sidebar ───────────────
+        <View className="flex-1 flex-row bg-slate-950">
+          {transitionDone ? (
+            // After transition: SidePanel is unconstrained so drag-resize works freely
+            <SidePanel explanation={explanation} truncated={explanationTruncated} />
+          ) : (
+            // Before / during transition: wrapper controls width via CSS transition.
+            // showOverlay stays true during the animation so content never swaps early.
+            <View style={[
+              { overflow: 'hidden' as const },
+              Platform.OS === 'web'
+                ? { transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)', width: panelNarrowed ? SIDEBAR_WIDTH : '100%' } as any
+                : { width: panelNarrowed ? SIDEBAR_WIDTH : '100%' },
+            ]}>
+              <ScrollView
+                className="flex-1 px-8 py-12"
+                contentContainerStyle={{ maxWidth: 720, alignSelf: 'center', width: '100%' }}
+              >
+                <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                  Grammar Explanation
+                </Text>
+                <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
+                <Markdown style={mdStyles}>{explanation}</Markdown>
+                {explanationTruncated && <TruncationWarning />}
+                <View className="h-8" />
+              </ScrollView>
+              <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
+                <TouchableOpacity
+                  className="bg-indigo-600 rounded-2xl py-4 items-center"
+                  onPress={handleStartPractising}
+                >
+                  <Text className="text-white font-bold text-base">Start Practising →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
+          {/* Cards: mount as soon as panel starts narrowing, then fade in */}
+          {panelNarrowed && (
+            <View style={[
+              { flex: 1 },
+              Platform.OS === 'web'
+                ? { opacity: showOverlay ? 0 : 1, transition: 'opacity 0.3s ease', pointerEvents: showOverlay ? 'none' : 'auto' } as any
+                : {},
+            ]}>
+              <View className="flex-1 items-center justify-center px-8 py-10">
+                {cardsJsx}
+              </View>
+            </View>
+          )}
         </View>
-      </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
