@@ -14,7 +14,7 @@ import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getApiKey } from '@/lib/storage';
 import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
-import type { Card, LoadPhase, CardPhase } from '@/lib/types';
+import type { Card, CardPhase } from '@/lib/types';
 
 // ─── Markdown styles ──────────────────────────────────────────────────────────
 
@@ -329,6 +329,7 @@ export default function Session() {
   }
 
   const currentCard = cards[0];
+  console.log('[card]', JSON.stringify(currentCard, null, 2));
 
   // ── Render: explanation overlay ───────────────────────────────────────────
 
@@ -384,9 +385,14 @@ export default function Session() {
           {/* Card */}
           <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
             <Text className="text-slate-400 text-xs uppercase tracking-widest mb-3">Translate to {language}</Text>
-            <Text className="text-white text-xl font-semibold leading-8 mb-6">
+            <Text className="text-white text-xl font-semibold leading-8 mb-2">
               {currentCard.english}
             </Text>
+            {currentCard.sentenceContext && (
+              <View className="self-end bg-indigo-950 border border-indigo-700 rounded-md px-2 py-0.5 mb-4">
+                <Text className="text-indigo-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
+              </View>
+            )}
 
             {/* Input phase */}
             {(cardPhase === 'input' || cardPhase === 'judging') && (
@@ -417,17 +423,16 @@ export default function Session() {
                 </TouchableOpacity>
 
                 {/* Hint */}
-                {showHint ? (
-                  <View className="bg-slate-800 rounded-lg px-3 py-2">
-                    {currentCard.notes && (
-                      <Text className="text-slate-400 text-xs mb-1">{currentCard.notes}</Text>
-                    )}
-                    <Text className="text-slate-300 text-sm font-medium">{currentCard.targetLanguage}</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity onPress={() => setShowHint(true)}>
-                    <Text className="text-slate-600 text-xs text-center">Show hint</Text>
-                  </TouchableOpacity>
+                {currentCard.notes && (
+                  showHint ? (
+                    <View className="bg-slate-800 rounded-lg px-3 py-2">
+                      <Text className="text-slate-400 text-xs">{currentCard.notes}</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity onPress={() => setShowHint(true)}>
+                      <Text className="text-slate-600 text-xs text-center">Show hint</Text>
+                    </TouchableOpacity>
+                  )
                 )}
               </>
             )}
@@ -470,7 +475,7 @@ export default function Session() {
                 <ExampleBox example={currentCard.targetLanguage} />
                 <Markdown style={mdStyles}>{wrongExplanation}</Markdown>
                 <TouchableOpacity
-                  className="bg-slate-700 rounded-xl py-3.5 items-center mt-2"
+                  className="bg-amber-700 rounded-xl py-3.5 items-center mt-2"
                   onPress={handleConfirmWrong}
                 >
                   <Text className="text-white font-semibold">Try again later →</Text>

@@ -79,3 +79,8 @@ A button starts the study session.
 - **AI**: Direct fetch to Anthropic API (user's own key, no backend)
 - **Styling**: NativeWind v4 (Tailwind CSS)
 - **Models**: Claude Sonnet 4.6 (explanations), Claude Haiku 4.5 (cards + judgment)
+
+## Housekeeping
+| Feature       | Notes                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unify theming | Right now, colors are defined inine - eg the indigo-400 used for failure. Need to put this in a theme somewhere is I don't need to keep all that in my head |

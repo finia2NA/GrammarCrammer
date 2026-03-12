@@ -16,7 +16,7 @@ const HAIKU = 'claude-haiku-4-5-20251001';
 // Prices in USD per million tokens (as of 2025)
 const PRICE: Record<string, { input: number; output: number }> = {
   [SONNET]: { input: 3.00, output: 15.00 },
-  [HAIKU]:  { input: 0.80, output:  4.00 },
+  [HAIKU]: { input: 0.80, output: 4.00 },
 };
 
 export function calcCost(model: string, inputTokens: number, outputTokens: number): number {
@@ -153,7 +153,7 @@ async function callTool<T>(
 /** Validates an API key. Returns null on success, error message on failure. */
 export async function validateApiKey(key: string): Promise<string | null> {
   try {
-    await callTextStream(key, HAIKU, 'You are a helpful assistant.', 'Hi', 8, () => {});
+    await callTextStream(key, HAIKU, 'You are a helpful assistant.', 'Hi', 8, () => { });
     return null;
   } catch (e) {
     return e instanceof Error ? e.message : 'Unknown error';
@@ -205,9 +205,10 @@ export async function generateCards(
           items: {
             type: 'object',
             properties: {
-              english:        { type: 'string', description: 'The English sentence the learner must translate.' },
+              english: { type: 'string', description: 'The English sentence the learner must translate.' },
               targetLanguage: { type: 'string', description: `The correct ${language} translation of the English sentence — must be an actual ${language} sentence, not a label or description.` },
-              notes:          { type: 'string', description: 'Optional very brief grammar note, e.g. which pattern is used.' },
+              sentenceContext: { type: 'string', description: 'Optional 1–3 word note shown to the learner about context required for the translation that is not evident from the English (e.g. "polite speech", "casual", "humble form"). Omit if the English sentence is unambiguous.' },
+              notes: { type: 'string', description: `Optional very brief grammar note, e.g. which pattern is used. Never the full correct sentence in ${language}.` },
             },
             required: ['english', 'targetLanguage'],
           },
@@ -240,7 +241,7 @@ export async function judgeAnswer(
   return callTool<{ correct: boolean; reason: string }>(
     apiKey,
     HAIKU,
-    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language),
+    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext),
     'Judge the answer.',
     'submit_judgment',
     'Submit whether the student answer is correct and a one-sentence reason.',
@@ -248,7 +249,7 @@ export async function judgeAnswer(
       type: 'object',
       properties: {
         correct: { type: 'boolean' },
-        reason:  { type: 'string' },
+        reason: { type: 'string' },
       },
       required: ['correct', 'reason'],
     },

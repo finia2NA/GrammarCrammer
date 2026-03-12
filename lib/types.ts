@@ -5,5 +5,6 @@ export interface Card {
   id: string;
   english: string;
   targetLanguage: string;
+  sentenceContext?: string;
   notes?: string;
 }
