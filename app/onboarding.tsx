@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setApiKey } from '@/lib/storage';
 import { validateApiKey } from '@/lib/claude';
 
@@ -103,6 +104,7 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps)
 
 export default function Onboarding() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [apiKey, setApiKeyInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +144,14 @@ export default function Onboarding() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerClassName="flex-1 items-center justify-center px-6 py-12"
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+          paddingTop: insets.top + 24,
+          paddingBottom: insets.bottom + 24,
+        }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Card */}
