@@ -1,0 +1,37 @@
+/**
+ * iOS implementation of PillDropdown.
+ *
+ * Uses a local Expo module (modules/pill-dropdown) that wraps UIButton with
+ * UIMenu + showsMenuAsPrimaryAction = true, giving the native floating popover.
+ *
+ * SWAP POINT: once @expo/ui ships a stable SwiftUI Menu for the current
+ * Expo SDK, replace the NativePillDropdownView import with the @expo/ui
+ * <Menu> component. The PillDropdownProps interface in PillDropdown.tsx
+ * stays the same either way.
+ */
+import { Keyboard } from 'react-native';
+import { PillDropdownNativeView } from 'pill-dropdown';
+import type { PillDropdownProps } from './PillDropdown';
+
+export function PillDropdown<T extends string | number>({
+  value, options, onChange, formatLabel,
+}: PillDropdownProps<T>) {
+  const label = formatLabel ? formatLabel(value) : String(value);
+  const optionLabels = options.map(o => formatLabel ? formatLabel(o) : String(o));
+  const selectedIndex = options.findIndex(o => o === value);
+
+  return (
+    <PillDropdownNativeView
+      label={label}
+      options={optionLabels}
+      selectedIndex={selectedIndex >= 0 ? selectedIndex : 0}
+      onValueChange={(event) => {
+        Keyboard.dismiss();
+        onChange(options[event.nativeEvent.index]);
+      }}
+      // Yoga ignores UIKit intrinsicContentSize, so estimate width from label.
+      // ~8.5px per char at 14pt medium + 48px for padding + chevron.
+      style={{ height: 34, minWidth: Math.max(90, label.length * 8.5 + 48) }}
+    />
+  );
+}
