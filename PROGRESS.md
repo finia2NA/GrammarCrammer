@@ -47,27 +47,27 @@ A button starts the study session.
 
 ## Progress Tracker
 
-| Step | Status | Notes |
-|------|--------|-------|
-| Phase 0 — Project bootstrap | ✅ Done | Expo 54, NativeWind v4.2, AsyncStorage |
-| Step 1 — Onboarding | ✅ Done | 3-card carousel, API key validation, storage |
-| Step 2 — Home screen | ✅ Done | topic input, language/mode/count dropdowns, start button |
-| Step 3a — Explanation phase | ✅ Done | 習得 overlay → side panel; 練習 skips overlay |
-| Step 3b — Flashcard loop | ✅ Done | Haiku judges, Sonnet explains rejections, shuffle+requeue |
+| Step                        | Status | Notes                                                     |
+| --------------------------- | ------ | --------------------------------------------------------- |
+| Phase 0 — Project bootstrap | ✅ Done | Expo 54, NativeWind v4.2, AsyncStorage                    |
+| Step 1 — Onboarding         | ✅ Done | 3-card carousel, API key validation, storage              |
+| Step 2 — Home screen        | ✅ Done | topic input, language/mode/count dropdowns, start button  |
+| Step 3a — Explanation phase | ✅ Done | 習得 overlay → side panel; 練習 skips overlay             |
+| Step 3b — Flashcard loop    | ✅ Done | Haiku judges, Sonnet explains rejections, shuffle+requeue |
 
 ---
 
 ## Future Features
 
-| Feature | Notes |
-|---|---|
-| Session history | Store past sessions (topic, explanation, cards, scores) in local storage for future use |
-| Mobile apps | Build and publish native iOS / Android apps via Expo |
-|Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese
-| Full flashcard system | Grammar-point based scheduling, FSRS, notifications |
-| Backend | Store all state not only locally, but also in a db for sync between apps
-| Difficulty level | Tailor the difficulty level of the grammar cards to your liking
-| More models | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app
+| Feature                         | Notes                                                                                                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session history                 | Store past sessions (topic, explanation, cards, scores) in local storage for future use                                                                                                |
+| Mobile apps                     | Build and publish native iOS / Android apps via Expo                                                                                                                                   |
+| Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese |
+| Full flashcard system           | Grammar-point based scheduling, FSRS, notifications                                                                                                                                    |
+| Backend                         | Store all state not only locally, but also in a db for sync between apps                                                                                                               |
+| Difficulty level                | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
+| More models                     | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
 
 ---
 

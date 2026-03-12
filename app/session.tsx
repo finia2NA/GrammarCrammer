@@ -14,7 +14,7 @@ import Markdown from '@ronradtke/react-native-markdown-display';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getApiKey } from '@/lib/storage';
 import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
-import type { Card, Mode } from '@/lib/types';
+import type { Card, Mode, LoadPhase, CardPhase } from '@/lib/types';
 
 // ─── Markdown styles ──────────────────────────────────────────────────────────
 
@@ -78,11 +78,7 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
             Grammar Reference
           </Text>
           <Markdown style={mdStyles}>{explanation}</Markdown>
-          {truncated && (
-            <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
-              <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
-            </View>
-          )}
+          {truncated && <TruncationWarning />}
         </ScrollView>
       </View>
 
@@ -135,11 +131,7 @@ function ExplanationOverlay({
         </Text>
         <Text className="text-white text-2xl font-bold mb-6">Read before you practise</Text>
         <Markdown style={mdStyles}>{explanation}</Markdown>
-        {truncated && (
-          <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
-            <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
-          </View>
-        )}
+        {truncated && <TruncationWarning />}
         <View className="h-8" />
       </ScrollView>
       <View className="px-8 pb-10">
@@ -154,9 +146,33 @@ function ExplanationOverlay({
   );
 }
 
-// ─── Card states ─────────────────────────────────────────────────────────────
+// ─── Small reusable pieces ────────────────────────────────────────────────────
 
-type CardPhase = 'input' | 'judging' | 'correct' | 'wrong_explaining' | 'wrong_shown';
+function TruncationWarning() {
+  return (
+    <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
+      <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
+    </View>
+  );
+}
+
+function AnswerBox({ answer }: { answer: string }) {
+  return (
+    <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+      <Text className="text-slate-500 text-xs">Your answer</Text>
+      <Text className="text-slate-300 text-sm">{answer}</Text>
+    </View>
+  );
+}
+
+function ExampleBox({ example }: { example: string }) {
+  return (
+    <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
+      <Text className="text-slate-500 text-xs">My example sentence</Text>
+      <Text className="text-white text-base font-medium">{example}</Text>
+    </View>
+  );
+}
 
 // ─── Session screen ───────────────────────────────────────────────────────────
 
@@ -236,7 +252,7 @@ export default function Session() {
     if (cardPhase === 'input' && !showOverlay) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [cardPhase, showOverlay, cards]);
+  }, [cardPhase, showOverlay]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -432,15 +448,9 @@ export default function Session() {
                   <Text className="text-green-400 text-lg">✓</Text>
                   <Text className="text-green-400 font-semibold">Correct!</Text>
                 </View>
-                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-                  <Text className="text-slate-500 text-xs">Your answer</Text>
-                  <Text className="text-slate-300 text-sm">{submittedAnswer}</Text>
-                </View>
+                <AnswerBox answer={submittedAnswer} />
                 <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
-                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-                  <Text className="text-slate-500 text-xs">My example sentence</Text>
-                  <Text className="text-white text-base font-medium">{currentCard.targetLanguage}</Text>
-                </View>
+                <ExampleBox example={currentCard.targetLanguage} />
                 <TouchableOpacity
                   className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
                   onPress={handleConfirmCorrect}
@@ -465,14 +475,8 @@ export default function Session() {
                   <Text className="text-red-400 text-lg">✗</Text>
                   <Text className="text-red-400 font-semibold">Not quite</Text>
                 </View>
-                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-                  <Text className="text-slate-500 text-xs">Your answer</Text>
-                  <Text className="text-slate-300 text-sm">{submittedAnswer}</Text>
-                </View>
-                <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-                  <Text className="text-slate-500 text-xs">My example sentence</Text>
-                  <Text className="text-white text-base font-medium">{currentCard.targetLanguage}</Text>
-                </View>
+                <AnswerBox answer={submittedAnswer} />
+                <ExampleBox example={currentCard.targetLanguage} />
                 <Markdown style={mdStyles}>{wrongExplanation}</Markdown>
                 <TouchableOpacity
                   className="bg-slate-700 rounded-xl py-3.5 items-center mt-2"
