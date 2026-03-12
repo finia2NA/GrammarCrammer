@@ -59,16 +59,17 @@ A button starts the study session.
 
 ## Future Features
 
-| Feature                         | Notes                                                                                                                                                                                  |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session history                 | Store past sessions (topic, explanation, cards, scores) in local storage for future use                                                                                                |
-| Mobile apps                     | Build and publish native iOS / Android apps via Expo                                                                                                                                   |
-| Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese |
-| Full flashcard system           | Grammar-point based scheduling, FSRS, notifications                                                                                                                                    |
-| Backend                         | Store all state not only locally, but also in a db for sync between apps                                                                                                               |
-| Difficulty level                | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
-| More models                     | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
-
+| Feature                           | Notes                                                                                                                                                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session history                   | Store past sessions (topic, explanation, cards, scores) in local storage for future use                                                                                                |
+| Mobile apps                       | Build and publish native iOS / Android apps via Expo                                                                                                                                   |
+| ✅ Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese |
+| Full flashcard system             | Grammar-point based scheduling, FSRS, notifications                                                                                                                                    |
+| Backend                           | Store all state not only locally, but also in a db for sync between apps                                                                                                               |
+| Difficulty level                  | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
+| More models                       | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
+| Continue chatting                 | Ask follow-up questions about a card                                                                                                                                                   |
+| Better styling                    | Change the look from the very default-tailwindy one to something more unique                                                                                                           |
 ---
 
 ## Tech Stack
@@ -84,3 +85,6 @@ A button starts the study session.
 | Feature       | Notes                                                                                                                                                       |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unify theming | Right now, colors are defined inine - eg the indigo-400 used for failure. Need to put this in a theme somewhere is I don't need to keep all that in my head |
+| emojis on ios | do not work rn                                                                                                                                              |
+| ios build     | works, but need to specify the steps needed in xcode to build the production version                                                                        |
+| Cleanup       | code quality has dropped. As expected starting out by building it as an mvp, but now we should go back and properly seperate the components.                |

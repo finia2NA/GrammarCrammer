@@ -23,26 +23,84 @@ Cards are generated after the explanation is complete, so they cover all the gra
 
 ## Setup
 
-You need your own [Anthropic API key](https://console.anthropic.com/). The app calls the API directly from your browser; no backend or account is required beyond the key itself.
+You need your own [Anthropic API key](https://console.anthropic.com/). The app calls the API directly from the device; no backend or account is required beyond the key itself. On first launch the app will ask for your key and verify it with a test request. The key is stored locally and only used to authenticate with anthropic for use with this application.
 
 ```bash
 npm install
+```
+
+### Web
+
+```bash
 npx expo start --web
 ```
 
-On first launch the app will ask for your API key and verify it with a test request. The key is stored locally in your browser and never leaves your device.
+### iOS & iPadOS
+
+Requires macOS with Xcode installed.
+
+```bash
+npx expo run:ios
+```
+
+Opens in the iOS Simulator. To run on a physical device,
+first run `npx expo prebuild && open ios/GrammarCrammer.xcworkspace`, then open the generated workspace in Xcode and select it from the scheme bar in Xcode after the project generates.
+
+> **Note:** after adding any new native package (e.g. via `npx expo install`), re-run `pod install` from the `ios/` directory before building in Xcode — `npx expo prebuild` alone won't pick up packages installed after the last prebuild.
+>
+> ```bash
+> cd ios && pod install
+> ```
+
+### macOS (via Mac Catalyst)
+
+Runs the iPad layout natively on macOS — no simulator needed. Requires macOS with Xcode installed.
+
+**One-time Xcode setup:**
+
+1. Generate the native project:
+   ```bash
+   npx expo prebuild --platform ios
+   ```
+2. Open the workspace in Xcode:
+   ```bash
+   open ios/GrammarCrammer.xcworkspace
+   ```
+3. In Xcode: select the **GrammarCrammer** target → **General** → **Supported Destinations** → click **+** → add **My Mac (Designed for iPad)**
+4. Select **My Mac** in the scheme bar, then **Product → Run** (⌘R)
+
+**Subsequent runs** — reopen the workspace and run from Xcode, or build from the command line:
+
+```bash
+xcodebuild \
+  -workspace ios/GrammarCrammer.xcworkspace \
+  -scheme GrammarCrammer \
+  -destination 'platform=macOS,variant=Mac Catalyst' \
+  -configuration Debug \
+  build
+```
+
+> `npx expo run:ios` targets the iOS Simulator and will not build for Mac Catalyst. Use Xcode or xcodebuild for macOS builds.
+
+### Android
+
+Requires Android Studio with an emulator configured, or a physical device with USB debugging enabled.
+
+```bash
+npx expo run:android
+```
 
 ## Tech stack
 
-| Concern | Choice |
-|---|---|
-| Framework | Expo 54 (React Native + Web) |
-| Navigation | Expo Router (file-based) |
-| Styling | NativeWind v4 (Tailwind CSS) |
-| Storage | AsyncStorage (local, no backend) |
-| AI | Direct fetch to Anthropic API |
-| Explanation / rejection | Claude Sonnet 4.6 (streaming) |
-| Card generation / judgment | Claude Haiku 4.5 (tool use) |
+| Concern                    | Choice                           |
+| -------------------------- | -------------------------------- |
+| Framework                  | Expo 54 (React Native + Web)     |
+| Navigation                 | Expo Router (file-based)         |
+| Styling                    | NativeWind v4 (Tailwind CSS)     |
+| Storage                    | AsyncStorage (local, no backend) |
+| AI                         | Direct fetch to Anthropic API    |
+| Explanation / rejection    | Claude Sonnet 4.6 (streaming)    |
+| Card generation / judgment | Claude Haiku 4.5 (tool use)      |
 
 ## Current state
 
