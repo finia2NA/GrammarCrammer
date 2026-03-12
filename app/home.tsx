@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Keyboard } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,7 +34,7 @@ function PillDropdown<T extends string | number>({
     <View style={{ position: 'relative' }}>
       <TouchableOpacity
         className="flex-row items-center gap-1.5 bg-slate-800 rounded-lg px-3 py-1.5"
-        onPress={() => setOpen(!open)}
+        onPress={() => { Keyboard.dismiss(); setOpen(!open); }}
         activeOpacity={0.8}
       >
         <Text className="text-white text-sm font-medium">{label}</Text>
@@ -83,8 +84,9 @@ export default function Home() {
   }
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       className="flex-1 bg-slate-950"
+      bottomOffset={16}
       contentContainerStyle={{
         flexGrow: 1,
         alignItems: 'center',
@@ -94,6 +96,7 @@ export default function Home() {
         paddingBottom: insets.bottom + 24,
       }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       <View className="w-full max-w-2xl">
         {/* Header */}
@@ -126,6 +129,9 @@ export default function Home() {
             placeholderTextColor="#475569"
             value={topic}
             onChangeText={setTopic}
+            onSubmitEditing={handleStart}
+            returnKeyType="go"
+            blurOnSubmit
             multiline
           />
         </View>
@@ -142,6 +148,6 @@ export default function Home() {
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
