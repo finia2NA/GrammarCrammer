@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -110,12 +111,33 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const stepRef = useRef(0);
+  const containerWidthRef = useRef(0);
+  const heights = useRef<number[]>([0, 0, 0]);
+  const cardAnimX = useRef(new Animated.Value(0)).current;
+  const heightAnim = useRef(new Animated.Value(200)).current;
+
+  function onPanelLayout(index: number, h: number) {
+    heights.current[index] = h;
+    if (stepRef.current === index) heightAnim.setValue(h);
+  }
+
+  function goToStep(nextStep: number) {
+    if (nextStep === stepRef.current || !containerWidthRef.current) return;
+    const pw = containerWidthRef.current;
+    stepRef.current = nextStep;
+    Animated.parallel([
+      Animated.timing(cardAnimX, { toValue: -nextStep * pw, duration: 350, useNativeDriver: true }),
+      Animated.timing(heightAnim, { toValue: heights.current[nextStep] || 200, duration: 350, useNativeDriver: false }),
+    ]).start(() => setStep(nextStep));
+  }
+
   function goNext() {
-    if (step < TOTAL_STEPS - 1) setStep(step + 1);
+    if (step < TOTAL_STEPS - 1) goToStep(step + 1);
   }
 
   function goBack() {
-    if (step > 0) setStep(step - 1);
+    if (step > 0) goToStep(step - 1);
   }
 
   async function handleSubmitKey() {
@@ -160,28 +182,34 @@ export default function Onboarding() {
           {/* Step dots */}
           <View className="flex-row mb-8 gap-2">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-              <View
-                key={i}
-                className={`h-1.5 rounded-full flex-1 ${
-                  i === step ? 'bg-indigo-500' : 'bg-slate-700'
-                }`}
-              />
+              <TouchableOpacity key={i} className="flex-1 py-2" onPress={() => goToStep(i)} activeOpacity={0.7}>
+                <View className={`h-1.5 rounded-full ${i === step ? 'bg-indigo-500' : 'bg-slate-700'}`} />
+              </TouchableOpacity>
             ))}
           </View>
 
-          {/* Card body */}
-          <View className="min-h-48">
-            {step === 0 && <WelcomeCard />}
-            {step === 1 && <HowItWorksCard />}
-            {step === 2 && (
-              <ApiKeyCard
-                apiKey={apiKey}
-                onApiKeyChange={setApiKeyInput}
-                error={error}
-                loading={loading}
-              />
-            )}
-          </View>
+          {/* Card body — all panels rendered side-by-side for smooth height + slide */}
+          <Animated.View
+            style={{ height: heightAnim, overflow: 'hidden' }}
+            onLayout={e => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+          >
+            <Animated.View style={{ flexDirection: 'row', width: '300%', transform: [{ translateX: cardAnimX }] }}>
+              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(0, e.nativeEvent.layout.height)}>
+                <WelcomeCard />
+              </View>
+              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(1, e.nativeEvent.layout.height)}>
+                <HowItWorksCard />
+              </View>
+              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(2, e.nativeEvent.layout.height)}>
+                <ApiKeyCard
+                  apiKey={apiKey}
+                  onApiKeyChange={setApiKeyInput}
+                  error={error}
+                  loading={loading}
+                />
+              </View>
+            </Animated.View>
+          </Animated.View>
 
           {/* Navigation */}
           <View className="flex-row mt-8 gap-3">
