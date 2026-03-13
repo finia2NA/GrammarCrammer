@@ -1,4 +1,5 @@
 import { useState, useRef, memo } from 'react';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
   View,
   Text,
@@ -152,6 +153,16 @@ export default function Onboarding() {
 
   const isLastStep = step === TOTAL_STEPS - 1;
 
+  // Note that this swipe is swipe -> move, not a true "drag". For now, this is fine imo, but could be better technically.
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])   // activate only on clear horizontal movement
+    .failOffsetY([-10, 10])     // yield to ScrollView if vertical scroll is intended
+    .runOnJS(true)
+    .onEnd(e => {
+      if (e.translationX < -50 && stepRef.current < TOTAL_STEPS - 1) goToStep(stepRef.current + 1);
+      else if (e.translationX > 50 && stepRef.current > 0) goToStep(stepRef.current - 1);
+    });
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-slate-950"
@@ -181,23 +192,25 @@ export default function Onboarding() {
           </View>
 
           {/* Card body — all panels rendered side-by-side for smooth height + slide */}
-          <Animated.View
-            style={{ height: heightAnim, overflow: 'hidden' }}
-            onLayout={e => { containerWidthRef.current = e.nativeEvent.layout.width; }}
-          >
-            {/* Show the correct card based on the step using a map */}
-            <Animated.View style={{ flexDirection: 'row', width: `${TOTAL_STEPS * 100}%`, transform: [{ translateX: cardAnimX }] }}>
-              {([
-                <WelcomeCard />,
-                <HowItWorksCard />,
-                <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />,
-              ] as const).map((panel, i) => (
-                <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
-                  {panel}
-                </View>
-              ))}
+          <GestureDetector gesture={swipe}>
+            <Animated.View
+              style={{ height: heightAnim, overflow: 'hidden' }}
+              onLayout={e => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+            >
+              {/* Show the correct card based on the step using a map */}
+              <Animated.View style={{ flexDirection: 'row', width: `${TOTAL_STEPS * 100}%`, transform: [{ translateX: cardAnimX }] }}>
+                {([
+                  <WelcomeCard />,
+                  <HowItWorksCard />,
+                  <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />,
+                ] as const).map((panel, i) => (
+                  <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
+                    {panel}
+                  </View>
+                ))}
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
+          </GestureDetector>
 
           {/* Navigation */}
           <View className="flex-row mt-8 gap-3">
