@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { validateApiKey } from '@/lib/claude';
 
 const TOTAL_STEPS = 3;
 
-function WelcomeCard() {
+const WelcomeCard = memo(function WelcomeCard() {
   return (
     <>
       <Text className="text-4xl font-bold text-white mb-3">
@@ -33,9 +33,9 @@ function WelcomeCard() {
       </Text>
     </>
   );
-}
+});
 
-function HowItWorksCard() {
+const HowItWorksCard = memo(function HowItWorksCard() {
   return (
     <>
       <Text className="text-3xl font-bold text-white mb-5">
@@ -56,7 +56,7 @@ function HowItWorksCard() {
       ))}
     </>
   );
-}
+});
 
 interface ApiKeyCardProps {
   apiKey: string;
@@ -113,7 +113,7 @@ export default function Onboarding() {
 
   const stepRef = useRef(0);
   const containerWidthRef = useRef(0);
-  const heights = useRef<number[]>([0, 0, 0]);
+  const heights = useRef<number[]>(Array(TOTAL_STEPS).fill(0));
   const cardAnimX = useRef(new Animated.Value(0)).current;
   const heightAnim = useRef(new Animated.Value(200)).current;
 
@@ -130,14 +130,6 @@ export default function Onboarding() {
       Animated.timing(cardAnimX, { toValue: -nextStep * pw, duration: 350, useNativeDriver: true }),
       Animated.timing(heightAnim, { toValue: heights.current[nextStep] || 200, duration: 350, useNativeDriver: false }),
     ]).start(() => setStep(nextStep));
-  }
-
-  function goNext() {
-    if (step < TOTAL_STEPS - 1) goToStep(step + 1);
-  }
-
-  function goBack() {
-    if (step > 0) goToStep(step - 1);
   }
 
   async function handleSubmitKey() {
@@ -193,21 +185,17 @@ export default function Onboarding() {
             style={{ height: heightAnim, overflow: 'hidden' }}
             onLayout={e => { containerWidthRef.current = e.nativeEvent.layout.width; }}
           >
-            <Animated.View style={{ flexDirection: 'row', width: '300%', transform: [{ translateX: cardAnimX }] }}>
-              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(0, e.nativeEvent.layout.height)}>
-                <WelcomeCard />
-              </View>
-              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(1, e.nativeEvent.layout.height)}>
-                <HowItWorksCard />
-              </View>
-              <View style={{ width: '33.33%' }} onLayout={e => onPanelLayout(2, e.nativeEvent.layout.height)}>
-                <ApiKeyCard
-                  apiKey={apiKey}
-                  onApiKeyChange={setApiKeyInput}
-                  error={error}
-                  loading={loading}
-                />
-              </View>
+            {/* Show the correct card based on the step using a map */}
+            <Animated.View style={{ flexDirection: 'row', width: `${TOTAL_STEPS * 100}%`, transform: [{ translateX: cardAnimX }] }}>
+              {([
+                <WelcomeCard />,
+                <HowItWorksCard />,
+                <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />,
+              ] as const).map((panel, i) => (
+                <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
+                  {panel}
+                </View>
+              ))}
             </Animated.View>
           </Animated.View>
 
@@ -216,7 +204,7 @@ export default function Onboarding() {
             {step > 0 && (
               <TouchableOpacity
                 className="flex-1 py-3.5 rounded-xl border border-slate-600 items-center"
-                onPress={goBack}
+                onPress={() => goToStep(step - 1)}
                 disabled={loading}
               >
                 <Text className="text-slate-300 font-semibold">Back</Text>
@@ -224,9 +212,8 @@ export default function Onboarding() {
             )}
             {isLastStep ? (
               <TouchableOpacity
-                className={`flex-1 py-3.5 rounded-xl items-center ${
-                  loading ? 'bg-indigo-800' : 'bg-indigo-600'
-                }`}
+                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-indigo-800' : 'bg-indigo-600'
+                  }`}
                 onPress={handleSubmitKey}
                 disabled={loading}
               >
@@ -239,7 +226,7 @@ export default function Onboarding() {
             ) : (
               <TouchableOpacity
                 className="flex-1 py-3.5 rounded-xl bg-indigo-600 items-center"
-                onPress={goNext}
+                onPress={() => goToStep(step + 1)}
               >
                 <Text className="text-white font-semibold">Next</Text>
               </TouchableOpacity>
