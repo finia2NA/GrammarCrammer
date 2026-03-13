@@ -1,20 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { PillDropdown } from '@/components/PillDropdown';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
+import type { Language, CardCount } from '@/constants/session';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const LANGUAGES = [
-  'Japanese', 'Spanish', 'French', 'German',
-  'Korean', 'Mandarin', 'Italian', 'Portuguese', 'Other',
-] as const;
-type Language = (typeof LANGUAGES)[number];
-
-const CARD_COUNTS = [5, 10, 15, 20] as const;
-type CardCount = (typeof CARD_COUNTS)[number];
+const formatCardCount = (v: number) => `${v} cards`;
 
 // ─── Home screen ─────────────────────────────────────────────────────────────
 
@@ -26,6 +21,15 @@ export default function Home() {
   const [cardCount, setCardCount] = useState<CardCount>(10);
 
   const canStart = topic.trim().length > 0;
+
+  const contentContainerStyle = useMemo(() => ({
+    flexGrow: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 24,
+    paddingTop: insets.top + 24,
+    paddingBottom: insets.bottom + 24,
+  }), [insets.top, insets.bottom]);
 
   function handleStart() {
     const trimmed = topic.trim();
@@ -40,14 +44,7 @@ export default function Home() {
     <KeyboardAwareScrollView
       className="flex-1 bg-slate-950"
       bottomOffset={16}
-      contentContainerStyle={{
-        flexGrow: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-        paddingTop: insets.top + 24,
-        paddingBottom: insets.bottom + 24,
-      }}
+      contentContainerStyle={contentContainerStyle}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
     >
@@ -70,7 +67,7 @@ export default function Home() {
               value={cardCount}
               options={CARD_COUNTS}
               onChange={setCardCount}
-              formatLabel={(v) => `${v} cards`}
+              formatLabel={formatCardCount}
             />
           </View>
 
@@ -95,6 +92,9 @@ export default function Home() {
           onPress={handleStart}
           disabled={!canStart}
           activeOpacity={0.85}
+          accessibilityLabel="Start study session"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canStart }}
         >
           <Text className={`text-base font-bold ${canStart ? 'text-white' : 'text-slate-600'}`}>
             Start Session →
