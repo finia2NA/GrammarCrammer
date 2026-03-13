@@ -1,0 +1,38 @@
+/**
+ * Web implementation of PillDropdown.
+ * Uses a native <select> element styled as a pill — no custom overlay needed.
+ */
+import type { PillDropdownProps } from './PillDropdown';
+
+export function PillDropdown<T extends string | number>({
+  value, options, onChange, formatLabel,
+}: PillDropdownProps<T>) {
+  const label = (v: T) => formatLabel ? formatLabel(v) : String(v);
+
+  return (
+    <select
+      value={String(value)}
+      onChange={(e) => {
+        const selected = options.find(o => String(o) === e.target.value);
+        if (selected !== undefined) onChange(selected);
+      }}
+      style={{
+        backgroundColor: '#1e293b',  // slate-800
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '8px',
+        padding: '6px 12px',
+        fontSize: '14px',
+        fontWeight: '500',
+        cursor: 'pointer',
+        outline: 'none',
+      }}
+    >
+      {options.map((opt) => (
+        <option key={String(opt)} value={String(opt)}>
+          {label(opt)}
+        </option>
+      ))}
+    </select>
+  );
+}
