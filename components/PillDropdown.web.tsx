@@ -4,6 +4,8 @@
  */
 import type { PillDropdownProps } from './PillDropdown';
 
+
+// TODO: looks bad on safari rn because it ignores the select padding, and the chrome chevron down is here a chevron updown.
 export function PillDropdown<T extends string | number>({
   value, options, onChange, formatLabel,
 }: PillDropdownProps<T>) {
