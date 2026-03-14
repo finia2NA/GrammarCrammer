@@ -52,7 +52,7 @@ function callTextStream(
   apiKey: string,
   model: string,
   system: string,
-  userMessage: string,
+  messages: Array<{ role: string; content: string }>,
   maxTokens: number,
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
@@ -62,7 +62,7 @@ function callTextStream(
     max_tokens: maxTokens,
     system,
     stream: true,
-    messages: [{ role: 'user', content: userMessage }],
+    messages,
   });
 
   function parseSseLines(
@@ -198,7 +198,7 @@ async function callTool<T>(
 /** Validates an API key. Returns null on success, error message on failure. */
 export async function validateApiKey(key: string): Promise<string | null> {
   try {
-    await callTextStream(key, HAIKU, 'You are a helpful assistant.', 'Hi', 8, () => { });
+    await callTextStream(key, HAIKU, 'You are a helpful assistant.', [{ role: 'user', content: 'Hi' }], 8, () => { });
     return null;
   } catch (e) {
     return e instanceof Error ? e.message : 'Unknown error';
@@ -217,7 +217,7 @@ export async function generateExplanation(
     apiKey,
     SONNET,
     EXPLANATION_PROMPT(topic, language),
-    'Please explain the grammar topic for my study session.',
+    [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
     4096,
     onChunk,
     onCost,
@@ -316,8 +316,27 @@ export async function explainRejection(
     apiKey,
     SONNET,
     REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
-    'Please explain why my answer was wrong.',
+    [{ role: 'user', content: 'Please explain why my answer was wrong.' }],
     400,
+    onChunk,
+    onCost,
+  );
+}
+
+/** Streams a chat reply about a specific card (multi-turn). */
+export async function chatAboutCard(
+  apiKey: string,
+  systemPrompt: string,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  onChunk: (text: string) => void,
+  onCost?: (usd: number) => void,
+): Promise<void> {
+  await callTextStream(
+    apiKey,
+    SONNET,
+    systemPrompt,
+    messages,
+    600,
     onChunk,
     onCost,
   );
