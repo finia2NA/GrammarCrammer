@@ -3,12 +3,14 @@
  * Uses a native <select> element styled as a pill — no custom overlay needed.
  */
 import type { PillDropdownProps } from './PillDropdown';
+import { useColors } from '@/constants/theme';
 
 
 // TODO: looks bad on safari rn because it ignores the select padding, and the chrome chevron down is here a chevron updown.
 export function PillDropdown<T extends string | number>({
   value, options, onChange, formatLabel,
 }: PillDropdownProps<T>) {
+  const colors = useColors();
   const label = (v: T) => formatLabel ? formatLabel(v) : String(v);
 
   return (
@@ -19,8 +21,8 @@ export function PillDropdown<T extends string | number>({
         if (selected !== undefined) onChange(selected);
       }}
       style={{
-        backgroundColor: '#1e293b',  // slate-800
-        color: '#ffffff',
+        backgroundColor: colors.input,
+        color: colors.foreground,
         border: 'none',
         borderRadius: '8px',
         padding: '6px 12px',
