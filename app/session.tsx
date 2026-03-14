@@ -47,7 +47,6 @@ export default function Session() {
   // UI state
   const [showOverlay, setShowOverlay] = useState(true);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
-  const [transitionDone, setTransitionDone] = useState(false);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
   const [submittedAnswer, setSubmittedAnswer] = useState('');
@@ -105,7 +104,6 @@ export default function Session() {
     setPanelNarrowed(true);
     setTimeout(() => {
       setShowOverlay(false);
-      setTransitionDone(true);
     }, 420);
   }
 
@@ -192,7 +190,7 @@ export default function Session() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View className="flex-1 flex-row bg-slate-950">
-            {transitionDone || !showOverlay ? (
+            {!showOverlay ? (
                 <SidePanel explanation={explanation} wasTruncated={explanationTruncated} />
             ) : (
               <View style={[
