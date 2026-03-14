@@ -18,6 +18,14 @@ public class PillDropdownModule: Module {
       Prop("selectedIndex") { (view: PillDropdownView, index: Int) in
         view.updateSelectedIndex(index)
       }
+
+      Prop("backgroundColor") { (view: PillDropdownView, hex: String) in
+        view.updateBackgroundColor(hex)
+      }
+
+      Prop("foregroundColor") { (view: PillDropdownView, hex: String) in
+        view.updateForegroundColor(hex)
+      }
     }
   }
 }

@@ -8,11 +8,14 @@ class PillDropdownView: ExpoView {
   private var selectedIndex: Int = 0
   private var label: String = ""
 
+  // Defaults match dark theme input/foreground tokens
+  private static let defaultBackground = UIColor(red: 30/255, green: 41/255, blue: 59/255, alpha: 1)
+  private static let defaultForeground = UIColor.white
+
   private lazy var button: UIButton = {
     var config = UIButton.Configuration.filled()
-    // slate-800: #1e293b
-    config.baseBackgroundColor = UIColor(red: 30/255.0, green: 41/255.0, blue: 59/255.0, alpha: 1)
-    config.baseForegroundColor = .white
+    config.baseBackgroundColor = Self.defaultBackground
+    config.baseForegroundColor = Self.defaultForeground
     config.background.cornerRadius = 8
     config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
     config.imagePadding = 4
@@ -21,7 +24,6 @@ class PillDropdownView: ExpoView {
       systemName: "chevron.down",
       withConfiguration: UIImage.SymbolConfiguration(scale: .small)
     )
-
     let btn = UIButton(configuration: config)
     btn.showsMenuAsPrimaryAction = true
     btn.translatesAutoresizingMaskIntoConstraints = false
@@ -31,7 +33,6 @@ class PillDropdownView: ExpoView {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = false
-    overrideUserInterfaceStyle = .dark
     addSubview(button)
     NSLayoutConstraint.activate([
       button.topAnchor.constraint(equalTo: topAnchor),
@@ -41,9 +42,7 @@ class PillDropdownView: ExpoView {
     ])
   }
 
-  override var intrinsicContentSize: CGSize {
-    return button.intrinsicContentSize
-  }
+  override var intrinsicContentSize: CGSize { button.intrinsicContentSize }
 
   func updateLabel(_ label: String) {
     self.label = label
@@ -58,6 +57,19 @@ class PillDropdownView: ExpoView {
   func updateSelectedIndex(_ index: Int) {
     self.selectedIndex = index
     refreshMenu()
+  }
+
+  func updateBackgroundColor(_ hex: String) {
+    guard var config = button.configuration else { return }
+    config.baseBackgroundColor = UIColor(hex: hex) ?? Self.defaultBackground
+    button.configuration = config
+  }
+
+  func updateForegroundColor(_ hex: String) {
+    guard var config = button.configuration else { return }
+    config.baseForegroundColor = UIColor(hex: hex) ?? Self.defaultForeground
+    button.configuration = config
+    refreshTitle()
   }
 
   private func refreshTitle() {
@@ -76,5 +88,20 @@ class PillDropdownView: ExpoView {
       }
     }
     button.menu = UIMenu(children: actions)
+  }
+}
+
+private extension UIColor {
+  convenience init?(hex: String) {
+    var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if s.hasPrefix("#") { s = String(s.dropFirst()) }
+    var rgb: UInt64 = 0
+    guard s.count == 6, Scanner(string: s).scanHexInt64(&rgb) else { return nil }
+    self.init(
+      red:   CGFloat((rgb & 0xFF0000) >> 16) / 255,
+      green: CGFloat((rgb & 0x00FF00) >>  8) / 255,
+      blue:  CGFloat( rgb & 0x0000FF       ) / 255,
+      alpha: 1
+    )
   }
 }

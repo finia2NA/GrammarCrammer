@@ -56,7 +56,7 @@ function callTextStream(
   maxTokens: number,
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<{ truncated: boolean }> {
+): Promise<{ wasTruncated: boolean }> {
   const body = JSON.stringify({
     model,
     max_tokens: maxTokens,
@@ -67,7 +67,7 @@ function callTextStream(
 
   function parseSseLines(
     lines: string[],
-    state: { inputTokens: number; outputTokens: number; truncated: boolean },
+    state: { inputTokens: number; outputTokens: number; wasTruncated: boolean },
   ) {
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
@@ -81,7 +81,7 @@ function callTextStream(
           onChunk(ev.delta.text);
         } else if (ev.type === 'message_delta') {
           state.outputTokens = ev.usage?.output_tokens ?? state.outputTokens;
-          if (ev.delta?.stop_reason === 'max_tokens') state.truncated = true;
+          if (ev.delta?.stop_reason === 'max_tokens') state.wasTruncated = true;
         }
       } catch { /* malformed event — skip */ }
     }
@@ -98,7 +98,7 @@ function callTextStream(
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      const state = { inputTokens: 0, outputTokens: 0, truncated: false };
+      const state = { inputTokens: 0, outputTokens: 0, wasTruncated: false };
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -112,7 +112,7 @@ function callTextStream(
         reader.cancel();
       }
       onCost?.(calcCost(model, state.inputTokens, state.outputTokens));
-      return { truncated: state.truncated };
+      return { wasTruncated: state.wasTruncated };
     })();
   }
 
@@ -126,7 +126,7 @@ function callTextStream(
 
     let buffer = '';
     let lastIndex = 0;
-    const state = { inputTokens: 0, outputTokens: 0, truncated: false };
+    const state = { inputTokens: 0, outputTokens: 0, wasTruncated: false };
 
     function processNew() {
       const newText = xhr.responseText.slice(lastIndex);
@@ -143,7 +143,7 @@ function callTextStream(
       processNew();
       if (xhr.status >= 200 && xhr.status < 300) {
         onCost?.(calcCost(model, state.inputTokens, state.outputTokens));
-        resolve({ truncated: state.truncated });
+        resolve({ wasTruncated: state.wasTruncated });
       } else {
         try { reject(new Error(JSON.parse(xhr.responseText)?.error?.message ?? `HTTP ${xhr.status}`)); }
         catch { reject(new Error(`HTTP ${xhr.status}`)); }
@@ -212,7 +212,7 @@ export async function generateExplanation(
   language: string,
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<{ truncated: boolean }> {
+): Promise<{ wasTruncated: boolean }> {
   return callTextStream(
     apiKey,
     SONNET,

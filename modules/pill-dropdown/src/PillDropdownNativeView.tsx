@@ -6,6 +6,8 @@ export interface PillDropdownNativeViewProps {
   selectedIndex: number;
   onValueChange: (event: { nativeEvent: { index: number } }) => void;
   style?: object;
+  backgroundColor?: string;
+  foregroundColor?: string;
 }
 
 const NativeView: React.ComponentType<PillDropdownNativeViewProps> =

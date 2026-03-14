@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Semantic color tokens ───────────────────────────────────────────────────
+   Values are bare RGB channels so Tailwind's opacity modifier works:
+   e.g. `bg-primary/70` → rgba(99, 102, 241, 0.7)
+   Light-theme overrides will go in a @media (prefers-color-scheme: light) block. */
+
+/* ── Light theme (default/base) ─────────────────────────────────────────── */
+:root {
+  --color-background:       248 250 252;  /* slate-50   */
+  --color-foreground:        15  23  42;  /* slate-900  */
+  --color-card:             255 255 255;  /* white      */
+  --color-input:            241 245 249;  /* slate-100  */
+  --color-muted:            226 232 240;  /* slate-200  */
+  --color-border:           203 213 225;  /* slate-300  */
+  --color-muted-foreground:  71  85 105;  /* slate-600  */
+  --color-primary:           99 102 241;  /* indigo-500 */
+  --color-primary-foreground: 255 255 255;
+  --color-destructive:      220  38  38;  /* red-600    */
+}
+
+/* ── Dark theme override ─────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background:         2   6  23;  /* slate-950  */
+    --color-foreground:       255 255 255;  /* white      */
+    --color-card:              15  23  42;  /* slate-900  */
+    --color-input:             30  41  59;  /* slate-800  */
+    --color-muted:             51  65  85;  /* slate-700  */
+    --color-border:            71  85 105;  /* slate-600  */
+    --color-muted-foreground: 148 163 184;  /* slate-400  */
+    --color-primary:           99 102 241;  /* indigo-500 */
+    --color-primary-foreground: 255 255 255;
+    --color-destructive:      248 113 113;  /* red-400    */
+  }
+}

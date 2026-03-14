@@ -12,10 +12,12 @@
 import { Keyboard } from 'react-native';
 import { PillDropdownNativeView } from 'pill-dropdown';
 import type { PillDropdownProps } from './PillDropdown';
+import { useColors } from '@/constants/theme';
 
 export function PillDropdown<T extends string | number>({
   value, options, onChange, formatLabel,
 }: PillDropdownProps<T>) {
+  const colors = useColors();
   const label = formatLabel ? formatLabel(value) : String(value);
   const optionLabels = options.map(o => formatLabel ? formatLabel(o) : String(o));
   const selectedIndex = options.findIndex(o => o === value);
@@ -25,6 +27,8 @@ export function PillDropdown<T extends string | number>({
       label={label}
       options={optionLabels}
       selectedIndex={selectedIndex >= 0 ? selectedIndex : 0}
+      backgroundColor={colors.input}
+      foregroundColor={colors.foreground}
       onValueChange={(event) => {
         Keyboard.dismiss();
         onChange(options[event.nativeEvent.index]);
