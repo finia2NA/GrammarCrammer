@@ -7,8 +7,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Colors } from '@/constants/theme';
-import type { Card, CardPhase } from '@/lib/types';
+import type { Card, CardPhase, ChatMessage } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
+import { CardChat } from './CardChat';
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -48,6 +49,9 @@ interface FlashcardDeckProps {
   onConfirmCorrect: () => void;
   onConfirmWrong: () => void;
   inputRef: React.RefObject<TextInput | null>;
+  chatMessages: ChatMessage[];
+  chatStreaming: boolean;
+  onChatSend: (text: string) => void;
   deckName?: string;
   onBack?: () => void;
 }
@@ -58,7 +62,7 @@ export function FlashcardDeck({
   feedback, wrongExplanation,
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
-  inputRef, deckName, onBack,
+  inputRef, chatMessages, chatStreaming, onChatSend, deckName, onBack,
 }: FlashcardDeckProps) {
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
 
@@ -155,6 +159,7 @@ export function FlashcardDeck({
             >
               <Text className="text-white font-semibold">Next card →</Text>
             </TouchableOpacity>
+            <CardChat messages={chatMessages} streaming={chatStreaming} onSend={onChatSend} />
           </View>
         )}
 
@@ -182,6 +187,7 @@ export function FlashcardDeck({
             >
               <Text className="text-white font-semibold">Try again later →</Text>
             </TouchableOpacity>
+            <CardChat messages={chatMessages} streaming={chatStreaming} onSend={onChatSend} />
           </View>
         )}
       </View>

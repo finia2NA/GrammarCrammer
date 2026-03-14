@@ -73,3 +73,22 @@ My example sentence: "${targetLanguage}"
 
 Explain clearly and concisely (2–4 sentences) why their answer is incorrect or unnatural,
 and what my example sentence demonstrates about the grammar. Be encouraging but precise.${explanationLanguageBlock(language)}`;
+
+export const CARD_CHAT_PROMPT = (
+  language: string,
+  english: string,
+  targetLanguage: string,
+  userAnswer: string,
+  wasCorrect: boolean,
+  sentenceContext?: string,
+) => `\
+You are a friendly ${language} language tutor. The student just ${wasCorrect ? 'correctly' : 'incorrectly'} answered a flashcard.
+
+Card details:
+- English prompt: "${english}"
+- Correct ${language}: "${targetLanguage}"${sentenceContext ? `\n- Context hint: "${sentenceContext}"` : ''}
+- Student's answer: "${userAnswer}"
+
+Answer the student's questions about this card. Explain grammar, vocabulary, nuance, or anything they ask.
+Be concise (2–5 sentences per reply). Use ${language} examples where helpful.
+Speak in second person — address them as "you".${explanationLanguageBlock(language)}`;
