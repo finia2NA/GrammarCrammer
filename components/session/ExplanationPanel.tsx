@@ -28,7 +28,7 @@ export function TruncationWarning() {
 
 // ─── Side panel (large screens) ──────────────────────────────────────────────
 
-export function SidePanel({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+export function SidePanel({ explanation, wasTruncated }: { explanation: string; wasTruncated: boolean }) {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(320);
   const widthRef = useRef(320);
@@ -89,7 +89,7 @@ export function SidePanel({ explanation, truncated }: { explanation: string; tru
             Grammar Reference
           </Text>
           <GrammarMarkdown>{explanation}</GrammarMarkdown>
-          {truncated && <TruncationWarning />}
+          {wasTruncated && <TruncationWarning />}
         </ScrollView>
       </View>
 
@@ -123,7 +123,7 @@ export function SidePanel({ explanation, truncated }: { explanation: string; tru
 
 // ─── Bottom sheet (small screens) ─────────────────────────────────────────────
 
-export function BottomSheet({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+export function BottomSheet({ explanation, wasTruncated }: { explanation: string; wasTruncated: boolean }) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState(false);
@@ -217,7 +217,7 @@ export function BottomSheet({ explanation, truncated }: { explanation: string; t
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
         <GrammarMarkdown>{explanation}</GrammarMarkdown>
-        {truncated && <TruncationWarning />}
+        {wasTruncated && <TruncationWarning />}
       </ScrollView>
     </Animated.View>
   );
