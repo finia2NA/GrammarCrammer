@@ -56,8 +56,7 @@ English: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
 Your example sentence: "${targetLanguage}"
 Their answer: "${userAnswer}"
 
-Does their answer demonstrate correct use of the grammar? Minor spelling/kana errors
-are acceptable if the grammar is right. Different but equally valid phrasings are acceptable${sentenceContext ? `, but the hint "${sentenceContext}" must be respected` : ''}.${explanationLanguageBlock(language)}`;
+Does their answer demonstrate correct use of the grammar? Minor spelling or punctuation errors are acceptable if the grammar is right. Different but equally valid phrasings are acceptable${sentenceContext ? `, but the hint "${sentenceContext}" must be respected` : ''}.${explanationLanguageBlock(language)}`;
 
 export const REJECTION_PROMPT = (
   english: string,

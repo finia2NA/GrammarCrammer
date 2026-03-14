@@ -15,7 +15,7 @@ export default function Index() {
         router.replace('/onboarding');
       }
     });
-  }, []);
+  }, [router]);
 
   return (
     <View className="flex-1 items-center justify-center bg-slate-950">

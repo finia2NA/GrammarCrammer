@@ -139,8 +139,8 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
   useEffect(() => { expandHRef.current = expandH; }, [expandH]);
 
   useEffect(() => {
-    Animated.spring(animHeight, { toValue: peekH, useNativeDriver: false, bounciness: 4 }).start();
-  }, []);
+    Animated.spring(animHeight, { toValue: peekHRef.current, useNativeDriver: false, bounciness: 4 }).start();
+  }, [animHeight]);
 
   function snapTo(open: boolean) {
     expandedRef.current = open;
