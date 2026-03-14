@@ -6,14 +6,18 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
+  ActivityIndicator,
   Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
 import { judgeAnswer, explainRejection } from '@/lib/claude';
-import type { CardPhase } from '@/lib/types';
+import type { Card, CardPhase, DeckCard } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
+import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
+import type { DeckInfo } from '@/hooks/useMultiDeckSession';
 import {
   SidePanel,
   BottomSheet,
@@ -24,28 +28,127 @@ import {
 
 const SIDEBAR_INITIAL_WIDTH = 320;
 
+// ─── Route entry point ──────────────────────────────────────────────────────
+
 export default function Session() {
-  const router = useRouter();
-  const { topic, language, count } = useLocalSearchParams<{
-    topic: string; language: string; count: string;
+  const params = useLocalSearchParams<{
+    topic?: string; language?: string; count?: string; nodeId?: string;
   }>();
 
+  if (params.nodeId) {
+    return <DeckSession nodeId={params.nodeId} />;
+  }
+
+  return (
+    <QuickSession
+      topic={params.topic!}
+      language={params.language!}
+      cardCount={parseInt(params.count ?? '10', 10)}
+    />
+  );
+}
+
+// ─── Quick study (one-off, old flow) ────────────────────────────────────────
+
+function QuickSession({ topic, language, cardCount }: { topic: string; language: string; cardCount: number }) {
+  const loader = useSessionLoader({ topic, language, cardCount });
+
+  return (
+    <SessionUI
+      loading={loader.loading}
+      loadPhase={loader.loadPhase}
+      loadError={loader.loadError}
+      setLoadError={loader.setLoadError}
+      cards={loader.cards}
+      setCards={loader.setCards}
+      totalCost={loader.totalCost}
+      addCost={loader.addCost}
+      apiKeyRef={loader.apiKeyRef}
+      explanation={loader.explanation}
+      wasTruncated={loader.explanationTruncated}
+      topic={topic}
+      language={language}
+      showExplanationOverlay
+      markStudied={async () => {}}
+    />
+  );
+}
+
+// ─── Deck / collection study ────────────────────────────────────────────────
+
+function DeckSession({ nodeId }: { nodeId: string }) {
+  const multi = useMultiDeckSession({ nodeId });
+  const [language, setLanguage] = useState('');
+
+  // Get language from first deck
+  useEffect(() => {
+    if (multi.decks.size > 0 && !language) {
+      const firstId = multi.decks.keys().next().value;
+      if (firstId) {
+        import('@/lib/deck-store').then(({ getDeck }) => {
+          getDeck(firstId).then(d => { if (d) setLanguage(d.language); });
+        });
+      }
+    }
+  }, [multi.decks, language]);
+
+  // Derive current card's explanation
+  const currentDeckId = multi.cards.length > 0 ? multi.cards[0].deckId : null;
+  const currentDeck: DeckInfo | undefined = currentDeckId ? multi.decks.get(currentDeckId) : undefined;
+
+  return (
+    <SessionUI
+      loading={multi.loading}
+      loadPhase="cards"
+      loadError={multi.loadError}
+      setLoadError={multi.setLoadError}
+      cards={multi.cards}
+      setCards={multi.setCards}
+      totalCost={multi.totalCost}
+      addCost={multi.addCost}
+      apiKeyRef={multi.apiKeyRef}
+      explanation={currentDeck?.explanation ?? ''}
+      wasTruncated={currentDeck?.wasTruncated ?? false}
+      topic={currentDeck?.topic ?? ''}
+      language={language}
+      showExplanationOverlay={false}
+      markStudied={multi.markStudied}
+    />
+  );
+}
+
+// ─── Shared session UI ──────────────────────────────────────────────────────
+
+interface SessionUIProps {
+  loading: boolean;
+  loadPhase: 'explanation' | 'cards';
+  loadError: string | null;
+  setLoadError: (e: string | null) => void;
+  cards: (Card | DeckCard)[];
+  setCards: (fn: any) => void;
+  totalCost: number;
+  addCost: (usd: number) => void;
+  apiKeyRef: React.MutableRefObject<string>;
+  explanation: string;
+  wasTruncated: boolean;
+  topic: string;
+  language: string;
+  showExplanationOverlay: boolean;
+  markStudied: () => Promise<void>;
+}
+
+function SessionUI({
+  loading, loadPhase, loadError, setLoadError,
+  cards, setCards, totalCost, addCost, apiKeyRef,
+  explanation, wasTruncated, topic, language,
+  showExplanationOverlay, markStudied,
+}: SessionUIProps) {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  // recomputed on window resize because useWindowDimensions causes a re-render
   const isSmallScreen = width < 768;
 
-  const cardCount = parseInt(count ?? '10', 10);
-
-  const {
-    loading, loadPhase, loadError, setLoadError,
-    explanation, explanationTruncated,
-    cards, setCards,
-    totalCost, addCost, apiKeyRef,
-  } = useSessionLoader({ topic: topic!, language: language!, cardCount });
-
-  // UI state
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(showExplanationOverlay);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
@@ -53,11 +156,11 @@ export default function Session() {
   const [feedback, setFeedback] = useState('');
   const [wrongExplanation, setWrongExplanation] = useState('');
   const [showHint, setShowHint] = useState(false);
+  const studiedRef = useRef(false);
 
   const inputRef = useRef<TextInput>(null);
 
-  // ── Focus input when card phase resets ────────────────────────────────────
-
+  // Focus input when card phase resets
   useEffect(() => {
     if (cardPhase === 'input' && !showOverlay) {
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -66,7 +169,6 @@ export default function Session() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // TODO: allow sonnet to judge the answer again, sometimes it is actually correct but haiku is too small to recognize it.
   async function handleSubmitAnswer() {
     const trimmed = answer.trim();
     if (!trimmed || cardPhase !== 'input') return;
@@ -76,7 +178,7 @@ export default function Session() {
     setCardPhase('judging');
 
     try {
-      const result = await judgeAnswer(apiKeyRef.current, current, trimmed, language!, addCost);
+      const result = await judgeAnswer(apiKeyRef.current, current, trimmed, language, addCost);
 
       if (result.correct) {
         setFeedback(result.reason);
@@ -86,7 +188,7 @@ export default function Session() {
         setWrongExplanation('');
         let firstChunk = true;
         await explainRejection(
-          apiKeyRef.current, current, trimmed, language!,
+          apiKeyRef.current, current, trimmed, language,
           (chunk) => {
             if (firstChunk) { setCardPhase('wrong_shown'); firstChunk = false; }
             setWrongExplanation(prev => prev + chunk);
@@ -108,7 +210,7 @@ export default function Session() {
   }
 
   function handleConfirmCorrect() {
-    setCards((prev) => prev.slice(1));
+    setCards((prev: any[]) => prev.slice(1));
     setAnswer('');
     setFeedback('');
     setShowHint(false);
@@ -116,7 +218,7 @@ export default function Session() {
   }
 
   function handleConfirmWrong() {
-    setCards((prev) => [...prev.slice(1), prev[0]]);
+    setCards((prev: any[]) => [...prev.slice(1), prev[0]]);
     setAnswer('');
     setWrongExplanation('');
     setShowHint(false);
@@ -136,9 +238,25 @@ export default function Session() {
     );
   }
 
+  // ── Render: loading (deck/collection mode, no overlay) ─────────────────────
+
+  if (loading && !showOverlay) {
+    return (
+      <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text className="text-slate-400 text-base">Generating flashcards…</Text>
+      </View>
+    );
+  }
+
   // ── Render: done ───────────────────────────────────────────────────────────
 
   if (!loading && cards.length === 0) {
+    if (!studiedRef.current) {
+      studiedRef.current = true;
+      markStudied();
+    }
+
     return (
       <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-5xl">🎉</Text>
@@ -156,7 +274,7 @@ export default function Session() {
   // ── Shared flashcard deck props ────────────────────────────────────────────
 
   const deckProps = {
-    cards, language: language!, totalCost, cardPhase,
+    cards, language, totalCost, cardPhase,
     answer, onChangeAnswer: setAnswer, submittedAnswer,
     feedback, wrongExplanation,
     showHint, onToggleHint: () => setShowHint(true),
@@ -173,7 +291,7 @@ export default function Session() {
       {isSmallScreen ? (
         showOverlay ? (
           <ExplanationOverlay
-            topic={topic!} explanation={explanation} wasTruncated={explanationTruncated}
+            topic={topic} explanation={explanation} wasTruncated={wasTruncated}
             loading={loading} loadPhase={loadPhase}
             onStart={() => setShowOverlay(false)} insets={insets}
           />
@@ -191,7 +309,7 @@ export default function Session() {
         >
           <View className="flex-1 flex-row bg-slate-950">
             {!showOverlay ? (
-                <SidePanel explanation={explanation} wasTruncated={explanationTruncated} />
+                <SidePanel explanation={explanation} wasTruncated={wasTruncated} />
             ) : (
               <View style={[
                 { overflow: 'hidden' as const },
@@ -200,7 +318,7 @@ export default function Session() {
                   : { width: panelNarrowed ? SIDEBAR_INITIAL_WIDTH : '100%' },
               ]}>
                 <ExplanationOverlay
-                  topic={topic!} explanation={explanation} wasTruncated={explanationTruncated}
+                  topic={topic} explanation={explanation} wasTruncated={wasTruncated}
                   loading={loading} loadPhase={loadPhase}
                   onStart={handleStartPractising} insets={insets}
                 />
@@ -223,7 +341,7 @@ export default function Session() {
         </KeyboardAvoidingView>
       )}
       {isSmallScreen && !showOverlay && (
-        <BottomSheet explanation={explanation} wasTruncated={explanationTruncated} />
+        <BottomSheet explanation={explanation} wasTruncated={wasTruncated} />
       )}
     </View>
   );
