@@ -77,7 +77,7 @@ export default function Home() {
             className="flex-1 text-white text-base px-5 pb-5"
             style={{ paddingTop: 52, textAlignVertical: 'top', minHeight: 140 }}
             placeholder="What shall we study today"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={Colors.border}
             value={topic}
             onChangeText={setTopic}
             onSubmitEditing={handleStart}
