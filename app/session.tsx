@@ -11,9 +11,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getApiKey } from '@/lib/storage';
-import { generateExplanation, generateCards, judgeAnswer, explainRejection } from '@/lib/claude';
-import type { Card, CardPhase } from '@/lib/types';
+import { judgeAnswer, explainRejection } from '@/lib/claude';
+import type { CardPhase } from '@/lib/types';
+import { useSessionLoader } from '@/hooks/useSessionLoader';
 import {
   SidePanel,
   BottomSheet,
@@ -36,15 +36,12 @@ export default function Session() {
 
   const cardCount = parseInt(count ?? '10', 10);
 
-  // Loading
-  const [loading, setLoading] = useState(true);
-  const [loadPhase, setLoadPhase] = useState<'explanation' | 'cards'>('explanation');
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Content
-  const [explanation, setExplanation] = useState('');
-  const [explanationTruncated, setExplanationTruncated] = useState(false);
-  const [cards, setCards] = useState<Card[]>([]);
+  const {
+    loading, loadPhase, loadError, setLoadError,
+    explanation, explanationTruncated,
+    cards, setCards,
+    totalCost, addCost, apiKeyRef,
+  } = useSessionLoader({ topic: topic!, language: language!, cardCount });
 
   // UI state
   const [showOverlay, setShowOverlay] = useState(true);
@@ -56,46 +53,8 @@ export default function Session() {
   const [feedback, setFeedback] = useState('');
   const [wrongExplanation, setWrongExplanation] = useState('');
   const [showHint, setShowHint] = useState(false);
-  const [totalCost, setTotalCost] = useState(0);
 
   const inputRef = useRef<TextInput>(null);
-  const apiKeyRef = useRef<string>('');
-
-  const addCost = (usd: number) => setTotalCost(prev => prev + usd);
-
-  // ── Bootstrap ──────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const key = await getApiKey();
-        if (!key) { router.replace('/onboarding'); return; }
-        apiKeyRef.current = key;
-
-        let fullExplanation = '';
-        const { truncated } = await generateExplanation(
-          key, topic!, language!,
-          (chunk) => {
-            fullExplanation += chunk;
-            setExplanation(prev => prev + chunk);
-          },
-          addCost,
-        );
-        setExplanationTruncated(truncated);
-
-        setLoadPhase('cards');
-        const generatedCards = await generateCards(
-          key, topic!, language!, cardCount, fullExplanation, addCost,
-        );
-        setCards(generatedCards);
-      } catch (e) {
-        setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
 
   // ── Focus input when card phase resets ────────────────────────────────────
 
@@ -214,7 +173,7 @@ export default function Session() {
       {isSmallScreen ? (
         showOverlay ? (
           <ExplanationOverlay
-            topic={topic!} explanation={explanation} truncated={explanationTruncated}
+            topic={topic!} explanation={explanation} wasTruncated={explanationTruncated}
             loading={loading} loadPhase={loadPhase}
             onStart={() => setShowOverlay(false)} insets={insets}
           />
@@ -232,7 +191,7 @@ export default function Session() {
         >
           <View className="flex-1 flex-row bg-slate-950">
             {transitionDone ? (
-              <SidePanel explanation={explanation} truncated={explanationTruncated} />
+              <SidePanel explanation={explanation} wasTruncated={explanationTruncated} />
             ) : (
               <View style={[
                 { overflow: 'hidden' as const },
@@ -241,7 +200,7 @@ export default function Session() {
                   : { width: panelNarrowed ? SIDEBAR_INITIAL_WIDTH : '100%' },
               ]}>
                 <ExplanationOverlay
-                  topic={topic!} explanation={explanation} truncated={explanationTruncated}
+                  topic={topic!} explanation={explanation} wasTruncated={explanationTruncated}
                   loading={loading} loadPhase={loadPhase}
                   onStart={handleStartPractising} insets={insets}
                 />
@@ -264,7 +223,7 @@ export default function Session() {
         </KeyboardAvoidingView>
       )}
       {isSmallScreen && !showOverlay && (
-        <BottomSheet explanation={explanation} truncated={explanationTruncated} />
+        <BottomSheet explanation={explanation} wasTruncated={explanationTruncated} />
       )}
     </View>
   );

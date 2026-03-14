@@ -13,7 +13,7 @@ import { TruncationWarning } from './ExplanationPanel';
 interface ExplanationOverlayProps {
   topic: string;
   explanation: string;
-  truncated: boolean;
+  wasTruncated: boolean;
   loading: boolean;
   loadPhase: LoadPhase;
   onStart: () => void;
@@ -21,7 +21,7 @@ interface ExplanationOverlayProps {
 }
 
 export function ExplanationOverlay({
-  topic, explanation, truncated, loading, loadPhase, onStart, insets,
+  topic, explanation, wasTruncated, loading, loadPhase, onStart, insets,
 }: ExplanationOverlayProps) {
   return (
     <View className="flex-1 bg-slate-950">
@@ -44,7 +44,7 @@ export function ExplanationOverlay({
         ) : (
           <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
         )}
-        {!loading && truncated && <TruncationWarning />}
+        {!loading && wasTruncated && <TruncationWarning />}
         <View className="h-8" />
       </ScrollView>
 
