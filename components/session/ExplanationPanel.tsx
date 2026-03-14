@@ -1,0 +1,224 @@
+import { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  PanResponder,
+  Keyboard,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
+import { GrammarMarkdown } from './GrammarMarkdown';
+
+export const PEEK_HEIGHT = 72;
+
+// ─── Small reusable pieces ────────────────────────────────────────────────────
+
+export function TruncationWarning() {
+  return (
+    <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
+      <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
+    </View>
+  );
+}
+
+// ─── Side panel (large screens) ──────────────────────────────────────────────
+
+export function SidePanel({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+  const insets = useSafeAreaInsets();
+  const [width, setWidth] = useState(320);
+  const widthRef = useRef(320);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // ── Web: pointer-event drag (mouse + Apple Pencil on iPad web) ─────────────
+  function onDragHandlePressWeb(e: any) {
+    const startX: number = e.nativeEvent.clientX ?? e.nativeEvent.pageX;
+    const startWidth = widthRef.current;
+    setIsDragging(true);
+
+    function onPointerMove(ev: PointerEvent) {
+      ev.preventDefault();
+      const next = Math.max(180, Math.min(600, startWidth + ev.clientX - startX));
+      setWidth(next);
+      widthRef.current = next;
+    }
+
+    function onPointerUp() {
+      setIsDragging(false);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    }
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }
+
+  // ── Native (Catalyst, iOS, Android): PanResponder drag ────────────────────
+  const dragStartWidthRef = useRef(320);
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragStartWidthRef.current = widthRef.current;
+        setIsDragging(true);
+      },
+      onPanResponderMove: (_, { dx }) => {
+        const next = Math.max(180, Math.min(600, dragStartWidthRef.current + dx));
+        setWidth(next);
+        widthRef.current = next;
+      },
+      onPanResponderRelease: () => setIsDragging(false),
+    })
+  ).current;
+
+  const dragHandleProps = Platform.OS === 'web'
+    ? { onStartShouldSetResponder: () => true, onResponderGrant: onDragHandlePressWeb }
+    : panResponder.panHandlers;
+
+  return (
+    <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
+      {/* Panel content */}
+      <View className="bg-slate-900 flex-1">
+        <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: insets.top + 8 }}>
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
+            Grammar Reference
+          </Text>
+          <GrammarMarkdown>{explanation}</GrammarMarkdown>
+          {truncated && <TruncationWarning />}
+        </ScrollView>
+      </View>
+
+      {/* Drag handle */}
+      <View
+        {...dragHandleProps}
+        style={{
+          width: 6,
+          cursor: 'col-resize',
+          backgroundColor: isDragging ? Colors.primary : Colors.input,
+          alignItems: 'center',
+          justifyContent: 'center',
+        } as any}
+      >
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              width: 2,
+              height: 2,
+              borderRadius: 1,
+              backgroundColor: isDragging ? Colors.primaryLight : Colors.border,
+              marginVertical: 2,
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Bottom sheet (small screens) ─────────────────────────────────────────────
+
+export function BottomSheet({ explanation, truncated }: { explanation: string; truncated: boolean }) {
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [expanded, setExpanded] = useState(false);
+  const animHeight = useRef(new Animated.Value(0)).current;
+
+  // Refs so PanResponder closures always see current values
+  const expandedRef = useRef(false);
+  const peekH = PEEK_HEIGHT + insets.bottom;
+  const expandH = height * 0.65;
+  const peekHRef = useRef(peekH);
+  const expandHRef = useRef(expandH);
+  useEffect(() => { peekHRef.current = peekH; }, [peekH]);
+  useEffect(() => { expandHRef.current = expandH; }, [expandH]);
+
+  useEffect(() => {
+    Animated.spring(animHeight, { toValue: peekH, useNativeDriver: false, bounciness: 4 }).start();
+  }, []);
+
+  function snapTo(open: boolean) {
+    expandedRef.current = open;
+    setExpanded(open);
+    if (open) Keyboard.dismiss();
+    Animated.spring(animHeight, {
+      toValue: open ? expandHRef.current : peekHRef.current,
+      useNativeDriver: false,
+      bounciness: 4,
+    }).start();
+  }
+
+  function makePanHandlers(shouldClaim: () => boolean) {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dy }) => shouldClaim() && Math.abs(dy) > 5,
+      onPanResponderGrant: () => { animHeight.stopAnimation(); },
+      onPanResponderMove: (_, { dy }) => {
+        const base = expandedRef.current ? expandHRef.current : peekHRef.current;
+        const next = Math.max(peekHRef.current, Math.min(expandHRef.current, base - dy));
+        animHeight.setValue(next);
+      },
+      onPanResponderRelease: (_, { dy, vy }) => {
+        if (vy < -0.5 || dy < -40) snapTo(true);
+        else if (vy > 0.5 || dy > 40) snapTo(false);
+        else snapTo(expandedRef.current);
+      },
+    });
+  }
+
+  // Outer sheet: only claims when collapsed (body drag to expand)
+  const outerPan = useRef(makePanHandlers(() => !expandedRef.current)).current;
+  // Header: only claims when expanded (header drag to dismiss)
+  const headerPan = useRef(makePanHandlers(() => expandedRef.current)).current;
+
+  return (
+    <Animated.View
+      {...outerPan.panHandlers}
+      style={{
+        height: animHeight,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: Colors.card,
+        borderTopWidth: 1,
+        borderTopColor: Colors.input,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Handle + header — tap + drag target */}
+      <View {...headerPan.panHandlers}>
+        <TouchableOpacity onPress={() => snapTo(!expandedRef.current)} className="items-center pt-2 pb-1" activeOpacity={1}>
+          <View className="w-10 h-1 bg-slate-600 rounded-full" />
+        </TouchableOpacity>
+        <View className="flex-row items-center justify-between px-5 pb-2">
+          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest">
+            Grammar Reference
+          </Text>
+          {expanded && (
+            <TouchableOpacity onPress={() => snapTo(false)}>
+              <Text className="text-slate-500 text-xs">↓ Dismiss</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <ScrollView
+        scrollEnabled={expanded}
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      >
+        <GrammarMarkdown>{explanation}</GrammarMarkdown>
+        {truncated && <TruncationWarning />}
+      </ScrollView>
+    </Animated.View>
+  );
+}
