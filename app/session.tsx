@@ -32,6 +32,7 @@ export default function Session() {
 
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // recomputed on window resize because useWindowDimensions causes a re-render
   const isSmallScreen = width < 768;
 
   const cardCount = parseInt(count ?? '10', 10);
@@ -66,6 +67,7 @@ export default function Session() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
+  // TODO: allow sonnet to judge the answer again, sometimes it is actually correct but haiku is too small to recognize it.
   async function handleSubmitAnswer() {
     const trimmed = answer.trim();
     if (!trimmed || cardPhase !== 'input') return;
@@ -190,8 +192,8 @@ export default function Session() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View className="flex-1 flex-row bg-slate-950">
-            {transitionDone ? (
-              <SidePanel explanation={explanation} wasTruncated={explanationTruncated} />
+            {transitionDone || !showOverlay ? (
+                <SidePanel explanation={explanation} wasTruncated={explanationTruncated} />
             ) : (
               <View style={[
                 { overflow: 'hidden' as const },
@@ -207,7 +209,7 @@ export default function Session() {
               </View>
             )}
 
-            {panelNarrowed && (
+            {(panelNarrowed || !showOverlay) && (
               <View style={[
                 { flex: 1 },
                 Platform.OS === 'web'

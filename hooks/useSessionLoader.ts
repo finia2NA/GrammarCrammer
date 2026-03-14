@@ -58,7 +58,7 @@ export function useSessionLoader({ topic, language, cardCount, existingExplanati
       }
     }
     load();
-  }, []);
+  }, [cardCount, existingExplanation, language, router, topic]);
 
   return {
     loading,
