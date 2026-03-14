@@ -129,10 +129,21 @@ export default function Home() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
+          <Text className="text-foreground text-xl font-bold">GrammarCrammer</Text>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
             <Text className="text-muted-foreground text-xl">⚙</Text>
           </TouchableOpacity>
-          <Text className="text-foreground text-xl font-bold">GrammarCrammer</Text>
+        </View>
+
+        {/* Deck tree */}
+        <View className="w-full max-w-2xl self-center">
+          {loading ? (
+            <View className="items-center py-16">
+              <Text className="text-muted-foreground text-base">Loading…</Text>
+            </View>
+          ) : (
+            <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
+          )}
         </View>
 
         {/* Quick study */}
@@ -184,17 +195,6 @@ export default function Home() {
               Start Session
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Deck tree */}
-        <View className="w-full max-w-2xl self-center">
-          {loading ? (
-            <View className="items-center py-16">
-              <Text className="text-muted-foreground text-base">Loading…</Text>
-            </View>
-          ) : (
-            <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
-          )}
         </View>
       </ScrollView>
 

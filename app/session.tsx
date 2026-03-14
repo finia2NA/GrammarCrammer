@@ -113,6 +113,7 @@ function DeckSession({ nodeId }: { nodeId: string }) {
       language={language}
       showExplanationOverlay={false}
       markStudied={multi.markStudied}
+      deckName={currentDeck?.deckName}
     />
   );
 }
@@ -135,13 +136,14 @@ interface SessionUIProps {
   language: string;
   showExplanationOverlay: boolean;
   markStudied: () => Promise<void>;
+  deckName?: string;
 }
 
 function SessionUI({
   loading, loadPhase, loadError, setLoadError,
   cards, setCards, totalCost, addCost, apiKeyRef,
   explanation, wasTruncated, topic, language,
-  showExplanationOverlay, markStudied,
+  showExplanationOverlay, markStudied, deckName,
 }: SessionUIProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -166,6 +168,21 @@ function SessionUI({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [cardPhase, showOverlay]);
+
+  // Enter key advances past judgment screens
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (cardPhase !== 'correct' && cardPhase !== 'wrong_shown') return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (cardPhase === 'correct') handleConfirmCorrect();
+        else handleConfirmWrong();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cardPhase]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -282,6 +299,7 @@ function SessionUI({
     onConfirmCorrect: handleConfirmCorrect,
     onConfirmWrong: handleConfirmWrong,
     inputRef,
+    deckName,
   };
 
   // ── Render: session ────────────────────────────────────────────────────────
@@ -298,7 +316,7 @@ function SessionUI({
         ) : (
           <View className="flex-1">
             <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: PEEK_HEIGHT + insets.bottom + 32 }}>
-              <FlashcardDeck {...deckProps} />
+              <FlashcardDeck {...deckProps} onBack={() => router.back()} />
             </ScrollView>
           </View>
         )
@@ -342,6 +360,23 @@ function SessionUI({
       )}
       {isSmallScreen && !showOverlay && (
         <BottomSheet explanation={explanation} wasTruncated={wasTruncated} />
+      )}
+
+      {/* Back button (wide screens only — small screens use inline back in FlashcardDeck) */}
+      {!isSmallScreen && !showOverlay && (
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{
+            position: 'absolute',
+            top: insets.top + 8,
+            left: 16,
+            zIndex: 50,
+          }}
+          className="w-10 h-10 items-center justify-center rounded-full bg-slate-800/80"
+          activeOpacity={0.7}
+        >
+          <Text className="text-slate-300 text-base font-semibold">←</Text>
+        </TouchableOpacity>
       )}
     </View>
   );

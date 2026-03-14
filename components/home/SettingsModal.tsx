@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { clearApiKey } from '@/lib/storage';
 import { getSetting, setSetting } from '@/lib/deck-store';
+import { PillDropdown } from '@/components/PillDropdown';
 
 type CardOrder = 'sequential' | 'shuffled';
 
@@ -33,8 +34,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     }
   }, [visible]);
 
-  function handleToggleOrder() {
-    const next: CardOrder = cardOrder === 'shuffled' ? 'sequential' : 'shuffled';
+  function handleChangeOrder(next: CardOrder) {
     setCardOrder(next);
     setSetting('card_order', next);
   }
@@ -89,16 +89,14 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         <Text className="text-muted-foreground text-xs mb-3">
           When studying a collection, how should cards from different decks be arranged?
         </Text>
-        <TouchableOpacity
-          className="bg-card border border-border rounded-xl px-4 py-3.5 flex-row items-center justify-between mb-8"
-          onPress={handleToggleOrder}
-          activeOpacity={0.7}
-        >
-          <Text className="text-foreground text-base">
-            {cardOrder === 'shuffled' ? 'Shuffled' : 'Sequential (by deck)'}
-          </Text>
-          <Text className="text-muted-foreground text-sm">Tap to toggle</Text>
-        </TouchableOpacity>
+        <View style={{ zIndex: 10 }} className="mb-8">
+          <PillDropdown
+            value={cardOrder}
+            options={['shuffled', 'sequential'] as const}
+            onChange={handleChangeOrder}
+            formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential (by deck)'}
+          />
+        </View>
 
         {/* Danger zone */}
         <View className="mt-auto">
