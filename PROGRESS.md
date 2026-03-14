@@ -74,7 +74,6 @@ To implement this, multiple changes are necessary. In order, they are
 - **Models**: Claude Sonnet 4.6 (explanations), Claude Haiku 4.5 (cards + judgment)
 
 ## Housekeeping
-| Feature       | Notes                                                                                |
-| ------------- | ------------------------------------------------------------------------------------ |
-| emojis on ios | do not work rn                                                                       |
-| ios build     | works, but need to specify the steps needed in xcode to build the production version |
+-  emojis on ios do not work rn                                                                       |
+- ios build works, but need to specify the steps needed in xcode to build the production version |
+- chat should scroll down when new message is added. also the whole thing should be in a keyboardavoiding view so that the chat is not covered by the keyboard.
