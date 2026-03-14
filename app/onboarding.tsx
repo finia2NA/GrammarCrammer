@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setApiKey } from '@/lib/storage';
 import { validateApiKey } from '@/lib/claude';
+import { Colors } from '@/constants/theme';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps)
       <TextInput
         className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm font-mono"
         placeholder="sk-ant-..."
-        placeholderTextColor="#475569"
+        placeholderTextColor={Colors.textMuted}
         value={apiKey}
         onChangeText={onApiKeyChange}
         secureTextEntry

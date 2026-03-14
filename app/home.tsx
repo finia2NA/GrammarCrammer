@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
+import { Colors } from '@/constants/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export default function Home() {
             className="flex-1 text-white text-base px-5 pb-5"
             style={{ paddingTop: 52, textAlignVertical: 'top', minHeight: 140 }}
             placeholder="What shall we study today"
-            placeholderTextColor="#475569"
+            placeholderTextColor={Colors.textMuted}
             value={topic}
             onChangeText={setTopic}
             onSubmitEditing={handleStart}
