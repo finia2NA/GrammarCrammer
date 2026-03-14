@@ -48,18 +48,20 @@ To implement this, multiple changes are necessary. In order, they are
 
 ## Future Features
 
-| Feature                           | Notes                                                                                                                                                                                  |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session history                   | Store past sessions (topic, explanation, cards, scores) in local storage for future use                                                                                                |
-| ✅ Mobile apps                     | Build and publish native iOS app                                                                                                                                                       |
-| ✅ Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese |
-| Full flashcard system             | Grammar-point based scheduling, FSRS, notifications                                                                                                                                    |
-| Backend                           | Store all state not only locally, but also in a db for sync between apps                                                                                                               |
-| Difficulty level                  | Tailor the difficulty level of the grammar cards to your liking                                                                                                                        |
-| More models                       | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                              |
-| Continue chatting                 | Ask follow-up questions about a card                                                                                                                                                   |
-| Better styling                    | Change the look from the very default-tailwindy one to something more unique                                                                                                           |
-| Better error handling             | Eg when network drops, the user is forced to restart the session and loses all progress.                                                                                               |
+| Feature                           | Notes                                                                                                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session review                    | After a session, display the cards that were in the session                                                                                                                             |
+| ✅ Decks and collections           | Organize decks into collections, and have the option to review a whole collection at once                                                                                               |
+| ✅ Mobile apps                     | Build and publish native iOS app                                                                                                                                                        |
+| ✅ Lanuage-specific prompts and UI | Help the models by giving them supplementary information for specific languages, and a way to show information not evident from the source sentence, such as level of 敬語 in japanese  |
+| Full flashcard system             | Grammar-point based scheduling, FSRS, notifications                                                                                                                                     |
+| Backend                           | Store all state not only locally, but also in a db for sync between apps                                                                                                                |
+| Difficulty level                  | Tailor the difficulty level of the grammar cards to your liking                                                                                                                         |
+| More models                       | Integrate gemini and chatgpt models, let the user choose what is used for big and small models in the app                                                                               |
+| ✅ Continue chatting               | Ask follow-up questions about a card                                                                                                                                                    |
+| Better styling                    | Change the look from the very default-tailwindy one to something more unique                                                                                                            |
+| Better error handling             | Eg when network drops, the user is forced to restart the session and loses all progress.                                                                                                |
+| Export to Anki                    | When the reason for failure was an unknown word, give the user the option to save the word, and on the main screen the option to export as apkg, or, if this is hard to implement, csv. |
 ---
 
 ## Tech Stack
@@ -72,7 +74,6 @@ To implement this, multiple changes are necessary. In order, they are
 - **Models**: Claude Sonnet 4.6 (explanations), Claude Haiku 4.5 (cards + judgment)
 
 ## Housekeeping
-| Feature       | Notes                                                                                |
-| ------------- | ------------------------------------------------------------------------------------ |
-| emojis on ios | do not work rn                                                                       |
-| ios build     | works, but need to specify the steps needed in xcode to build the production version |
+-  emojis on ios do not work rn                                                                       |
+- ios build works, but need to specify the steps needed in xcode to build the production version |
+- chat should scroll down when new message is added. also the whole thing should be in a keyboardavoiding view so that the chat is not covered by the keyboard.
