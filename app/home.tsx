@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { PillDropdown } from '@/components/PillDropdown';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,8 @@ export default function Home() {
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(10);
 
+  const colors = useColors();
+  const [inputFocused, setInputFocused] = useState(false);
   const canStart = topic.trim().length > 0;
 
   const contentContainerStyle = useMemo(() => ({
@@ -43,7 +45,7 @@ export default function Home() {
 
   return (
     <KeyboardAwareScrollView
-      className="flex-1 bg-slate-950"
+      style={{ flex: 1, backgroundColor: colors.background }}
       bottomOffset={16}
       contentContainerStyle={contentContainerStyle}
       keyboardShouldPersistTaps="handled"
@@ -51,12 +53,18 @@ export default function Home() {
     >
       <View className="w-full max-w-2xl">
         {/* Header */}
-        <Text className="text-white text-3xl font-bold mb-8">GrammarCrammer</Text>
+        <Text className="text-foreground text-3xl font-bold mb-8">GrammarCrammer</Text>
 
         {/* Input card — dropdowns float inside top-right corner */}
         <View
-          className="bg-slate-900 border border-slate-700 rounded-2xl mb-4"
-          style={{ minHeight: 140, zIndex: 10 }}
+          className="bg-card rounded-2xl mb-4"
+          style={{
+            minHeight: 140,
+            zIndex: 10,
+            borderWidth: 1,
+            borderColor: inputFocused ? colors.primary : colors.border,
+            ...Platform.select({ web: inputFocused ? { boxShadow: `0 0 0 3px ${colors.primary}40` } : {} }),
+          }}
         >
           {/* Pill dropdowns — absolutely positioned top-right */}
           <View
@@ -74,12 +82,14 @@ export default function Home() {
 
           {/* Text input — top padding clears the dropdown row */}
           <TextInput
-            className="flex-1 text-white text-base px-5 pb-5"
+            className="flex-1 text-foreground text-base px-5 pb-5 focus:ring-0 focus:outline-none"
             style={{ paddingTop: 52, textAlignVertical: 'top', minHeight: 140 }}
             placeholder="What shall we study today"
-            placeholderTextColor={Colors.border}
+            placeholderTextColor={colors.border}
             value={topic}
             onChangeText={setTopic}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             onSubmitEditing={handleStart}
             returnKeyType="go"
             blurOnSubmit
@@ -89,7 +99,7 @@ export default function Home() {
 
         {/* Start button */}
         <TouchableOpacity
-          className={`py-4 rounded-2xl items-center ${canStart ? 'bg-indigo-600' : 'bg-slate-800'}`}
+          className={`py-4 rounded-2xl items-center ${canStart ? 'bg-primary' : 'bg-input'}`}
           onPress={handleStart}
           disabled={!canStart}
           activeOpacity={0.85}
@@ -97,7 +107,7 @@ export default function Home() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !canStart }}
         >
-          <Text className={`text-base font-bold ${canStart ? 'text-white' : 'text-slate-600'}`}>
+          <Text className={`text-base font-bold ${canStart ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
             Start Session →
           </Text>
         </TouchableOpacity>
