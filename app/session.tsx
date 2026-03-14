@@ -25,25 +25,25 @@ import { Colors } from '@/constants/theme';
 // ─── Markdown styles ──────────────────────────────────────────────────────────
 
 const mdStyles = StyleSheet.create({
-  body:          { color: Colors.textLight },
-  heading1:      { color: Colors.textBright, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 },
-  heading2:      { color: Colors.textBright, fontSize: 17, fontWeight: '700', marginTop: 14, marginBottom: 6 },
-  heading3:      { color: Colors.textLight, fontSize: 15, fontWeight: '600', marginTop: 12, marginBottom: 4 },
+  body:          { color: Colors.mdBody },
+  heading1:      { color: Colors.mdBright, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  heading2:      { color: Colors.mdBright, fontSize: 17, fontWeight: '700', marginTop: 14, marginBottom: 6 },
+  heading3:      { color: Colors.mdBody, fontSize: 15, fontWeight: '600', marginTop: 12, marginBottom: 4 },
   paragraph:     { fontSize: 13, lineHeight: 22, marginBottom: 10 },
-  strong:        { color: Colors.textBright, fontWeight: '700' },
-  em:            { fontStyle: 'italic', color: Colors.textSubtle },
-  code_inline:   { backgroundColor: Colors.bgInput, color: Colors.accentLight, fontFamily: 'monospace', fontSize: 12, borderRadius: 4, paddingHorizontal: 4 },
-  fence:         { backgroundColor: Colors.bgInput, borderRadius: 8, padding: 12, marginVertical: 8 },
-  code_block:    { backgroundColor: Colors.bgInput, borderRadius: 8, padding: 12, marginVertical: 8, color: Colors.accentLight, fontFamily: 'monospace', fontSize: 12 },
+  strong:        { color: Colors.mdBright, fontWeight: '700' },
+  em:            { fontStyle: 'italic', color: Colors.mdSubtle },
+  code_inline:   { backgroundColor: Colors.input, color: Colors.primaryLight, fontFamily: 'monospace', fontSize: 12, borderRadius: 4, paddingHorizontal: 4 },
+  fence:         { backgroundColor: Colors.input, borderRadius: 8, padding: 12, marginVertical: 8 },
+  code_block:    { backgroundColor: Colors.input, borderRadius: 8, padding: 12, marginVertical: 8, color: Colors.primaryLight, fontFamily: 'monospace', fontSize: 12 },
   bullet_list:   { marginBottom: 8 },
   ordered_list:  { marginBottom: 8 },
   list_item:     { marginBottom: 4 },
-  hr:            { backgroundColor: Colors.borderStrong, height: 1, marginVertical: 12 },
-  blockquote:    { backgroundColor: Colors.bgInput, borderLeftColor: Colors.accent, borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4, marginVertical: 8 },
-  table:         { borderColor: Colors.borderStrong },
-  th:            { backgroundColor: Colors.bgInput, padding: 6 },
-  td:            { borderColor: Colors.borderStrong, padding: 6 },
-  tr:            { borderColor: Colors.borderStrong },
+  hr:            { backgroundColor: Colors.muted, height: 1, marginVertical: 12 },
+  blockquote:    { backgroundColor: Colors.input, borderLeftColor: Colors.primary, borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4, marginVertical: 8 },
+  table:         { borderColor: Colors.muted },
+  th:            { backgroundColor: Colors.input, padding: 6 },
+  td:            { borderColor: Colors.muted, padding: 6 },
+  tr:            { borderColor: Colors.muted },
 });
 
 // ─── Side panel ───────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
         style={{
           width: 6,
           cursor: 'col-resize',
-          backgroundColor: isDragging ? Colors.accent : Colors.bgInput,
+          backgroundColor: isDragging ? Colors.primary : Colors.input,
           alignItems: 'center',
           justifyContent: 'center',
         } as any}
@@ -131,7 +131,7 @@ function SidePanel({ explanation, truncated }: { explanation: string; truncated:
               width: 2,
               height: 2,
               borderRadius: 1,
-              backgroundColor: isDragging ? Colors.accentLight : Colors.textMuted,
+              backgroundColor: isDragging ? Colors.primaryLight : Colors.border,
               marginVertical: 2,
             }}
           />
@@ -207,9 +207,9 @@ function BottomSheet({ explanation, truncated }: { explanation: string; truncate
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: Colors.bgCard,
+        backgroundColor: Colors.card,
         borderTopWidth: 1,
-        borderTopColor: Colors.bgInput,
+        borderTopColor: Colors.input,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
@@ -464,7 +464,7 @@ export default function Session() {
       {explanation ? (
         <Markdown style={mdStyles}>{explanation}</Markdown>
       ) : (
-        <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
       )}
       {!loading && explanationTruncated && <TruncationWarning />}
       <View className="h-8" />
@@ -475,7 +475,7 @@ export default function Session() {
     <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
       {loading ? (
         <View className="flex-row items-center justify-center gap-3 py-4">
-          <ActivityIndicator size="small" color={Colors.accent} />
+          <ActivityIndicator size="small" color={Colors.primary} />
           <Text className="text-slate-500 text-sm">
             {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
           </Text>
@@ -522,7 +522,7 @@ export default function Session() {
               ref={inputRef}
               className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-base mb-4"
               placeholder="Your translation…"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={Colors.border}
               value={answer}
               onChangeText={setAnswer}
               onSubmitEditing={handleSubmitAnswer}
@@ -580,7 +580,7 @@ export default function Session() {
         {/* Wrong — explaining */}
         {cardPhase === 'wrong_explaining' && (
           <View className="items-center gap-3 py-2">
-            <ActivityIndicator color={Colors.error} />
+            <ActivityIndicator color={Colors.destructive} />
             <Text className="text-slate-400 text-sm">Getting feedback…</Text>
           </View>
         )}

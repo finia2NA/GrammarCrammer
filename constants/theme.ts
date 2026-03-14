@@ -1,40 +1,67 @@
-// App color tokens — single source of truth for the GrammarCrammer palette.
-// The same hex values are registered as Tailwind custom colors in tailwind.config.js
-// under the `gc` namespace (e.g. `bg-gc-bg`, `text-gc-accent`).
+import { Platform, useColorScheme } from 'react-native';
 
-import { Platform } from 'react-native';
+// ── Color palettes ────────────────────────────────────────────────────────────
+// Values mirror the CSS variables in global.css.
 
-export const Colors = {
-  // ── Backgrounds ────────────────────────────────────────────────────
-  bgApp:   '#020617', // slate-950  — screen / page background
-  bgCard:  '#0f172a', // slate-900  — cards, bottom sheet, panels
-  bgInput: '#1e293b', // slate-800  — inputs, code blocks, UI elements
+const dark = {
+  background:        '#020617', // slate-950
+  foreground:        '#ffffff',
+  card:              '#0f172a', // slate-900
+  input:             '#1e293b', // slate-800
+  muted:             '#334155', // slate-700
+  border:            '#475569', // slate-600
+  mutedForeground:   '#94a3b8', // slate-400
+  primary:           '#6366f1', // indigo-500
+  primaryForeground: '#ffffff',
+  destructive:       '#f87171', // red-400
 
-  // ── Borders ────────────────────────────────────────────────────────
-  borderStrong: '#334155', // slate-700
-  borderSubtle: '#475569', // slate-600
-
-  // ── Accent (indigo) ────────────────────────────────────────────────
-  accent:      '#6366f1', // indigo-500 — primary interactive / highlight color
-  accentLight: '#a5b4fc', // indigo-300 — code highlight, active drag indicator
-
-  // ── Text ───────────────────────────────────────────────────────────
-  textPrimary:   '#ffffff',
-  textSecondary: '#94a3b8', // slate-400
-  textTertiary:  '#64748b', // slate-500
-  textMuted:     '#475569', // slate-600 — placeholder text
-  textLight:     '#e2e8f0', // slate-200 — markdown body
-  textSubtle:    '#cbd5e1', // slate-300 — emphasis / em
-  textBright:    '#f8fafc', // slate-50  — headings / strong
-
-  // ── Status ─────────────────────────────────────────────────────────
   success:       '#4ade80', // green-400
   successBg:     '#15803d', // green-700
-  error:         '#f87171', // red-400
   warning:       '#fbbf24', // amber-400
   warningBg:     '#431407', // amber-950
   warningBorder: '#92400e', // amber-800
+
+  // Markdown-specific (session.tsx mdStyles only)
+  primaryLight: '#a5b4fc', // indigo-300
+  mdBody:       '#e2e8f0', // slate-200
+  mdSubtle:     '#cbd5e1', // slate-300
+  mdBright:     '#f8fafc', // slate-50
 } as const;
+
+const light = {
+  background:        '#f8fafc', // slate-50
+  foreground:        '#0f172a', // slate-900
+  card:              '#ffffff',
+  input:             '#f1f5f9', // slate-100
+  muted:             '#e2e8f0', // slate-200
+  border:            '#cbd5e1', // slate-300
+  mutedForeground:   '#475569', // slate-600
+  primary:           '#6366f1', // indigo-500
+  primaryForeground: '#ffffff',
+  destructive:       '#dc2626', // red-600
+
+  success:       '#16a34a', // green-600
+  successBg:     '#dcfce7', // green-100
+  warning:       '#d97706', // amber-600
+  warningBg:     '#fef3c7', // amber-100
+  warningBorder: '#fcd34d', // amber-300
+
+  primaryLight: '#4f46e5', // indigo-600
+  mdBody:       '#1e293b', // slate-800
+  mdSubtle:     '#475569', // slate-600
+  mdBright:     '#0f172a', // slate-900
+} as const;
+
+// ── Exports ───────────────────────────────────────────────────────────────────
+
+// Static dark-theme constants — for StyleSheet.create() and other non-hook contexts.
+export const Colors = dark;
+
+// Hook for components — returns the palette matching the current color scheme.
+export function useColors() {
+  const scheme = useColorScheme();
+  return scheme === 'light' ? light : dark;
+}
 
 export const Fonts = Platform.select({
   ios: {

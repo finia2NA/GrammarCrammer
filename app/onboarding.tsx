@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ScrollView,
   Animated,
@@ -15,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setApiKey } from '@/lib/storage';
 import { validateApiKey } from '@/lib/claude';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -24,10 +25,10 @@ const TOTAL_STEPS = 3;
 const WelcomeCard = memo(function WelcomeCard() {
   return (
     <>
-      <Text className="text-4xl font-bold text-white mb-3">
+      <Text className="text-4xl font-bold text-foreground mb-3">
         Welcome to{'\n'}GrammarCrammer
       </Text>
-      <Text className="text-slate-400 text-base leading-7">
+      <Text className="text-muted-foreground text-base leading-7">
         GrammarCrammer is your AI-powered grammar study partner.
         Tell it what you want to practise, and it will generate
         a custom set of flashcards tailored to your topic — in any
@@ -40,7 +41,7 @@ const WelcomeCard = memo(function WelcomeCard() {
 const HowItWorksCard = memo(function HowItWorksCard() {
   return (
     <>
-      <Text className="text-3xl font-bold text-white mb-5">
+      <Text className="text-3xl font-bold text-foreground mb-5">
         How it works
       </Text>
       {[
@@ -51,8 +52,8 @@ const HowItWorksCard = memo(function HowItWorksCard() {
         <View key={title} className="flex-row mb-5">
           <Text className="text-2xl mr-3">{icon}</Text>
           <View className="flex-1">
-            <Text className="text-white font-semibold text-base mb-1">{title}</Text>
-            <Text className="text-slate-400 text-sm leading-5">{desc}</Text>
+            <Text className="text-foreground font-semibold text-base mb-1">{title}</Text>
+            <Text className="text-muted-foreground text-sm leading-5">{desc}</Text>
           </View>
         </View>
       ))}
@@ -68,23 +69,23 @@ interface ApiKeyCardProps {
 }
 
 function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps) {
+  const colors = useColors();
   return (
     <>
-      <Text className="text-3xl font-bold text-white mb-2">
+      <Text className="text-3xl font-bold text-foreground mb-2">
         Connect your Claude API key
       </Text>
-      <Text className="text-slate-400 text-sm leading-6 mb-6">
+      <Text className="text-muted-foreground text-sm leading-6 mb-6">
         GrammarCrammer uses Claude to generate study content and grade your
-        answers. Your key is stored locally on this device only — it never
-        leaves your browser.
+        answers. Your key is stored locally on this device only — it is only used to authenticate with Anthropic.
       </Text>
-      <Text className="text-slate-300 text-sm font-medium mb-2">
+      <Text className="text-foreground/80 text-sm font-medium mb-2">
         Anthropic API Key
       </Text>
       <TextInput
-        className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm font-mono"
+        className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm font-mono"
         placeholder="sk-ant-..."
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={colors.border}
         value={apiKey}
         onChangeText={onApiKeyChange}
         secureTextEntry
@@ -93,9 +94,9 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps)
         editable={!loading}
       />
       {error && (
-        <Text className="text-red-400 text-xs mt-2">{error}</Text>
+        <Text className="text-destructive text-xs mt-2">{error}</Text>
       )}
-      <Text className="text-slate-500 text-xs mt-3 leading-5">
+      <Text className="text-muted-foreground/70 text-xs mt-3 leading-5">
         Get a key at console.anthropic.com. Usage costs apply based on your
         Anthropic account.
       </Text>
@@ -126,6 +127,7 @@ export default function Onboarding() {
 
   function goToStep(nextStep: number) {
     if (nextStep === stepRef.current || !containerWidthRef.current) return;
+    Keyboard.dismiss();
     const pw = containerWidthRef.current;
     stepRef.current = nextStep;
     Animated.parallel([
@@ -166,7 +168,7 @@ export default function Onboarding() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-slate-950"
+      className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -181,13 +183,13 @@ export default function Onboarding() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Card */}
-        <View className="w-full max-w-md bg-slate-900 rounded-3xl p-8 shadow-2xl">
+        <View className="w-full max-w-md bg-card rounded-3xl p-8 shadow-2xl">
 
           {/* Step dots */}
           <View className="flex-row mb-8 gap-2">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
               <TouchableOpacity key={i} className="flex-1 py-2" onPress={() => goToStep(i)} activeOpacity={0.7}>
-                <View className={`h-1.5 rounded-full ${i === step ? 'bg-indigo-500' : 'bg-slate-700'}`} />
+                <View className={`h-1.5 rounded-full ${i === step ? 'bg-primary' : 'bg-muted'}`} />
               </TouchableOpacity>
             ))}
           </View>
@@ -217,32 +219,31 @@ export default function Onboarding() {
           <View className="flex-row mt-8 gap-3">
             {step > 0 && (
               <TouchableOpacity
-                className="flex-1 py-3.5 rounded-xl border border-slate-600 items-center"
+                className="flex-1 py-3.5 rounded-xl border border-border items-center"
                 onPress={() => goToStep(step - 1)}
                 disabled={loading}
               >
-                <Text className="text-slate-300 font-semibold">Back</Text>
+                <Text className="text-foreground/80 font-semibold">Back</Text>
               </TouchableOpacity>
             )}
             {isLastStep ? (
               <TouchableOpacity
-                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-indigo-800' : 'bg-indigo-600'
-                  }`}
+                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
                 onPress={handleSubmitKey}
                 disabled={loading}
               >
                 {loading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text className="text-white font-semibold">Verify & Continue</Text>
+                  <Text className="text-primary-foreground font-semibold">Verify & Continue</Text>
                 )}
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                className="flex-1 py-3.5 rounded-xl bg-indigo-600 items-center"
+                className="flex-1 py-3.5 rounded-xl bg-primary items-center"
                 onPress={() => goToStep(step + 1)}
               >
-                <Text className="text-white font-semibold">Next</Text>
+                <Text className="text-primary-foreground font-semibold">Next</Text>
               </TouchableOpacity>
             )}
           </View>
