@@ -13,8 +13,9 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
-import { judgeAnswer, explainRejection } from '@/lib/claude';
-import type { Card, CardPhase, DeckCard } from '@/lib/types';
+import { judgeAnswer, explainRejection, chatAboutCard } from '@/lib/claude';
+import { CARD_CHAT_PROMPT } from '@/constants/prompts';
+import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
@@ -158,6 +159,8 @@ function SessionUI({
   const [feedback, setFeedback] = useState('');
   const [wrongExplanation, setWrongExplanation] = useState('');
   const [showHint, setShowHint] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatStreaming, setChatStreaming] = useState(false);
   const studiedRef = useRef(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -175,6 +178,8 @@ function SessionUI({
     if (cardPhase !== 'correct' && cardPhase !== 'wrong_shown') return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Enter') {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         e.preventDefault();
         if (cardPhase === 'correct') handleConfirmCorrect();
         else handleConfirmWrong();
@@ -231,6 +236,8 @@ function SessionUI({
     setAnswer('');
     setFeedback('');
     setShowHint(false);
+    setChatMessages([]);
+    setChatStreaming(false);
     setCardPhase('input');
   }
 
@@ -239,7 +246,62 @@ function SessionUI({
     setAnswer('');
     setWrongExplanation('');
     setShowHint(false);
+    setChatMessages([]);
+    setChatStreaming(false);
     setCardPhase('input');
+  }
+
+  async function handleChatSend(text: string) {
+    const currentCard = cards[0];
+    if (!currentCard || chatStreaming) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    const assistantMsg: ChatMessage = { role: 'assistant', content: '' };
+
+    setChatMessages(prev => [...prev, userMsg, assistantMsg]);
+    setChatStreaming(true);
+
+    const systemPrompt = CARD_CHAT_PROMPT(
+      language,
+      currentCard.english,
+      currentCard.targetLanguage,
+      submittedAnswer,
+      cardPhase === 'correct',
+      currentCard.sentenceContext,
+    );
+
+    const apiMessages = [...chatMessages, userMsg].map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    try {
+      await chatAboutCard(
+        apiKeyRef.current,
+        systemPrompt,
+        apiMessages,
+        (chunk) => {
+          setChatMessages(prev => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = { ...last, content: last.content + chunk };
+            return updated;
+          });
+        },
+        addCost,
+      );
+    } catch {
+      setChatMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: 'Sorry, something went wrong. Please try again.',
+        };
+        return updated;
+      });
+    } finally {
+      setChatStreaming(false);
+    }
   }
 
   // ── Render: error ──────────────────────────────────────────────────────────
@@ -299,6 +361,9 @@ function SessionUI({
     onConfirmCorrect: handleConfirmCorrect,
     onConfirmWrong: handleConfirmWrong,
     inputRef,
+    chatMessages,
+    chatStreaming,
+    onChatSend: handleChatSend,
     deckName,
   };
 
@@ -350,9 +415,9 @@ function SessionUI({
                   ? { opacity: showOverlay ? 0 : 1, transition: 'opacity 0.3s ease', pointerEvents: showOverlay ? 'none' : 'auto' } as any
                   : {},
               ]}>
-                <View className="flex-1 items-center justify-center px-8 py-10">
+                <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', flexGrow: 1, paddingHorizontal: 32, paddingVertical: 40 }}>
                   <FlashcardDeck {...deckProps} />
-                </View>
+                </ScrollView>
               </View>
             )}
           </View>

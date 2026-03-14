@@ -35,3 +35,8 @@ export interface TreeNode {
 export interface DeckCard extends Card {
   deckId: string;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
