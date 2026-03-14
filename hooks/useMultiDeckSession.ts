@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { getApiKey } from '@/lib/storage';
 import { generateCards } from '@/lib/claude';
-import { getDeck, getDescendantDeckIds, getSetting, setLastStudied } from '@/lib/deck-store';
+import { getDeck, getNode, getDescendantDeckIds, getSetting, setLastStudied } from '@/lib/deck-store';
 import type { Card, DeckCard, DeckData } from '@/lib/types';
 
 interface UseMultiDeckSessionParams {
@@ -62,11 +62,12 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
         // Build deck info map
         const infoMap = new Map<string, DeckInfo>();
         for (const d of deckDataList) {
+          const node = await getNode(d.id);
           infoMap.set(d.id, {
             explanation: d.explanation!,
             wasTruncated: false,
             topic: d.topic,
-            deckName: d.topic, // use topic as display name for the panel
+            deckName: node?.name ?? d.topic,
           });
         }
         setDecks(infoMap);

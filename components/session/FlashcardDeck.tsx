@@ -48,6 +48,8 @@ interface FlashcardDeckProps {
   onConfirmCorrect: () => void;
   onConfirmWrong: () => void;
   inputRef: React.RefObject<TextInput | null>;
+  deckName?: string;
+  onBack?: () => void;
 }
 
 export function FlashcardDeck({
@@ -56,7 +58,7 @@ export function FlashcardDeck({
   feedback, wrongExplanation,
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
-  inputRef,
+  inputRef, deckName, onBack,
 }: FlashcardDeckProps) {
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
 
@@ -64,9 +66,16 @@ export function FlashcardDeck({
     <>
       {/* Progress + cost */}
       <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
-        <Text className="text-slate-500 text-sm">
-          {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
-        </Text>
+        <View className="flex-row items-center gap-3">
+          {onBack && (
+            <TouchableOpacity onPress={onBack} activeOpacity={0.7} className="w-8 h-8 items-center justify-center rounded-full bg-slate-800 border border-slate-600">
+              <Text className="text-slate-300 text-sm font-semibold">←</Text>
+            </TouchableOpacity>
+          )}
+          <Text className="text-slate-500 text-sm">
+            {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
+          </Text>
+        </View>
         <Text className="text-slate-600 text-xs font-mono">
           ${totalCost.toFixed(4)}
         </Text>
@@ -74,7 +83,10 @@ export function FlashcardDeck({
 
       {/* Card */}
       <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
-        <Text className="text-slate-400 text-xs uppercase tracking-widest mb-3">Translate to {language}</Text>
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-slate-400 text-xs uppercase tracking-widest">Translate to {language}</Text>
+          {deckName ? <Text className="text-slate-500 text-xs">{deckName}</Text> : null}
+        </View>
         <Text className="text-white text-xl font-semibold leading-8 mb-2">
           {currentCard.english}
         </Text>
