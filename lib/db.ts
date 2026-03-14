@@ -4,7 +4,7 @@ let _db: SQLite.SQLiteDatabase;
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!_db) {
-    _db = await SQLite.openDatabaseAsync('grammarcrammer.db');
+    _db = await SQLite.openDatabaseAsync('grammarcrammer.db', { enableChangeListener: true });
     await _db.execAsync('PRAGMA journal_mode = WAL;');
     await _db.execAsync('PRAGMA foreign_keys = ON;');
     await runMigrations(_db);
