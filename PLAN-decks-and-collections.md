@@ -207,7 +207,7 @@ Split:  ["JP", "N5", "Te-form"]
 3. "Te-form" is the last segment → INSERT as node + INSERT into decks table
 ```
 
-When renaming a deck via the edit modal, the user types the full path. If the path changes, the node moves to a new parent (and intermediate collections are created if needed). This is handled by `updateDeck` comparing old and new paths.
+When renaming a deck via the edit modal, the user types the full path. If the path changes, the node moves to a new parent (and intermediate collections are created if needed). This is handled by `updateDeck` comparing old and new paths. Empty collections are deleted automatically, and when a collection is renamed, all descendant paths change accordingly.
 
 ---
 

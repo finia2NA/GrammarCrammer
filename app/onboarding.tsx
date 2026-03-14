@@ -20,7 +20,7 @@ import { useColors } from '@/constants/theme';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const WelcomeCard = memo(function WelcomeCard() {
   return (
@@ -57,6 +57,22 @@ const HowItWorksCard = memo(function HowItWorksCard() {
           </View>
         </View>
       ))}
+    </>
+  );
+});
+
+const AlphaWarningCard = memo(function AlphaWarningCard() {
+  return (
+    <>
+      <Text className="text-3xl font-bold text-foreground mb-3">
+        Alpha version
+      </Text>
+      <Text className="text-muted-foreground text-base leading-7 mb-4">
+        GrammarCrammer is in early development. Future updates may reset your data, including saved decks and collections.
+      </Text>
+      <Text className="text-muted-foreground text-base leading-7">
+        For now, use it to explore the concept and practise grammar freely — but don't invest time building elaborate collections just yet.
+      </Text>
     </>
   );
 });
@@ -205,6 +221,7 @@ export default function Onboarding() {
                 {([
                   <WelcomeCard />,
                   <HowItWorksCard />,
+                  <AlphaWarningCard />,
                   <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>

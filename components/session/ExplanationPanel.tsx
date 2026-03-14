@@ -84,7 +84,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
       {/* Panel content */}
       <View className="bg-slate-900 flex-1">
         <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: insets.top + 8 }}>
+          contentContainerStyle={{ paddingTop: insets.top + 40 }}>
           <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
             Grammar Reference
           </Text>
