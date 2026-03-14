@@ -35,6 +35,23 @@ interface DeckRow {
   last_studied_at: number | null;
 }
 
+// ─── Path helpers ─────────────────────────────────────────────────────────────
+
+/** Get the full :: path for a node by walking up the parent chain. */
+export async function getNodePath(nodeId: string): Promise<string> {
+  const db = await getDb();
+  const parts: string[] = [];
+  let currentId: string | null = nodeId;
+  while (currentId) {
+    const row: { name: string; parent_id: string | null } | null =
+      await db.getFirstAsync('SELECT name, parent_id FROM nodes WHERE id = ?', currentId);
+    if (!row) break;
+    parts.unshift(row.name);
+    currentId = row.parent_id;
+  }
+  return parts.join('::');
+}
+
 // ─── Reads ────────────────────────────────────────────────────────────────────
 
 /** Get the full tree of nodes with deck data. */
@@ -178,8 +195,18 @@ export async function createDeckFromPath(
     }
   }
 
-  // Create the deck node (last segment)
+  // Create the deck node (last segment) — check for duplicates first
   const deckName = segments[segments.length - 1];
+  const existingSibling = await findChildByName(db, parentId, deckName);
+  if (existingSibling) {
+    const isDeck = await db.getFirstAsync<{ node_id: string }>(
+      'SELECT node_id FROM decks WHERE node_id = ?', existingSibling.id,
+    );
+    if (isDeck) throw new Error(`A deck at "${path}" already exists.`);
+    // A collection with this name exists — that's okay, but a deck can't share a name with it
+    throw new Error(`A collection named "${deckName}" already exists at this location.`);
+  }
+
   const deckId = uuid();
   const nextOrder = await getNextSortOrder(db, parentId);
 
@@ -241,6 +268,125 @@ export async function renameCollection(nodeId: string, newName: string): Promise
     'UPDATE nodes SET name = ?, updated_at = ? WHERE id = ?',
     newName, now(), nodeId,
   );
+}
+
+/**
+ * Move a node to a new path. Creates intermediate collection nodes as needed.
+ * The last segment becomes the node's new name, and it's reparented accordingly.
+ *
+ * - If the node is a **collection** and a collection with the target name already
+ *   exists at the target parent, the two collections are **merged**: all children
+ *   of the source are moved into the existing target, and the source is deleted.
+ * - If the node is a **deck** and a node with the target name already exists at
+ *   the target parent, an error is thrown.
+ *
+ * Empty ancestor collections are cleaned up after the move.
+ */
+export async function moveNode(nodeId: string, newPath: string): Promise<void> {
+  const db = await getDb();
+  const segments = newPath.split('::').map(s => s.trim()).filter(Boolean);
+  if (segments.length === 0) throw new Error('Path cannot be empty');
+
+  const ts = now();
+  const newName = segments[segments.length - 1];
+  let newParentId: string | null = null;
+
+  // Walk/create parent collection nodes
+  for (let i = 0; i < segments.length - 1; i++) {
+    const name = segments[i];
+    const existing = await findChildByName(db, newParentId, name);
+    if (existing) {
+      newParentId = existing.id;
+    } else {
+      const id = uuid();
+      const nextOrder = await getNextSortOrder(db, newParentId);
+      await db.runAsync(
+        'INSERT INTO nodes (id, parent_id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        id, newParentId, name, nextOrder, ts, ts,
+      );
+      newParentId = id;
+    }
+  }
+
+  // Get old parent before moving
+  const oldRow = await db.getFirstAsync<{ parent_id: string | null }>(
+    'SELECT parent_id FROM nodes WHERE id = ?', nodeId,
+  );
+  const oldParentId = oldRow?.parent_id ?? null;
+
+  // Check if a sibling with the target name already exists at the destination
+  const existingSibling = await findChildByName(db, newParentId, newName);
+  if (existingSibling && existingSibling.id !== nodeId) {
+    const movingNodeIsDeck = await db.getFirstAsync<{ node_id: string }>(
+      'SELECT node_id FROM decks WHERE node_id = ?', nodeId,
+    );
+
+    if (movingNodeIsDeck) {
+      throw new Error(`A node named "${newName}" already exists at this location.`);
+    }
+
+    // Moving a collection — check if the target is also a collection
+    const targetIsDeck = await db.getFirstAsync<{ node_id: string }>(
+      'SELECT node_id FROM decks WHERE node_id = ?', existingSibling.id,
+    );
+    if (targetIsDeck) {
+      throw new Error(`Cannot merge collection into deck "${newName}".`);
+    }
+
+    // Both are collections — merge: move all children of source into target
+    await db.runAsync(
+      'UPDATE nodes SET parent_id = ?, updated_at = ? WHERE parent_id = ?',
+      existingSibling.id, ts, nodeId,
+    );
+
+    // Delete the now-empty source collection
+    await db.runAsync('DELETE FROM nodes WHERE id = ?', nodeId);
+
+    // Clean up old ancestors
+    if (oldParentId !== newParentId) {
+      await cleanupEmptyAncestors(db, oldParentId);
+    }
+    return;
+  }
+
+  // No conflict — simple move
+  const nextOrder = await getNextSortOrder(db, newParentId);
+  await db.runAsync(
+    'UPDATE nodes SET name = ?, parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+    newName, newParentId, nextOrder, ts, nodeId,
+  );
+
+  // Clean up empty ancestor collections
+  if (oldParentId !== newParentId) {
+    await cleanupEmptyAncestors(db, oldParentId);
+  }
+}
+
+/** Remove empty collection ancestors (bottom-up). */
+async function cleanupEmptyAncestors(
+  db: Awaited<ReturnType<typeof getDb>>,
+  parentId: string | null,
+): Promise<void> {
+  let currentId = parentId;
+  while (currentId) {
+    const childCount = await db.getFirstAsync<{ c: number }>(
+      'SELECT COUNT(*) as c FROM nodes WHERE parent_id = ?', currentId,
+    );
+    if ((childCount?.c ?? 0) > 0) break;
+
+    // No children and not a deck — safe to delete
+    const isDeck = await db.getFirstAsync<{ node_id: string }>(
+      'SELECT node_id FROM decks WHERE node_id = ?', currentId,
+    );
+    if (isDeck) break;
+
+    const row = await db.getFirstAsync<{ parent_id: string | null }>(
+      'SELECT parent_id FROM nodes WHERE id = ?', currentId,
+    );
+    const nextParent = row?.parent_id ?? null;
+    await db.runAsync('DELETE FROM nodes WHERE id = ?', currentId);
+    currentId = nextParent;
+  }
 }
 
 /** Delete a node and all its descendants (CASCADE handles children). */
