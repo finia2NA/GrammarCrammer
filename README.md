@@ -83,6 +83,7 @@ xcodebuild \
 > `npx expo run:ios` targets the iOS Simulator and will not build for Mac Catalyst. Use Xcode or xcodebuild for macOS builds.
 
 ### Android
+> Android is not actively supported as of right now. While the Architecture supports it, due to me not wanting to test the app on 3 platforms for every change i make, this platform may break at any point until we get to a 1.0. In fact, it might be broken right now! :D
 
 Requires Android Studio with an emulator configured, or a physical device with USB debugging enabled.
 
