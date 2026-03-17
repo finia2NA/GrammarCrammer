@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +25,7 @@ import {
   FlashcardDeck,
   PEEK_HEIGHT,
 } from '@/components/session';
+import { useScreenSize } from '@/hooks/useScreenSize';
 
 const SIDEBAR_INITIAL_WIDTH = 320;
 
@@ -144,9 +144,8 @@ function SessionUI({
   showExplanationOverlay, markStudied, deckName,
 }: SessionUIProps) {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { isSmallScreen } = useScreenSize();
   const insets = useSafeAreaInsets();
-  const isSmallScreen = width < 768;
 
   const [showOverlay, setShowOverlay] = useState(showExplanationOverlay);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
