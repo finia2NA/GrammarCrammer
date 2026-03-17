@@ -18,15 +18,19 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setAuthToken } from '@/lib/storage';
 import { register, login, setApiKey, validateApiKey } from '@/lib/api';
+import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 
 // ─── Animated rainbow button ─────────────────────────────────────────────────
 
-// One cycle of rainbow colors (first === last for seamless tiling)
-const RAINBOW_CYCLE = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#ff6b6b'] as const;
+// Perceptually uniform rainbow via OKLCH (first === last for seamless tiling)
+const RAINBOW_STEPS = 7;
+const RAINBOW_CYCLE = Array.from({ length: RAINBOW_STEPS }, (_, i) =>
+  formatHex({ mode: 'oklch', l: 0.7, c: 0.18, h: (i / (RAINBOW_STEPS - 1)) * 360 })!,
+);
 // Two full cycles back-to-back so we can translate by one cycle width seamlessly.
 // slice(1) avoids doubling the boundary color where the two cycles meet.
-const RAINBOW_TILED = [...RAINBOW_CYCLE, ...RAINBOW_CYCLE.slice(1)] as const;
+const RAINBOW_TILED = [...RAINBOW_CYCLE, ...RAINBOW_CYCLE.slice(1)];
 
 function RainbowButton({ onPress, label }: { onPress: () => void; label: string }) {
   const translateX = useRef(new Animated.Value(0)).current;
