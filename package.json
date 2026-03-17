@@ -5,25 +5,23 @@
     "server": "pnpm --filter server dev",
     "web": "pnpm --filter client web",
     "start": "pnpm --filter client start",
-
-    "dev": "trap 'kill 0' EXIT; pnpm server & pnpm start & wait",
-    "dev:web": "trap 'kill 0' EXIT; pnpm server & pnpm web & wait",
-    "dev:ios": "trap 'kill 0' EXIT; pnpm server & pnpm ios & wait",
-    "dev:android": "trap 'kill 0' EXIT; pnpm server & pnpm android & wait",
-
+    "dev": "concurrently -n server,expo -c blue,green \"pnpm server\" \"pnpm start\"",
+    "dev:web": "concurrently -n server,expo -c blue,green \"pnpm server\" \"pnpm web\"",
+    "dev:ios": "concurrently -n server,expo -c blue,green \"pnpm server\" \"pnpm ios\"",
+    "dev:android": "concurrently -n server,expo -c blue,green \"pnpm server\" \"pnpm android\"",
     "ios": "pnpm --filter client ios",
     "android": "pnpm --filter client android",
-
     "build:server": "pnpm --filter server build",
     "lint": "pnpm --filter client lint",
-
     "db:migrate": "pnpm --filter server db:migrate",
     "db:generate": "pnpm --filter server db:generate",
     "db:push": "pnpm --filter server db:push",
-
     "pods": "cd client/ios && pod install",
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",
     "xcode": "pnpm prebuild:clean && open client/ios/*.xcworkspace"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
