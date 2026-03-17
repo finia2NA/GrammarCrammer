@@ -19,7 +19,7 @@
     "pods": "cd client/ios && pod install",
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",
-    "xcode": "pnpm prebuild:clean && open client/ios/*.xcworkspace"
+    "xcode": "pnpm prebuild && open client/ios/*.xcworkspace"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
