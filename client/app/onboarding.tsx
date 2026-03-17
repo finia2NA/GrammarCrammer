@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setAuthToken } from '@/lib/storage';
-import { register, login, setApiKey, validateApiKey } from '@/lib/api';
+import { register, login, setApiKey, validateApiKey, getApiKeyStatus } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 
@@ -101,7 +101,7 @@ function RainbowButton({ onPress, label }: { onPress: () => void; label: string 
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const WelcomeCard = memo(function WelcomeCard() {
   return (
@@ -167,11 +167,13 @@ interface AccountCardProps {
   loading: boolean;
   isLogin: boolean;
   onToggleMode: () => void;
+  onSubmit: () => void;
   success: boolean;
 }
 
-function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, success }: AccountCardProps) {
+function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, onSubmit, success }: AccountCardProps) {
   const colors = useColors();
+  const passwordRef = useRef<TextInput>(null);
   const successOpacity = useRef(new Animated.Value(0)).current;
   const formDim = useRef(new Animated.Value(1)).current;
 
@@ -213,10 +215,13 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
           editable={!loading && !success}
         />
         <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
         <TextInput
+          ref={passwordRef}
           className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm"
           placeholder="At least 8 characters"
           placeholderTextColor={colors.border}
@@ -224,6 +229,8 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
           onChangeText={onPasswordChange}
           secureTextEntry
           autoCapitalize="none"
+          returnKeyType="go"
+          onSubmitEditing={onSubmit}
           editable={!loading && !success}
         />
       </Animated.View>
@@ -304,6 +311,7 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [accountSuccess, setAccountSuccess] = useState(false);
+  const [showApiKeyForm, setShowApiKeyForm] = useState(false);
 
   const stepRef = useRef(0);
   const containerWidthRef = useRef(0);
@@ -320,6 +328,7 @@ export default function Onboarding() {
     if (nextStep === stepRef.current || !containerWidthRef.current) return;
     Keyboard.dismiss();
     setError(null);
+    if (showApiKeyForm) setShowApiKeyForm(false);
     const pw = containerWidthRef.current;
     stepRef.current = nextStep;
     Animated.parallel([
@@ -353,7 +362,7 @@ export default function Onboarding() {
     }
   }
 
-  // Step 4: API key
+  // API key submission (shown in-place on step 3 after account success)
   async function handleSubmitKey() {
     const trimmed = apiKey.trim();
     if (!trimmed) {
@@ -377,8 +386,37 @@ export default function Onboarding() {
     }
   }
 
-  const isAccountStep = step === 3;
-  const isLastStep = step === TOTAL_STEPS - 1;
+  // After account success, check if user already has an API key (login case)
+  // and either go home or show the API key form in-place.
+  async function handlePostAccountNext() {
+    if (isLogin) {
+      setLoading(true);
+      try {
+        const { hasKey } = await getApiKeyStatus();
+        if (hasKey) {
+          router.replace('/home');
+          return;
+        }
+      } catch {
+        // If check fails, just show the API key form
+      } finally {
+        setLoading(false);
+      }
+    }
+    setError(null);
+    setShowApiKeyForm(true);
+  }
+
+  // Auto-redirect after login success: show rainbow for 1.5s then proceed
+  useEffect(() => {
+    if (accountSuccess && isLogin) {
+      const timer = setTimeout(() => handlePostAccountNext(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [accountSuccess, isLogin]);
+
+  const isAccountStep = step === 3 && !showApiKeyForm;
+  const isApiKeyStep = step === 3 && showApiKeyForm;
 
   // Note that this swipe is swipe -> move, not a true "drag". For now, this is fine imo, but could be better technically.
   const swipe = Gesture.Pan()
@@ -430,8 +468,9 @@ export default function Onboarding() {
                   <WelcomeCard />,
                   <HowItWorksCard />,
                   <AlphaWarningCard />,
-                  <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} success={accountSuccess} />,
-                  <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={step === 4 ? error : null} loading={loading} />,
+                  showApiKeyForm
+                    ? <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />
+                    : <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
                     {panel}
@@ -443,18 +482,37 @@ export default function Onboarding() {
 
           {/* Navigation */}
           <View className="flex-row mt-8 gap-3">
-            {step > 0 && (
+            {(step > 0 || showApiKeyForm) && (
               <TouchableOpacity
                 className="flex-1 py-3.5 rounded-xl border border-border items-center"
-                onPress={() => goToStep(step - 1)}
+                onPress={() => {
+                  if (showApiKeyForm) {
+                    setShowApiKeyForm(false);
+                    setError(null);
+                  } else {
+                    goToStep(step - 1);
+                  }
+                }}
                 disabled={loading}
               >
                 <Text className="text-foreground/80 font-semibold">Back</Text>
               </TouchableOpacity>
             )}
-            {isAccountStep ? (
+            {isApiKeyStep ? (
+              <TouchableOpacity
+                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
+                onPress={handleSubmitKey}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-primary-foreground font-semibold">Verify & Continue</Text>
+                )}
+              </TouchableOpacity>
+            ) : isAccountStep ? (
               accountSuccess ? (
-                <RainbowButton onPress={() => goToStep(step + 1)} label="Next" />
+                <RainbowButton onPress={handlePostAccountNext} label={isLogin ? 'Redirecting…' : 'Next'} />
               ) : (
                 <TouchableOpacity
                   className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
@@ -468,18 +526,6 @@ export default function Onboarding() {
                   )}
                 </TouchableOpacity>
               )
-            ) : isLastStep ? (
-              <TouchableOpacity
-                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
-                onPress={handleSubmitKey}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text className="text-primary-foreground font-semibold">Verify & Continue</Text>
-                )}
-              </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 className="flex-1 py-3.5 rounded-xl bg-primary items-center"
