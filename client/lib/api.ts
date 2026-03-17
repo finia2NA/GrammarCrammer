@@ -1,4 +1,5 @@
-import { getAuthToken } from './storage';
+import { router } from 'expo-router';
+import { getAuthToken, clearAuthToken } from './storage';
 import type { Card, TreeNode, DeckData, ChatMessage } from './types';
 
 const BASE_URL = __DEV__
@@ -22,6 +23,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await clearAuthToken();
+      router.replace('/onboarding');
+      throw new Error('Session expired');
+    }
     const body = await res.json().catch(() => ({})) as any;
     throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
   }
@@ -194,6 +200,11 @@ async function streamSSE(
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      await clearAuthToken();
+      router.replace('/onboarding');
+      throw new Error('Session expired');
+    }
     const err = await res.json().catch(() => ({})) as any;
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
   }

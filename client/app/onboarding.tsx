@@ -1,4 +1,4 @@
-import { useState, useRef, memo } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
   View,
@@ -86,51 +86,83 @@ interface AccountCardProps {
   loading: boolean;
   isLogin: boolean;
   onToggleMode: () => void;
+  success: boolean;
 }
 
-function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode }: AccountCardProps) {
+function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, success }: AccountCardProps) {
   const colors = useColors();
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const formDim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (success) {
+      Animated.parallel([
+        Animated.timing(formDim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+        Animated.timing(successOpacity, { toValue: 1, duration: 500, delay: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [success]);
+
   return (
     <>
       <Text className="text-3xl font-bold text-foreground mb-2">
-        {isLogin ? 'Sign in' : 'Create account'}
+        {success
+          ? (isLogin ? 'Signed in!' : 'Account created!')
+          : (isLogin ? 'Sign in' : 'Create account')}
       </Text>
       <Text className="text-muted-foreground text-sm leading-6 mb-6">
-        {isLogin
-          ? 'Welcome back! Sign in to access your decks and settings.'
-          : 'Create an account to save your decks and study progress.'}
+        {success
+          ? (isLogin
+            ? 'Welcome back — your decks and settings are ready.'
+            : 'Your account is set up and ready to go.')
+          : (isLogin
+            ? 'Welcome back! Sign in to access your decks and settings.'
+            : 'Create an account to save your decks and study progress.')}
       </Text>
-      <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
-      <TextInput
-        className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm mb-3"
-        placeholder="you@example.com"
-        placeholderTextColor={colors.border}
-        value={email}
-        onChangeText={onEmailChange}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        editable={!loading}
-      />
-      <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
-      <TextInput
-        className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm"
-        placeholder="At least 8 characters"
-        placeholderTextColor={colors.border}
-        value={password}
-        onChangeText={onPasswordChange}
-        secureTextEntry
-        autoCapitalize="none"
-        editable={!loading}
-      />
+
+      {/* Email + Password fields */}
+      <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
+        <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
+        <TextInput
+          className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm mb-3"
+          placeholder="you@example.com"
+          placeholderTextColor={colors.border}
+          value={email}
+          onChangeText={onEmailChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          editable={!loading && !success}
+        />
+        <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
+        <TextInput
+          className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm"
+          placeholder="At least 8 characters"
+          placeholderTextColor={colors.border}
+          value={password}
+          onChangeText={onPasswordChange}
+          secureTextEntry
+          autoCapitalize="none"
+          editable={!loading && !success}
+        />
+      </Animated.View>
+
+      {success && (
+        <Animated.Text style={{ opacity: successOpacity, color: colors.foreground, fontSize: 24, fontWeight: '500', textAlign: 'center', marginTop: 20 }}>
+          Success!
+        </Animated.Text>
+      )}
+
       {error && (
         <Text className="text-destructive text-xs mt-2">{error}</Text>
       )}
-      <TouchableOpacity onPress={onToggleMode} className="mt-4">
-        <Text className="text-primary text-sm">
-          {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-        </Text>
-      </TouchableOpacity>
+      {!success && (
+        <TouchableOpacity onPress={onToggleMode} className="mt-4">
+          <Text className="text-primary text-sm">
+            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 }
@@ -190,6 +222,7 @@ export default function Onboarding() {
   const [apiKey, setApiKeyInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [accountSuccess, setAccountSuccess] = useState(false);
 
   const stepRef = useRef(0);
   const containerWidthRef = useRef(0);
@@ -223,15 +256,19 @@ export default function Onboarding() {
     setError(null);
     setLoading(true);
     try {
-      const result = isLogin
-        ? await login(email.trim(), password.trim())
-        : await register(email.trim(), password.trim());
+      const minWait = new Promise(r => setTimeout(r, 1200));
+      const [result] = await Promise.all([
+        isLogin
+          ? login(email.trim(), password.trim())
+          : register(email.trim(), password.trim()),
+        minWait,
+      ]);
       await setAuthToken(result.token);
-      goToStep(step + 1);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'An error occurred.');
-    } finally {
       setLoading(false);
+      setAccountSuccess(true);
+    } catch (e) {
+      setLoading(false);
+      setError(e instanceof Error ? e.message : 'An error occurred.');
     }
   }
 
@@ -312,7 +349,7 @@ export default function Onboarding() {
                   <WelcomeCard />,
                   <HowItWorksCard />,
                   <AlphaWarningCard />,
-                  <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} />,
+                  <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} success={accountSuccess} />,
                   <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={step === 4 ? error : null} loading={loading} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
@@ -335,17 +372,26 @@ export default function Onboarding() {
               </TouchableOpacity>
             )}
             {isAccountStep ? (
-              <TouchableOpacity
-                className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
-                onPress={handleSubmitAccount}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text className="text-primary-foreground font-semibold">{isLogin ? 'Sign In' : 'Create Account'}</Text>
-                )}
-              </TouchableOpacity>
+              accountSuccess ? (
+                <TouchableOpacity
+                  className="flex-1 py-3.5 rounded-xl items-center bg-green-600"
+                  onPress={() => goToStep(step + 1)}
+                >
+                  <Text className="text-white font-semibold">Next</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
+                  onPress={handleSubmitAccount}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-primary-foreground font-semibold">{isLogin ? 'Sign In' : 'Create Account'}</Text>
+                  )}
+                </TouchableOpacity>
+              )
             ) : isLastStep ? (
               <TouchableOpacity
                 className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
