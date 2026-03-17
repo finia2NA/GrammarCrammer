@@ -11,12 +11,89 @@ import {
   Platform,
   ScrollView,
   Animated,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setAuthToken } from '@/lib/storage';
 import { register, login, setApiKey, validateApiKey } from '@/lib/api';
 import { useColors } from '@/constants/theme';
+
+// ─── Animated rainbow button ─────────────────────────────────────────────────
+
+// One cycle of rainbow colors (first === last for seamless tiling)
+const RAINBOW_CYCLE = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#ff6b6b'] as const;
+// Two full cycles back-to-back so we can translate by one cycle width seamlessly.
+// slice(1) avoids doubling the boundary color where the two cycles meet.
+const RAINBOW_TILED = [...RAINBOW_CYCLE, ...RAINBOW_CYCLE.slice(1)] as const;
+
+function RainbowButton({ onPress, label }: { onPress: () => void; label: string }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [btnWidth, setBtnWidth] = useState(0);
+  const animStarted = useRef(false);
+
+  useEffect(() => {
+    if (!btnWidth || animStarted.current) return;
+    animStarted.current = true;
+
+    // The gradient strip is 4*btnWidth wide, containing two identical rainbow
+    // cycles each spanning 2*btnWidth. Sweeping left by exactly 2*btnWidth
+    // brings the second cycle into view — which is identical to the first —
+    // so we can snap back to 0 and the transition is invisible.
+    const sweep = btnWidth * 2;
+
+    // Use a recursive approach instead of Animated.loop + 0-duration resets.
+    // This avoids two problems:
+    //  1. Animated.timing({duration:0}) in a sequence still schedules a frame,
+    //     causing a visible flicker at the reset point.
+    //  2. Animated.loop can apply its own easing curve on top of the inner one.
+    // By using setValue(0) in the completion callback, the reset is synchronous
+    // and happens between frames — no flicker, no extra easing.
+    let fastCount = 0;
+
+    function runSweep() {
+      const duration = fastCount < 2 ? 1500 : 5000;
+      fastCount++;
+
+      Animated.timing(translateX, {
+        toValue: -sweep,
+        duration,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) return; // unmounted or interrupted
+        translateX.setValue(0); // instant reset — no animation frame, no flicker
+        runSweep();
+      });
+    }
+
+    runSweep();
+  }, [btnWidth]);
+
+  return (
+    <TouchableOpacity
+      className="flex-1 rounded-xl overflow-hidden"
+      onPress={onPress}
+      activeOpacity={0.8}
+      onLayout={e => setBtnWidth(e.nativeEvent.layout.width)}
+    >
+      <View style={{ height: 50, justifyContent: 'center', alignItems: 'center' }}>
+        {btnWidth > 0 && (
+          <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: btnWidth * 4, transform: [{ translateX }] }}>
+            <LinearGradient
+              colors={[...RAINBOW_TILED]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{ flex: 1 }}
+            />
+          </Animated.View>
+        )}
+        <Text style={{ color: 'white', fontWeight: '700', fontSize: 15, zIndex: 1 }}>{label}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -373,12 +450,7 @@ export default function Onboarding() {
             )}
             {isAccountStep ? (
               accountSuccess ? (
-                <TouchableOpacity
-                  className="flex-1 py-3.5 rounded-xl items-center bg-green-600"
-                  onPress={() => goToStep(step + 1)}
-                >
-                  <Text className="text-white font-semibold">Next</Text>
-                </TouchableOpacity>
+                <RainbowButton onPress={() => goToStep(step + 1)} label="Next" />
               ) : (
                 <TouchableOpacity
                   className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
