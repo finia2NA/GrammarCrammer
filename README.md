@@ -123,7 +123,7 @@ Runs the iPad layout natively on macOS. Requires macOS + Xcode.
 
 ### Android
 
-> Android is not actively supported right now. The architecture supports it, but it isn't tested regularly and may be broken. Contributions welcome.
+> Android is not actively supported as of right now. While the Architecture supports it, due to me not wanting to test the app on 3 platforms for every change i make, this platform may break at any point until we get to a 1.0. In fact, it might be broken right now! :D
 
 ```bash
 # from client/
