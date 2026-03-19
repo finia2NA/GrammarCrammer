@@ -1,10 +1,21 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { getAuthToken, clearAuthToken } from './storage';
 import type { Card, TreeNode, DeckData, ChatMessage } from './types';
 
-const BASE_URL = __DEV__
-  ? 'http://localhost:3001/api'
-  : 'https://grammarcrammer-api.example.com/api'; // TODO: production URL
+function getBaseUrl(): string {
+  if (Platform.OS === 'web' && !__DEV__) {
+    // Production web: same origin, nginx proxies /api → Express
+    return '/api';
+  }
+  // Dev (all platforms) and native prod: use configured host
+  const host = Constants.expoConfig?.extra?.devServerHost ?? 'localhost';
+  const port = Constants.expoConfig?.extra?.devServerPort ?? '3001';
+  return `http://${host}:${port}/api`;
+}
+
+const BASE_URL = getBaseUrl();
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 

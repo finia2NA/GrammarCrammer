@@ -79,7 +79,7 @@ Handles two modes:
 Both modes share `SessionUI`: explanation overlay, card loop (`FlashcardDeck`), chat panel (`CardChat`).
 
 ### `lib/api.ts`
-The single place all server communication happens. Exports typed functions for every endpoint group:
+The single place all server communication happens. Uses environment-aware base URL: production web uses relative `/api` (same origin via nginx), dev and native use the configured host/port from `app.config.ts` → `extra`. Exports typed functions for every endpoint group:
 - `register`, `login`, `loginWithApple`, `loginWithGoogle`, `getMe`, `validateApiKey`
 - `setApiKey`, `deleteApiKey`, `getApiKeyStatus`
 - `getTree`, `getNode`, `getNodePath`, `getDescendantDeckIds`, `deleteNode`

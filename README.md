@@ -51,20 +51,36 @@ See [`client/STRUCTURE.md`](client/STRUCTURE.md) and [`server/STRUCTURE.md`](ser
 pnpm install
 ```
 
-### 2. Configure the server
+### 2. Configure environment variables
 
-Create `server/.env`:
+Copy the example files and fill in your values:
 
-```env
-JWT_SECRET=your-secret-here
-ENCRYPTION_KEY=32-byte-hex-string   # used for AES-256-GCM API key encryption
+```bash
+cp server/.env.example server/.env
+cp client/.env.example client/.env
 ```
 
-Create `server/prisma/.env`:
+**`server/.env`:**
 
 ```env
 DATABASE_URL="file:./dev.db"
+JWT_SECRET=your-secret-here
+ENCRYPTION_KEY=32-byte-hex-string   # used for AES-256-GCM API key encryption
+PORT=3001                           # optional, defaults to 3001
+
+# Optional: for social auth
+APPLE_CLIENT_ID=""
+GOOGLE_CLIENT_ID=""
 ```
+
+**`client/.env`:**
+
+```env
+DEV_SERVER_HOST=localhost   # set to your machine's IP for physical device testing
+DEV_SERVER_PORT=3001        # must match the server's PORT
+```
+
+Both files are gitignored.
 
 ### 3. Initialise the database
 
@@ -132,6 +148,16 @@ npx expo run:android
 
 ---
 
+## Deployment
+In the deploy/ directory, there are some scripts that I used to deploy on my server. This is not dockerized as it is a pretty resource-limited deployment, and (as of right now) not intended for easy use by others. At the very least, you will have to change the hostname of the server to what you have in your ssh config, as well as the URL the client uses to connect to the server. When this thing is out of alpha, I may put a bit more effort into making deployment easier for others.
+
+When you have set up the scripts so they work for you, run
+
+```bash
+pnpm setup:server   # one-time: installs Node, pnpm, creates user, nginx, systemd, .env
+pnpm ship           # builds frontend + backend, deploys both to server
+```
+
 ## Tech stack
 
 ### Client
@@ -163,6 +189,3 @@ npx expo run:android
 
 ---
 
-## Current state
-
-Core MVP features of the language study loop are complete, including user accounts, saved decks, hierarchical collections, and a full Express + Prisma backend. The next major milestone is an FSRS-based scheduling system. See `PROGRESS.md` for the current roadmap.

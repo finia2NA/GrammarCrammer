@@ -12,6 +12,7 @@
     "ios": "pnpm --filter client ios",
     "android": "pnpm --filter client android",
     "build:server": "pnpm --filter server build",
+    "start:server": "pnpm --filter server start",
     "lint": "pnpm --filter client lint",
     "db:migrate": "pnpm --filter server db:migrate",
     "db:generate": "pnpm --filter server db:generate",
@@ -19,7 +20,10 @@
     "pods": "cd client/ios && pod install",
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",
-    "xcode": "pnpm prebuild && open client/ios/*.xcworkspace"
+    "xcode": "pnpm prebuild && open client/ios/*.xcworkspace",
+    "build:web": "pnpm --filter client exec expo export --platform web",
+    "ship": "bash deploy/deploy.sh",
+    "setup:server": "bash deploy/setup-server.sh"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

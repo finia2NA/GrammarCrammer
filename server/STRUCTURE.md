@@ -7,7 +7,7 @@ Express 5 + Prisma API server. Handles auth, deck/collection storage, and proxie
 ```
 server/
 ├── src/
-│   ├── index.ts                    ← Express entry point: CORS, body parsing, routes, error handler
+│   ├── index.ts                    ← Express entry point: CORS, body parsing, routes, error handler; binds to 127.0.0.1 in production
 │   ├── config.ts                   ← Reads and validates environment variables
 │   │
 │   ├── middleware/
@@ -43,10 +43,9 @@ server/
 │
 ├── prisma/
 │   ├── schema.prisma               ← Database models: User, Node, Deck, Setting
-│   ├── migrations/                 ← Prisma migration files
-│   └── .env                        ← DATABASE_URL (not in repo)
+│   └── migrations/                 ← Prisma migration files
 │
-├── .env                            ← JWT_SECRET, ENCRYPTION_KEY, optional OAuth IDs (not in repo)
+├── .env                            ← DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, optional OAuth IDs (not in repo)
 ├── package.json
 └── tsconfig.json
 ```
@@ -182,4 +181,4 @@ Setting  (arbitrary key-value per user)
 | `APPLE_CLIENT_ID` | No       | Apple Sign In client ID                          |
 | `GOOGLE_CLIENT_ID`| No       | Google OAuth2 client ID                          |
 
-`DATABASE_URL` goes in `prisma/.env` (e.g. `file:./dev.db` for SQLite).
+`DATABASE_URL` goes in the server root `.env` (e.g. `file:./dev.db` for SQLite locally, absolute path in production).
