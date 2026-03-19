@@ -31,6 +31,7 @@ app.get('/api/health', (_req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`[server] Listening on http://localhost:${config.port}`);
+const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+app.listen(config.port, host, () => {
+  console.log(`[server] Listening on http://${host}:${config.port}`);
 });

@@ -2,28 +2,30 @@
   "name": "grammarcrammer",
   "private": true,
   "scripts": {
-    "server": "pnpm --filter server dev",
+    "backend": "pnpm --filter server dev",
     "web": "pnpm --filter client web",
     "start": "pnpm --filter client start",
-
-    "dev": "trap 'kill 0' EXIT; pnpm server & pnpm start & wait",
-    "dev:web": "trap 'kill 0' EXIT; pnpm server & pnpm web & wait",
-    "dev:ios": "trap 'kill 0' EXIT; pnpm server & pnpm ios & wait",
-    "dev:android": "trap 'kill 0' EXIT; pnpm server & pnpm android & wait",
-
+    "dev": "concurrently --raw \"pnpm start\" \"pnpm backend\"",
+    "dev:web": "concurrently --raw \"pnpm web\" \"pnpm backend\"",
+    "dev:ios": "concurrently --raw \"pnpm ios\" \"pnpm backend\"",
+    "dev:android": "concurrently --raw \"pnpm android\" \"pnpm backend\"",
     "ios": "pnpm --filter client ios",
     "android": "pnpm --filter client android",
-
     "build:server": "pnpm --filter server build",
+    "start:server": "pnpm --filter server start",
     "lint": "pnpm --filter client lint",
-
     "db:migrate": "pnpm --filter server db:migrate",
     "db:generate": "pnpm --filter server db:generate",
     "db:push": "pnpm --filter server db:push",
-
     "pods": "cd client/ios && pod install",
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",
-    "xcode": "pnpm prebuild:clean && open client/ios/*.xcworkspace"
+    "xcode": "pnpm prebuild && open client/ios/*.xcworkspace",
+    "build:web": "pnpm --filter client exec expo export --platform web",
+    "ship": "bash deploy/deploy.sh",
+    "setup:server": "bash deploy/setup-server.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
