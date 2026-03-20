@@ -1,4 +1,4 @@
-import { getExplanationInstructions, getCardInstructions } from './languageInstructions.js';
+import { getExplanationInstructions, getCardInstructions, getJudgmentInstructions } from './languageInstructions.js';
 
 function explanationLanguageBlock(language: string): string {
   const extra = getExplanationInstructions(language);
@@ -7,6 +7,11 @@ function explanationLanguageBlock(language: string): string {
 
 function cardLanguageBlock(language: string): string {
   const extra = getCardInstructions(language);
+  return extra ? `\n\nAdditional instructions for ${language}:\n${extra}` : '';
+}
+
+function judgmentLanguageBlock(language: string): string {
+  const extra = getJudgmentInstructions(language);
   return extra ? `\n\nAdditional instructions for ${language}:\n${extra}` : '';
 }
 
@@ -57,7 +62,11 @@ English: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
 Your example sentence: "${targetLanguage}"
 Their answer: "${userAnswer}"
 
-Does their answer demonstrate correct use of the grammar? Minor spelling or punctuation errors are acceptable if the grammar is right. Different but equally valid phrasings are acceptable${sentenceContext ? `, but the hint "${sentenceContext}" must be respected` : ''}.${explanationLanguageBlock(language)}`;
+Carefully compare their answer to your example sentence. Consider:
+- If the answers match or are very close, the answer is correct.
+- Minor spelling or punctuation differences are acceptable if the grammar is right.
+- Different but equally valid phrasings are acceptable.${sentenceContext ? `\n- The hint "${sentenceContext}" must be respected.` : ''}
+- Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.${judgmentLanguageBlock(language)}`;
 
 export const REJECTION_PROMPT = (
   english: string,
@@ -65,15 +74,21 @@ export const REJECTION_PROMPT = (
   userAnswer: string,
   language: string,
 ) => `\
-You are a helpful ${language} language teacher giving corrective feedback directly to the learner.
+You are a helpful ${language} language teacher reviewing a learner's answer.
 Speak in second person — address them as "you"/"your" and refer to your example as "my example sentence".
 
 The learner tried to translate: "${english}"
 Their answer: "${userAnswer}"
 My example sentence: "${targetLanguage}"
 
-Explain clearly and concisely (2–4 sentences) why their answer is incorrect or unnatural,
-and what my example sentence demonstrates about the grammar. Be encouraging but precise.${explanationLanguageBlock(language)}`;
+A simpler model flagged this answer as incorrect, but it may have been wrong.
+First, determine whether the learner's answer is actually correct (valid grammar, natural phrasing,
+and conveys the same meaning). If it is correct, set overrideToCorrect to true and write a short
+encouraging note explaining why their answer is valid. Be encouraging but precise.
+Do NOT make references to the original judgement of the simpler model — this is not displayed to the student.
+If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely (2–4 sentences) why their answer
+is wrong and what my example sentence demonstrates about the grammar.
+${explanationLanguageBlock(language)}`;
 
 export const CARD_CHAT_PROMPT = (
   language: string,

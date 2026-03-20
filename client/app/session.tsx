@@ -205,22 +205,23 @@ function SessionUI({
     try {
       const result = await judgeAnswer(current, trimmed, language, judgeWithExplanation ? explanation : undefined);
       if (result.cost) addCost(result.cost);
+      console.log(`[judge] correct=${result.correct} reason="${result.reason}"`);
 
       if (result.correct) {
         setFeedback(result.reason);
         setCardPhase('correct');
       } else {
         setCardPhase('wrong_explaining');
-        setWrongExplanation('');
-        let firstChunk = true;
-        await explainRejection(
-          current, trimmed, language,
-          (chunk) => {
-            if (firstChunk) { setCardPhase('wrong_shown'); firstChunk = false; }
-            setWrongExplanation(prev => prev + chunk);
-          },
-          addCost,
-        );
+        const rejection = await explainRejection(current, trimmed, language);
+        if (rejection.cost) addCost(rejection.cost);
+        console.log(`[rejection] overrideToCorrect=${rejection.overrideToCorrect}`);
+        if (rejection.overrideToCorrect) {
+          setFeedback(rejection.explanation);
+          setCardPhase('correct');
+        } else {
+          setWrongExplanation(rejection.explanation);
+          setCardPhase('wrong_shown');
+        }
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'API error.');

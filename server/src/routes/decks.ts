@@ -17,6 +17,7 @@ decksRouter.post('/', async (req, res, next) => {
     const nodeId = await createDeckFromPath(req.userId!, path, topic, language, cardCount);
 
     // Trigger background explanation generation
+    console.log(`[AI] ${req.userEmail} | deck-explanation | sonnet`);
     generateDeckExplanation(req.userId!, nodeId).catch(err => {
       console.error(`[deck] Background explanation failed for ${nodeId}:`, err);
     });
@@ -39,6 +40,7 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
     const result = await updateDeck(req.userId!, req.params.nodeId, { name, topic, language, cardCount });
 
     if (result.regenerateExplanation) {
+      console.log(`[AI] ${req.userEmail} | deck-explanation | sonnet`);
       generateDeckExplanation(req.userId!, req.params.nodeId).catch(err => {
         console.error(`[deck] Background explanation failed for ${req.params.nodeId}:`, err);
       });
@@ -51,6 +53,7 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
 decksRouter.post('/:nodeId/generate-explanation', async (req, res, next) => {
   try {
     // Manual re-trigger — streams SSE back to client
+    console.log(`[AI] ${req.userEmail} | deck-explanation-stream | sonnet`);
     const { streamExplanation } = await import('../services/claude.service.js');
     await streamExplanation(req, res, req.userId!, req.params.nodeId);
   } catch (e) { next(e); }

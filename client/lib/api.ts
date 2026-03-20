@@ -202,7 +202,7 @@ async function streamSSE(
   body: object,
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
-): Promise<{ wasTruncated?: boolean }> {
+): Promise<Record<string, unknown>> {
   const headers = await getHeaders();
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
@@ -223,7 +223,7 @@ async function streamSSE(
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let wasTruncated = false;
+  let doneData: Record<string, unknown> = {};
 
   while (true) {
     const { done, value } = await reader.read();
@@ -242,7 +242,7 @@ async function streamSSE(
           onChunk(ev.text);
         } else if (ev.type === 'done') {
           if (ev.cost) onCost?.(ev.cost);
-          if (ev.wasTruncated) wasTruncated = true;
+          doneData = ev;
         } else if (ev.type === 'error') {
           throw new Error(ev.message);
         }
@@ -252,7 +252,7 @@ async function streamSSE(
     }
   }
 
-  return { wasTruncated };
+  return doneData;
 }
 
 export async function generateExplanation(
@@ -262,17 +262,14 @@ export async function generateExplanation(
   onCost?: (usd: number) => void,
 ): Promise<{ wasTruncated: boolean }> {
   const result = await streamSSE('/ai/explanation/stream', { topic, language }, onChunk, onCost);
-  return { wasTruncated: result.wasTruncated ?? false };
+  return { wasTruncated: !!result.wasTruncated };
 }
 
-export async function explainRejection(
-  card: Card,
-  userAnswer: string,
-  language: string,
-  onChunk: (text: string) => void,
-  onCost?: (usd: number) => void,
-): Promise<void> {
-  await streamSSE('/ai/rejection/stream', { card, userAnswer, language }, onChunk, onCost);
+export async function explainRejection(card: Card, userAnswer: string, language: string) {
+  return request<{ explanation: string; overrideToCorrect: boolean; cost: number }>('/ai/rejection', {
+    method: 'POST',
+    body: JSON.stringify({ card, userAnswer, language }),
+  });
 }
 
 export async function chatAboutCard(
