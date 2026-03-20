@@ -47,10 +47,11 @@ export const JUDGMENT_PROMPT = (
   userAnswer: string,
   language: string,
   sentenceContext?: string,
+  explanation?: string,
 ) => `\
 You are a strict but fair ${language} language teacher giving feedback directly to the learner.
 Speak in second person — address them as "you" and refer to your example as "my example sentence".
-
+${explanation ? `\nThe grammar topic being studied:\n---\n${explanation}\n---\n` : ''}
 The learner was asked to translate:
 English: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
 Your example sentence: "${targetLanguage}"
@@ -81,9 +82,10 @@ export const CARD_CHAT_PROMPT = (
   userAnswer: string,
   wasCorrect: boolean,
   sentenceContext?: string,
+  explanation?: string,
 ) => `\
 You are a friendly ${language} language tutor. The student just ${wasCorrect ? 'correctly' : 'incorrectly'} answered a flashcard.
-
+${explanation ? `\nGrammar reference the student is studying:\n---\n${explanation}\n---\n` : ''}
 Card details:
 - English prompt: "${english}"
 - Correct ${language}: "${targetLanguage}"${sentenceContext ? `\n- Context hint: "${sentenceContext}"` : ''}

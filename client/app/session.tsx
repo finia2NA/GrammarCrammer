@@ -12,8 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
-import { judgeAnswer, explainRejection, chatAboutCard } from '@/lib/api';
-import { CARD_CHAT_PROMPT } from '@/constants/prompts';
+import { judgeAnswer, explainRejection, chatAboutCard, getSetting } from '@/lib/api';
 import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
@@ -157,9 +156,17 @@ function SessionUI({
   const [showHint, setShowHint] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatStreaming, setChatStreaming] = useState(false);
+  const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
   const studiedRef = useRef(false);
 
   const inputRef = useRef<TextInput>(null);
+
+  // Fetch judge_with_explanation setting
+  useEffect(() => {
+    getSetting('judge_with_explanation').then(v => {
+      if (v === 'off') setJudgeWithExplanation(false);
+    });
+  }, []);
 
   // Focus input when card phase resets
   useEffect(() => {
@@ -196,7 +203,7 @@ function SessionUI({
     setCardPhase('judging');
 
     try {
-      const result = await judgeAnswer(current, trimmed, language);
+      const result = await judgeAnswer(current, trimmed, language, judgeWithExplanation ? explanation : undefined);
       if (result.cost) addCost(result.cost);
 
       if (result.correct) {
@@ -258,15 +265,6 @@ function SessionUI({
     setChatMessages(prev => [...prev, userMsg, assistantMsg]);
     setChatStreaming(true);
 
-    const systemPrompt = CARD_CHAT_PROMPT(
-      language,
-      currentCard.english,
-      currentCard.targetLanguage,
-      submittedAnswer,
-      cardPhase === 'correct',
-      currentCard.sentenceContext,
-    );
-
     const apiMessages = [...chatMessages, userMsg].map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
@@ -274,7 +272,10 @@ function SessionUI({
 
     try {
       await chatAboutCard(
-        systemPrompt,
+        currentCard,
+        submittedAnswer,
+        language,
+        cardPhase === 'correct',
         apiMessages,
         (chunk) => {
           setChatMessages(prev => {
@@ -285,6 +286,7 @@ function SessionUI({
           });
         },
         addCost,
+        explanation,
       );
     } catch {
       setChatMessages(prev => {

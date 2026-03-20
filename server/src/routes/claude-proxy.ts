@@ -7,6 +7,7 @@ import {
   streamChat,
   streamExplanationGeneric,
 } from '../services/claude.service.js';
+import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const claudeProxyRouter = Router();
@@ -28,11 +29,11 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
 // Non-streaming: judge answer
 claudeProxyRouter.post('/judge', async (req, res, next) => {
   try {
-    const { card, userAnswer, language } = req.body;
+    const { card, userAnswer, language, explanation } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
-    const result = await judgeAnswer(req.userId!, card, userAnswer, language);
+    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation);
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -62,10 +63,14 @@ claudeProxyRouter.post('/rejection/stream', async (req, res, next) => {
 // Streaming: chat
 claudeProxyRouter.post('/chat/stream', async (req, res, next) => {
   try {
-    const { systemPrompt, messages } = req.body;
-    if (!systemPrompt || !messages) {
-      throw new AppError(400, 'MISSING_FIELDS', 'systemPrompt and messages are required.');
+    const { card, userAnswer, language, wasCorrect, messages, explanation } = req.body;
+    if (!card || !userAnswer || !language || wasCorrect === undefined || !messages) {
+      throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, language, wasCorrect, and messages are required.');
     }
+    const systemPrompt = CARD_CHAT_PROMPT(
+      language, card.english, card.targetLanguage,
+      userAnswer, wasCorrect, card.sentenceContext, explanation,
+    );
     await streamChat(req, res, req.userId!, systemPrompt, messages);
   } catch (e) { next(e); }
 });

@@ -112,14 +112,20 @@ function ConfirmButton({
   );
 }
 
+type OnOff = 'on' | 'off';
+
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const router = useRouter();
   const [cardOrder, setCardOrder] = useState<CardOrder>('shuffled');
+  const [judgeWithExplanation, setJudgeWithExplanation] = useState<OnOff>('on');
 
   useEffect(() => {
     if (visible) {
       getSetting('card_order').then(v => {
         if (v === 'sequential' || v === 'shuffled') setCardOrder(v);
+      });
+      getSetting('judge_with_explanation').then(v => {
+        if (v === 'on' || v === 'off') setJudgeWithExplanation(v);
       });
     }
   }, [visible]);
@@ -127,6 +133,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeOrder(next: CardOrder) {
     setCardOrder(next);
     setSetting('card_order', next);
+  }
+
+  function handleChangeJudgeExplanation(next: OnOff) {
+    setJudgeWithExplanation(next);
+    setSetting('judge_with_explanation', next);
   }
 
   async function handleLogout() {
@@ -160,6 +171,19 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           options={['shuffled', 'sequential'] as const}
           onChange={handleChangeOrder}
           formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential'}
+        />
+      </SettingsRow>
+
+      {/* Judge with explanation */}
+      <SettingsRow
+        label="Context-Aware Judging"
+        description="Pass the grammar explanation to the judging AI for more topic-relevant feedback"
+      >
+        <PillDropdown
+          value={judgeWithExplanation}
+          options={['on', 'off'] as const}
+          onChange={handleChangeJudgeExplanation}
+          formatLabel={(v: OnOff) => v === 'on' ? 'On' : 'Off'}
         />
       </SettingsRow>
 

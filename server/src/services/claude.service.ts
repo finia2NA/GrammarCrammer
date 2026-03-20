@@ -265,12 +265,12 @@ export async function generateCards(userId: string, topic: string, language: str
   return { cards, cost };
 }
 
-export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string) {
+export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string) {
   const apiKey = await getUserApiKey(userId);
 
   const { result, cost } = await callTool<{ correct: boolean; reason: string }>(
     apiKey, HAIKU,
-    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext),
+    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation),
     'Judge the answer.',
     'submit_judgment',
     'Submit whether the student answer is correct and a one-sentence reason.',
