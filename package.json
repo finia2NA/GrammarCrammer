@@ -5,6 +5,8 @@
     "backend": "pnpm --filter server dev",
     "web": "pnpm --filter client web",
     "start": "pnpm --filter client start",
+    "fresh": "pnpm --filter client exec expo start --clear",
+    "nuke": "lsof -ti :8081 -ti :3001 | xargs kill -9 2>/dev/null; echo 'Killed all processes on ports 8081 and 3001'",
     "dev": "concurrently --raw \"pnpm start\" \"pnpm backend\"",
     "dev:web": "concurrently --raw \"pnpm web\" \"pnpm backend\"",
     "dev:ios": "concurrently --raw \"pnpm ios\" \"pnpm backend\"",
