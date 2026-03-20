@@ -177,7 +177,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       {/* Judge with explanation */}
       <SettingsRow
         label="Context-Aware Judging"
-        description="Pass the grammar explanation to the judging AI for more topic-relevant feedback"
+        description="Pass the grammar explanation to the judging AI for more topic-relevant feedback. Uses API limits faster."
       >
         <PillDropdown
           value={judgeWithExplanation}
