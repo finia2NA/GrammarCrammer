@@ -13,10 +13,8 @@ This is the problem GrammarCrammer is trying to solve.
 ## How it works
 
 1. **Enter a topic** — anything from "Japanese conditional forms" to "Spanish subjunctive".
-2. **Choose your mode**:
-   - **習得 (learn)** — read the full grammar explanation first, then practise.
-   - **練習 (practise)** — skip straight to the cards; the explanation stays available as a side reference.
-3. **Translate sentences** — each card gives you an English sentence; you type the target-language version.
+2. **Study your tailor-made explanation**: - The application generates a custom explanation of your chosen topic, covering the topic in detail, including conjugation tables and many examples.
+3. **Test your knowledge** — Apply what you learned by correctly using what you learned. Each card gives you an English sentence; you type the target-language version.
 4. **Get instant feedback** — Claude judges your answer. Correct answers are confirmed with a brief note. Wrong answers get a detailed Markdown explanation of what went wrong and what the correct form demonstrates. Wrong cards cycle back to the end of the stack.
 5. **Finish the stack** — the session ends when every card has been answered correctly.
 
