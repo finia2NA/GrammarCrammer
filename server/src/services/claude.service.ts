@@ -2,6 +2,9 @@ import type { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { decrypt } from './crypto.service.js';
 import { setExplanation, setExplanationError, setExplanationGenerating } from './deck.service.js';
+import { getSetting } from './settings.service.js';
+import { recordUsage, canUseCentralKey } from './usage.service.js';
+import { config, isCentralKeyAvailable } from '../config.js';
 import { sseHeaders, sendChunk, sendDone, sendError } from '../lib/sse.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
@@ -39,6 +42,43 @@ async function getUserApiKey(userId: string): Promise<string> {
     throw new AppError(400, 'NO_API_KEY', 'No Claude API key configured. Please add one in settings.');
   }
   return decrypt(user.claudeApiKey);
+}
+
+// ─── Resolve which API key to use ────────────────────────────────────────────
+
+async function resolveApiKey(userId: string): Promise<{ apiKey: string; source: 'central' | 'own' }> {
+  const preference = await getSetting(userId, 'api_key_preference');
+  const centralAvailable = isCentralKeyAvailable();
+  const effectivePref = preference ?? (centralAvailable ? 'central' : 'own');
+
+  if (effectivePref === 'central' && centralAvailable) {
+    const check = await canUseCentralKey(userId);
+    if (check.allowed) {
+      return { apiKey: config.centralApiKey!, source: 'central' };
+    }
+    throw new AppError(429, 'USAGE_LIMIT', check.reason ?? 'Usage limit reached. Please provide your own API key in settings to continue using AI features.');
+  }
+
+  // Preference is 'own' or central not available
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { claudeApiKey: true },
+  });
+
+  if (user?.claudeApiKey) {
+    return { apiKey: decrypt(user.claudeApiKey), source: 'own' };
+  }
+
+  // No own key — try central as last resort
+  if (centralAvailable) {
+    const check = await canUseCentralKey(userId);
+    if (check.allowed) {
+      return { apiKey: config.centralApiKey!, source: 'central' };
+    }
+    throw new AppError(429, 'USAGE_LIMIT', check.reason ?? 'Usage limit reached.');
+  }
+
+  throw new AppError(400, 'NO_API_KEY', 'No API key available. Please add one in settings.');
 }
 
 function headers(apiKey: string) {
@@ -160,7 +200,7 @@ export function generateDeckExplanation(userId: string, deckId: string): Promise
 }
 
 async function runExplanation(userId: string, deckId: string): Promise<void> {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
 
   const deck = await prisma.deck.findUnique({ where: { nodeId: deckId } });
   if (!deck) throw new Error(`Deck ${deckId} not found`);
@@ -169,13 +209,14 @@ async function runExplanation(userId: string, deckId: string): Promise<void> {
 
   let fullText = '';
   try {
-    await callTextStream(
+    const { cost } = await callTextStream(
       apiKey, SONNET,
       EXPLANATION_PROMPT(deck.topic, deck.language),
       [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
       4096,
       (chunk) => { fullText += chunk; },
     );
+    await recordUsage(userId, source, 'explanation', SONNET, cost);
     await setExplanation(deckId, fullText);
   } catch (e) {
     await setExplanationError(deckId);
@@ -186,7 +227,7 @@ async function runExplanation(userId: string, deckId: string): Promise<void> {
 // ─── Streaming SSE endpoint for explanation ──────────────────────────────────
 
 export async function streamExplanation(req: Request, res: Response, userId: string, deckId: string) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
   const deck = await prisma.deck.findUnique({ where: { nodeId: deckId } });
   if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
@@ -210,6 +251,7 @@ export async function streamExplanation(req: Request, res: Response, userId: str
       },
       controller.signal,
     );
+    await recordUsage(userId, source, 'explanation', SONNET, cost);
     await setExplanation(deckId, fullText);
     sendDone(res, { cost, wasTruncated });
   } catch (e) {
@@ -223,7 +265,7 @@ export async function streamExplanation(req: Request, res: Response, userId: str
 // ─── Public AI endpoints ─────────────────────────────────────────────────────
 
 export async function generateCards(userId: string, topic: string, language: string, count: number, explanation: string) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
 
   const { result, cost } = await callTool<{ cards: Omit<Card, 'id'>[] }>(
     apiKey, HAIKU,
@@ -255,6 +297,8 @@ export async function generateCards(userId: string, topic: string, language: str
     2000,
   );
 
+  await recordUsage(userId, source, 'cards', HAIKU, cost);
+
   const cards: Card[] = result.cards.map((c, i) => ({ ...c, id: String(i) }));
   // Fisher-Yates shuffle
   for (let i = cards.length - 1; i > 0; i--) {
@@ -266,7 +310,7 @@ export async function generateCards(userId: string, topic: string, language: str
 }
 
 export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
 
   const { result, cost } = await callTool<{ correct: boolean; reason: string }>(
     apiKey, HAIKU,
@@ -285,6 +329,7 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
     120,
   );
 
+  await recordUsage(userId, source, 'judge', HAIKU, cost);
   return { ...result, cost };
 }
 
@@ -292,7 +337,7 @@ export async function streamRejection(
   req: Request, res: Response,
   userId: string, card: Card, userAnswer: string, language: string,
 ) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
   req.on('close', () => controller.abort());
 
@@ -307,6 +352,7 @@ export async function streamRejection(
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
     );
+    await recordUsage(userId, source, 'rejection', SONNET, cost);
     sendDone(res, { cost });
   } catch (e) {
     if (!controller.signal.aborted) {
@@ -321,7 +367,7 @@ export async function streamChat(
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
 ) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
   req.on('close', () => controller.abort());
 
@@ -333,6 +379,7 @@ export async function streamChat(
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
     );
+    await recordUsage(userId, source, 'chat', SONNET, cost);
     sendDone(res, { cost });
   } catch (e) {
     if (!controller.signal.aborted) {
@@ -345,7 +392,7 @@ export async function streamExplanationGeneric(
   req: Request, res: Response,
   userId: string, topic: string, language: string,
 ) {
-  const apiKey = await getUserApiKey(userId);
+  const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
   req.on('close', () => controller.abort());
 
@@ -360,6 +407,7 @@ export async function streamExplanationGeneric(
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
     );
+    await recordUsage(userId, source, 'explanation', SONNET, cost);
     sendDone(res, { cost, wasTruncated });
   } catch (e) {
     if (!controller.signal.aborted) {

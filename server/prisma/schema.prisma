@@ -17,8 +17,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  nodes    Node[]
-  settings Setting[]
+  nodes          Node[]
+  settings       Setting[]
+  usageLedger    UsageLedger[]
+  usageSummaries MonthlyUsageSummary[]
 }
 
 model Node {
@@ -59,4 +61,32 @@ model Setting {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, key])
+}
+
+model UsageLedger {
+  id        String   @id @default(uuid())
+  userId    String
+  yearMonth String
+  source    String   // "central" | "own"
+  endpoint  String   // "cards" | "judge" | "explanation" | "rejection" | "chat"
+  model     String
+  cost      Float
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, yearMonth, source])
+  @@index([yearMonth, source])
+}
+
+model MonthlyUsageSummary {
+  userId    String
+  yearMonth String
+  source    String // "central" | "own"
+  totalCost Float  @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, yearMonth, source])
+  @@index([yearMonth, source])
 }

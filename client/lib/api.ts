@@ -26,6 +26,13 @@ async function getHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+export class ApiError extends Error {
+  constructor(message: string, public statusCode: number, public code?: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = await getHeaders();
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -37,10 +44,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (res.status === 401) {
       await clearAuthToken();
       router.replace('/onboarding');
-      throw new Error('Session expired');
+      throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
     }
     const body = await res.json().catch(() => ({})) as any;
-    throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+    const message = body?.error?.message ?? `HTTP ${res.status}`;
+    const code = body?.error?.code;
+    throw new ApiError(message, res.status, code);
   }
 
   return res.json() as Promise<T>;
@@ -77,7 +86,7 @@ export async function loginWithGoogle(idToken: string) {
 }
 
 export async function getMe() {
-  return request<{ id: string; email: string | null; hasApiKey: boolean; authMethods: string[] }>('/auth/me');
+  return request<{ id: string; email: string | null; hasApiKey: boolean; centralKeyAvailable: boolean; authMethods: string[] }>('/auth/me');
 }
 
 export async function validateApiKey(apiKey: string) {
@@ -179,6 +188,20 @@ export async function setSetting(key: string, value: string) {
   });
 }
 
+export interface UsageStatus {
+  centralKeyAvailable: boolean;
+  preference: 'central' | 'own';
+  hasOwnKey: boolean;
+  userLimit: number;
+  globalLimit: number;
+  globalLimitReached: boolean;
+  usage: { central: number; own: number };
+}
+
+export async function getUsageStatus() {
+  return request<UsageStatus>('/settings/usage-status');
+}
+
 // ─── AI (non-streaming) ──────────────────────────────────────────────────────
 
 export async function generateCards(topic: string, language: string, count: number, explanation: string) {
@@ -214,10 +237,12 @@ async function streamSSE(
     if (res.status === 401) {
       await clearAuthToken();
       router.replace('/onboarding');
-      throw new Error('Session expired');
+      throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
     }
     const err = await res.json().catch(() => ({})) as any;
-    throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
+    const message = err?.error?.message ?? `HTTP ${res.status}`;
+    const code = err?.error?.code;
+    throw new ApiError(message, res.status, code);
   }
 
   const reader = res.body!.getReader();
