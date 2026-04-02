@@ -12,7 +12,6 @@ import {
   CARD_GEN_PROMPT,
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
-  CARD_CHAT_PROMPT,
 } from '../constants/prompts.js';
 import type { Card } from '../types/index.js';
 
@@ -29,19 +28,6 @@ const PRICE: Record<string, { input: number; output: number }> = {
 function calcCost(model: string, inputTokens: number, outputTokens: number): number {
   const p = PRICE[model] ?? { input: 3.00, output: 15.00 };
   return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
-}
-
-// ─── Get user's API key ──────────────────────────────────────────────────────
-
-async function getUserApiKey(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { claudeApiKey: true },
-  });
-  if (!user?.claudeApiKey) {
-    throw new AppError(400, 'NO_API_KEY', 'No Claude API key configured. Please add one in settings.');
-  }
-  return decrypt(user.claudeApiKey);
 }
 
 // ─── Resolve which API key to use ────────────────────────────────────────────
@@ -309,22 +295,22 @@ export async function generateCards(userId: string, topic: string, language: str
   return { cards, cost };
 }
 
-export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string) {
+export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string) {
   const { apiKey, source } = await resolveApiKey(userId);
 
-  const { result, cost } = await callTool<{ correct: boolean; reason: string }>(
+  const { result, cost } = await callTool<{ reason: string; correct: boolean }>(
     apiKey, HAIKU,
-    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext),
+    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation),
     'Judge the answer.',
     'submit_judgment',
-    'Submit whether the student answer is correct and a one-sentence reason.',
+    'First explain your reasoning in one sentence, then submit whether the student answer is correct.',
     {
       type: 'object',
       properties: {
-        correct: { type: 'boolean' },
-        reason: { type: 'string' },
+        reason: { type: 'string', description: 'One-sentence explanation of why the answer is correct or incorrect.' },
+        correct: { type: 'boolean', description: 'Whether the answer is correct.' },
       },
-      required: ['correct', 'reason'],
+      required: ['reason', 'correct'],
     },
     120,
   );
@@ -333,32 +319,30 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
   return { ...result, cost };
 }
 
-export async function streamRejection(
-  req: Request, res: Response,
+export async function reviewRejection(
   userId: string, card: Card, userAnswer: string, language: string,
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
-  const controller = new AbortController();
-  req.on('close', () => controller.abort());
 
-  sseHeaders(res);
+  const { result, cost } = await callTool<{ explanation: string; overrideToCorrect: boolean }>(
+    apiKey, SONNET,
+    REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
+    'Review the learner\'s answer.',
+    'submit_review',
+    'Submit the review of the learner\'s answer, including whether to override the rejection.',
+    {
+      type: 'object',
+      properties: {
+        explanation: { type: 'string', description: 'Feedback for the learner (2–4 sentences).' },
+        overrideToCorrect: { type: 'boolean', description: 'True if the answer was actually correct and the rejection was a mistake.' },
+      },
+      required: ['explanation', 'overrideToCorrect'],
+    },
+    400,
+  );
 
-  try {
-    const { cost } = await callTextStream(
-      apiKey, SONNET,
-      REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
-      [{ role: 'user', content: 'Please explain why my answer was wrong.' }],
-      400,
-      (chunk) => sendChunk(res, { type: 'text', text: chunk }),
-      controller.signal,
-    );
-    await recordUsage(userId, source, 'rejection', SONNET, cost);
-    sendDone(res, { cost });
-  } catch (e) {
-    if (!controller.signal.aborted) {
-      sendError(res, e instanceof Error ? e.message : 'Unknown error');
-    }
-  }
+  await recordUsage(userId, source, 'rejection', SONNET, cost);
+  return { ...result, cost };
 }
 
 export async function streamChat(

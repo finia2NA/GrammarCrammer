@@ -3,15 +3,20 @@ import { requireAuth } from '../middleware/auth.js';
 import {
   generateCards,
   judgeAnswer,
-  streamRejection,
+  reviewRejection,
   streamChat,
   streamExplanationGeneric,
 } from '../services/claude.service.js';
+import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const claudeProxyRouter = Router();
 
 claudeProxyRouter.use(requireAuth);
+
+function logAI(email: string, type: string, model: string) {
+  console.log(`[AI] ${email} | ${type} | ${model}`);
+}
 
 // Non-streaming: generate cards
 claudeProxyRouter.post('/cards', async (req, res, next) => {
@@ -20,6 +25,7 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
     if (!topic || !language || !count || !explanation) {
       throw new AppError(400, 'MISSING_FIELDS', 'topic, language, count, and explanation are required.');
     }
+    logAI(req.userEmail!, 'cards', 'haiku');
     const result = await generateCards(req.userId!, topic, language, count, explanation);
     res.json(result);
   } catch (e) { next(e); }
@@ -28,11 +34,12 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
 // Non-streaming: judge answer
 claudeProxyRouter.post('/judge', async (req, res, next) => {
   try {
-    const { card, userAnswer, language } = req.body;
+    const { card, userAnswer, language, explanation } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
-    const result = await judgeAnswer(req.userId!, card, userAnswer, language);
+    logAI(req.userEmail!, 'judge', 'haiku');
+    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation);
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -44,28 +51,36 @@ claudeProxyRouter.post('/explanation/stream', async (req, res, next) => {
     if (!topic || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'topic and language are required.');
     }
+    logAI(req.userEmail!, 'explanation', 'sonnet');
     await streamExplanationGeneric(req, res, req.userId!, topic, language);
   } catch (e) { next(e); }
 });
 
-// Streaming: rejection explanation
-claudeProxyRouter.post('/rejection/stream', async (req, res, next) => {
+// Non-streaming: rejection review
+claudeProxyRouter.post('/rejection', async (req, res, next) => {
   try {
     const { card, userAnswer, language } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
-    await streamRejection(req, res, req.userId!, card, userAnswer, language);
+    logAI(req.userEmail!, 'rejection', 'sonnet');
+    const result = await reviewRejection(req.userId!, card, userAnswer, language);
+    res.json(result);
   } catch (e) { next(e); }
 });
 
 // Streaming: chat
 claudeProxyRouter.post('/chat/stream', async (req, res, next) => {
   try {
-    const { systemPrompt, messages } = req.body;
-    if (!systemPrompt || !messages) {
-      throw new AppError(400, 'MISSING_FIELDS', 'systemPrompt and messages are required.');
+    const { card, userAnswer, language, wasCorrect, messages, explanation } = req.body;
+    if (!card || !userAnswer || !language || wasCorrect === undefined || !messages) {
+      throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, language, wasCorrect, and messages are required.');
     }
+    logAI(req.userEmail!, 'chat', 'sonnet');
+    const systemPrompt = CARD_CHAT_PROMPT(
+      language, card.english, card.targetLanguage,
+      userAnswer, wasCorrect, card.sentenceContext, explanation,
+    );
     await streamChat(req, res, req.userId!, systemPrompt, messages);
   } catch (e) { next(e); }
 });

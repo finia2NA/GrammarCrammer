@@ -205,6 +205,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const router = useRouter();
   const colors = useColors();
   const [cardOrder, setCardOrder] = useState<CardOrder>('shuffled');
+  const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
 
@@ -212,6 +213,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     if (visible) {
       getSetting('card_order').then(v => {
         if (v === 'sequential' || v === 'shuffled') setCardOrder(v);
+      });
+      getSetting('judge_with_explanation').then(v => {
+        if (v === 'on' || v === 'off') setJudgeWithExplanation(v);
       });
       getUsageStatus().then(setUsageStatus).catch(() => {});
       setShowAddKey(false);
@@ -221,6 +225,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeOrder(next: CardOrder) {
     setCardOrder(next);
     setSetting('card_order', next);
+  }
+
+  function handleChangeJudgeExplanation(next: 'on' | 'off') {
+    setJudgeWithExplanation(next);
+    setSetting('judge_with_explanation', next);
   }
 
   function handleChangePreference(next: KeyPreference) {
@@ -272,6 +281,19 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           options={['shuffled', 'sequential'] as const}
           onChange={handleChangeOrder}
           formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential'}
+        />
+      </SettingsRow>
+
+      {/* Context-Aware Judging */}
+      <SettingsRow
+        label="Context-Aware Judging"
+        description="Pass the grammar explanation to the judging AI for more topic-relevant feedback. Uses API limits faster."
+      >
+        <PillDropdown
+          value={judgeWithExplanation}
+          options={['on', 'off'] as const}
+          onChange={handleChangeJudgeExplanation}
+          formatLabel={(v: 'on' | 'off') => v === 'on' ? 'On' : 'Off'}
         />
       </SettingsRow>
 
