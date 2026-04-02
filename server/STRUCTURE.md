@@ -28,7 +28,8 @@ server/
 │   │   ├── tree.service.ts         ← Tree queries (full tree, path, descendants)
 │   │   ├── settings.service.ts     ← Generic user settings persistence
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
-│   │   └── claude.service.ts       ← Anthropic API calls, SSE streaming, background explanation gen
+│   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
+│   │   └── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
 │   │
 │   ├── lib/
 │   │   ├── prisma.ts               ← Singleton Prisma client export
@@ -100,6 +101,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | PUT    | `/api-key`         | Store Claude API key (encrypted)         |
 | DELETE | `/api-key`         | Remove Claude API key                    |
 | GET    | `/api-key/status`  | Check whether a key is currently stored  |
+| GET    | `/usage-status`    | Central key availability, user's monthly usage, limits |
 
 ### `/api/ai`
 
@@ -125,7 +127,16 @@ Owns all Anthropic API communication.
 - Two models:
   - **Sonnet 4.6** — explanations, rejection feedback, chat (streamed SSE)
   - **Haiku 4.5** — card generation, answer judgment (non-streamed JSON)
+- `resolveApiKey(userId)` — determines which API key to use (user's own or central server key) based on user preference and limit checks. Throws 429 if central key limits are exceeded.
+- Every public AI function records usage via `recordUsage()` after the call completes.
 - `generateExplanationBackground(nodeId)` — fire-and-forget: generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`).
+
+### `usage.service.ts`
+Manages cost tracking and spending limits for the central API key.
+- `recordUsage()` — atomically inserts a ledger row and updates the monthly summary in a transaction.
+- `getUserMonthlyUsage()` — O(1) read from the summary table.
+- `getGlobalCentralUsage()` — aggregates across all users for the current month.
+- `canUseCentralKey()` — checks per-user and global limits.
 
 ### `crypto.service.ts`
 Encrypts and decrypts Claude API keys using AES-256-GCM with a per-user deterministic IV derived from `userId`. Keys are never stored in plaintext.
@@ -148,6 +159,8 @@ User
   claudeApiKey  encrypted string (optional)
   nodes[]       → Node
   settings[]    → Setting
+  usageLedger[] → UsageLedger
+  usageSummaries[] → MonthlyUsageSummary
 
 Node  (tree structure, one per collection or deck)
   id            UUID PK
@@ -170,15 +183,32 @@ Deck  (leaf data, attached 1-to-1 to a Node)
 Setting  (arbitrary key-value per user)
   userId + key  composite PK
   value
+
+UsageLedger  (append-only audit trail)
+  id            UUID PK
+  userId        FK → User
+  yearMonth     "2026-04"
+  source        "central" | "own"
+  endpoint      "cards" | "judge" | "explanation" | "rejection" | "chat"
+  model         model ID string
+  cost          Float (dollars, high precision)
+  createdAt
+
+MonthlyUsageSummary  (denormalized running totals for fast limit checks)
+  userId + yearMonth + source  composite PK
+  totalCost     Float
 ```
 
 ## Environment variables
 
-| Variable          | Required | Description                                      |
-| ----------------- | -------- | ------------------------------------------------ |
-| `JWT_SECRET`      | Yes      | Secret for signing/verifying JWTs                |
-| `ENCRYPTION_KEY`  | Yes      | 32-byte hex key for AES-256-GCM API key storage  |
-| `APPLE_CLIENT_ID` | No       | Apple Sign In client ID                          |
-| `GOOGLE_CLIENT_ID`| No       | Google OAuth2 client ID                          |
+| Variable                          | Required | Description                                      |
+| --------------------------------- | -------- | ------------------------------------------------ |
+| `JWT_SECRET`                      | Yes      | Secret for signing/verifying JWTs                |
+| `ENCRYPTION_KEY`                  | Yes      | 32-byte hex key for AES-256-GCM API key storage  |
+| `APPLE_CLIENT_ID`                 | No       | Apple Sign In client ID                          |
+| `GOOGLE_CLIENT_ID`                | No       | Google OAuth2 client ID                          |
+| `CENTRAL_API_KEY`                 | No       | Shared Anthropic API key for all users           |
+| `CENTRAL_KEY_USER_MONTHLY_LIMIT`  | No       | Per-user monthly spend limit in USD (default 0)  |
+| `CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT`| No       | Global monthly spend limit in USD (default 0)    |
 
 `DATABASE_URL` goes in the server root `.env` (e.g. `file:./dev.db` for SQLite locally, absolute path in production).

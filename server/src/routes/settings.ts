@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { getSetting, setSetting } from '../services/settings.service.js';
+import { getUserMonthlyUsage, getGlobalCentralUsage } from '../services/usage.service.js';
+import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
 import { encrypt, decrypt } from '../services/crypto.service.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -62,6 +64,30 @@ settingsRouter.get('/api-key/status', async (req, res, next) => {
       select: { claudeApiKey: true },
     });
     res.json({ hasKey: !!user?.claudeApiKey });
+  } catch (e) { next(e); }
+});
+
+// Usage status
+settingsRouter.get('/usage-status', async (req, res, next) => {
+  try {
+    const centralAvailable = isCentralKeyAvailable();
+    const preference = await getSetting(req.userId!, 'api_key_preference');
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId! },
+      select: { claudeApiKey: true },
+    });
+    const usage = await getUserMonthlyUsage(req.userId!);
+    const globalUsage = centralAvailable ? await getGlobalCentralUsage() : 0;
+
+    res.json({
+      centralKeyAvailable: centralAvailable,
+      preference: preference ?? (centralAvailable ? 'central' : 'own'),
+      hasOwnKey: !!user?.claudeApiKey,
+      userLimit: config.centralKeyUserMonthlyLimit,
+      globalLimit: config.centralKeyGlobalMonthlyLimit,
+      globalLimitReached: config.centralKeyGlobalMonthlyLimit > 0 && globalUsage >= config.centralKeyGlobalMonthlyLimit,
+      usage,
+    });
   } catch (e) { next(e); }
 });
 

@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setAuthToken } from '@/lib/storage';
-import { register, login, setApiKey, validateApiKey, getApiKeyStatus } from '@/lib/api';
+import { register, login, setApiKey, validateApiKey, getMe } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 
@@ -260,9 +260,11 @@ interface ApiKeyCardProps {
   onApiKeyChange: (v: string) => void;
   error: string | null;
   loading: boolean;
+  canSkip?: boolean;
+  onSkip?: () => void;
 }
 
-function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps) {
+function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }: ApiKeyCardProps) {
   const colors = useColors();
   return (
     <>
@@ -294,6 +296,13 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading }: ApiKeyCardProps)
         Get a key at console.anthropic.com. Usage costs apply based on your
         Anthropic account.
       </Text>
+      {canSkip && (
+        <TouchableOpacity onPress={onSkip} className="mt-4">
+          <Text className="text-primary text-sm">
+            Skip — use the server's key instead
+          </Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 }
@@ -386,22 +395,23 @@ export default function Onboarding() {
     }
   }
 
-  // After account success, check if user already has an API key (login case)
+  // After account success, check if user already has an API key or central key
   // and either go home or show the API key form in-place.
+  const [centralKeyAvailable, setCentralKeyAvailable] = useState(false);
+
   async function handlePostAccountNext() {
-    if (isLogin) {
-      setLoading(true);
-      try {
-        const { hasKey } = await getApiKeyStatus();
-        if (hasKey) {
-          router.replace('/home');
-          return;
-        }
-      } catch {
-        // If check fails, just show the API key form
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    try {
+      const me = await getMe();
+      setCentralKeyAvailable(me.centralKeyAvailable);
+      if (me.hasApiKey || me.centralKeyAvailable) {
+        router.replace('/home');
+        return;
       }
+    } catch {
+      // If check fails, just show the API key form
+    } finally {
+      setLoading(false);
     }
     setError(null);
     setShowApiKeyForm(true);
@@ -469,7 +479,7 @@ export default function Onboarding() {
                   <HowItWorksCard />,
                   <AlphaWarningCard />,
                   showApiKeyForm
-                    ? <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} />
+                    ? <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
                     : <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>

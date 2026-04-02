@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { config } from '../config.js';
+import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -90,6 +90,7 @@ export async function getMe(userId: string) {
     id: user.id,
     email: user.email,
     hasApiKey: !!user.claudeApiKey,
+    centralKeyAvailable: isCentralKeyAvailable(),
     authMethods,
   };
 }
