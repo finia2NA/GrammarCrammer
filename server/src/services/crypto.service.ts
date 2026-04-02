@@ -3,7 +3,6 @@ import { config } from '../config.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
-const TAG_LENGTH = 16;
 
 function getKey(): Buffer {
   return Buffer.from(config.encryptionKey, 'hex');

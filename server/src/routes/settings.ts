@@ -4,7 +4,7 @@ import { getSetting, setSetting } from '../services/settings.service.js';
 import { getUserMonthlyUsage, getGlobalCentralUsage } from '../services/usage.service.js';
 import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
-import { encrypt, decrypt } from '../services/crypto.service.js';
+import { encrypt } from '../services/crypto.service.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const settingsRouter = Router();

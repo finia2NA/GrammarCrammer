@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { config, isCentralKeyAvailable } from '../config.js';
+import { config } from '../config.js';
 
 export function currentYearMonth(): string {
   const now = new Date();
