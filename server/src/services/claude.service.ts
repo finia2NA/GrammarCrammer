@@ -320,13 +320,13 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
 }
 
 export async function reviewRejection(
-  userId: string, card: Card, userAnswer: string, language: string,
+  userId: string, card: Card, userAnswer: string, language: string, explanation?: string,
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
 
   const { result, cost } = await callTool<{ explanation: string; overrideToCorrect: boolean }>(
     apiKey, SONNET,
-    REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language),
+    REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language, explanation),
     'Review the learner\'s answer.',
     'submit_review',
     'Submit the review of the learner\'s answer, including whether to override the rejection.',

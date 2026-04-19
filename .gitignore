@@ -50,3 +50,4 @@ server/prisma/*.db-journal
 .claude/
 .vscode/
 learnings/
+.codesight/

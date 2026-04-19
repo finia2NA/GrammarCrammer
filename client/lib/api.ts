@@ -290,10 +290,10 @@ export async function generateExplanation(
   return { wasTruncated: result.wasTruncated ?? false };
 }
 
-export async function explainRejection(card: Card, userAnswer: string, language: string) {
+export async function explainRejection(card: Card, userAnswer: string, language: string, explanation?: string) {
   return request<{ explanation: string; overrideToCorrect: boolean; cost: number }>('/ai/rejection', {
     method: 'POST',
-    body: JSON.stringify({ card, userAnswer, language }),
+    body: JSON.stringify({ card, userAnswer, language, explanation }),
   });
 }
 

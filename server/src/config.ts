@@ -15,7 +15,7 @@ export const config = {
   encryptionKey: required('ENCRYPTION_KEY'),
   appleClientId: process.env.APPLE_CLIENT_ID ?? '',
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
-  centralApiKey: process.env.CENTRAL_API_KEY ?? null,
+  centralApiKey: process.env.CENTRAL_API_KEY || null,
   centralKeyUserMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_USER_MONTHLY_LIMIT ?? '0'),
   centralKeyGlobalMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT ?? '0'),
 } as const;

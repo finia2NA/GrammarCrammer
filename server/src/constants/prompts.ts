@@ -68,15 +68,18 @@ Carefully compare their answer to your example sentence. Consider:
 - Different but equally valid phrasings are acceptable.${sentenceContext ? `\n- The hint "${sentenceContext}" must be respected.` : ''}
 - Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.${judgmentLanguageBlock(language)}`;
 
+// TODO: the full explanation can be large — consider generating a short summary of the
+// grammar points and passing that instead, to reduce token usage.
 export const REJECTION_PROMPT = (
   english: string,
   targetLanguage: string,
   userAnswer: string,
   language: string,
+  explanation?: string,
 ) => `\
 You are a helpful ${language} language teacher reviewing a learner's answer.
 Speak in second person — address them as "you"/"your" and refer to your example as "my example sentence".
-
+${explanation ? `\nThe grammar topic being studied:\n---\n${explanation}\n---\n` : ''}
 The learner tried to translate: "${english}"
 Their answer: "${userAnswer}"
 My example sentence: "${targetLanguage}"

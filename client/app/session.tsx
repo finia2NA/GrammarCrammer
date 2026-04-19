@@ -212,7 +212,7 @@ function SessionUI({
         setCardPhase('correct');
       } else {
         setCardPhase('wrong_explaining');
-        const rejection = await explainRejection(current, trimmed, language);
+        const rejection = await explainRejection(current, trimmed, language, explanation);
         if (rejection.cost) addCost(rejection.cost);
         console.log(`[rejection] overrideToCorrect=${rejection.overrideToCorrect}`);
         if (rejection.overrideToCorrect) {

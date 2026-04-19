@@ -59,12 +59,12 @@ claudeProxyRouter.post('/explanation/stream', async (req, res, next) => {
 // Non-streaming: rejection review
 claudeProxyRouter.post('/rejection', async (req, res, next) => {
   try {
-    const { card, userAnswer, language } = req.body;
+    const { card, userAnswer, language, explanation } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
     logAI(req.userEmail!, 'rejection', 'sonnet');
-    const result = await reviewRejection(req.userId!, card, userAnswer, language);
+    const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation);
     res.json(result);
   } catch (e) { next(e); }
 });
