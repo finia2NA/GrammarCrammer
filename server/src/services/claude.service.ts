@@ -174,18 +174,18 @@ async function callTool<T>(
 
 // ─── Background explanation generation ───────────────────────────────────────
 
-const inFlight = new Map<string, Promise<void>>();
+const activeVersion = new Map<string, number>();
 
 export function generateDeckExplanation(userId: string, deckId: string): Promise<void> {
-  const existing = inFlight.get(deckId);
-  if (existing) return existing;
-
-  const promise = runExplanation(userId, deckId).finally(() => inFlight.delete(deckId));
-  inFlight.set(deckId, promise);
-  return promise;
+  const version = (activeVersion.get(deckId) ?? 0) + 1;
+  activeVersion.set(deckId, version);
+  return runExplanation(userId, deckId, version)
+    .finally(() => {
+      if (activeVersion.get(deckId) === version) activeVersion.delete(deckId);
+    });
 }
 
-async function runExplanation(userId: string, deckId: string): Promise<void> {
+async function runExplanation(userId: string, deckId: string, version: number): Promise<void> {
   const { apiKey, source } = await resolveApiKey(userId);
 
   const deck = await prisma.deck.findUnique({ where: { nodeId: deckId } });
@@ -203,9 +203,13 @@ async function runExplanation(userId: string, deckId: string): Promise<void> {
       (chunk) => { fullText += chunk; },
     );
     await recordUsage(userId, source, 'explanation', SONNET, cost);
-    await setExplanation(deckId, fullText);
+    if (activeVersion.get(deckId) === version) {
+      await setExplanation(deckId, fullText);
+    }
   } catch (e) {
-    await setExplanationError(deckId);
+    if (activeVersion.get(deckId) === version) {
+      await setExplanationError(deckId);
+    }
     throw e;
   }
 }

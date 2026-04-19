@@ -161,6 +161,14 @@ function SessionUI({
 
   const inputRef = useRef<TextInput>(null);
 
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/home');
+  }
+
   // Fetch judge_with_explanation setting
   useEffect(() => {
     getSetting('judge_with_explanation').then(v => {
@@ -309,7 +317,7 @@ function SessionUI({
     return (
       <View className="flex-1 bg-slate-950 items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-red-400 text-base text-center">{loadError}</Text>
-        <TouchableOpacity className="bg-slate-800 rounded-xl px-6 py-3" onPress={() => router.back()}>
+        <TouchableOpacity className="bg-slate-800 rounded-xl px-6 py-3" onPress={handleBack}>
           <Text className="text-white font-semibold">← Go back</Text>
         </TouchableOpacity>
       </View>
@@ -380,7 +388,7 @@ function SessionUI({
         ) : (
           <View className="flex-1">
             <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: PEEK_HEIGHT + insets.bottom + 32 }}>
-              <FlashcardDeck {...deckProps} onBack={() => router.back()} />
+              <FlashcardDeck {...deckProps} onBack={handleBack} />
             </ScrollView>
           </View>
         )
@@ -429,7 +437,7 @@ function SessionUI({
       {/* Back button (wide screens only — small screens use inline back in FlashcardDeck) */}
       {!isSmallScreen && !showOverlay && (
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={{
             position: 'absolute',
             top: insets.top + 8,
