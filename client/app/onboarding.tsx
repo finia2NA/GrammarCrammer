@@ -20,6 +20,7 @@ import { setAuthToken } from '@/lib/storage';
 import { register, login, setApiKey, validateApiKey, getMe } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
+import { OnboardingBackground } from '@/components/OnboardingBackground';
 
 // ─── Animated rainbow button ─────────────────────────────────────────────────
 
@@ -443,6 +444,7 @@ export default function Onboarding() {
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <OnboardingBackground />
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
