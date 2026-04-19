@@ -78,13 +78,13 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
         />
         <TouchableOpacity
           className={`w-10 h-10 rounded-xl items-center justify-center ${
-            !inputText.trim() || streaming ? 'bg-slate-700' : 'bg-indigo-600'
+            !inputText.trim() || streaming ? 'bg-slate-700' : 'bg-primary'
           }`}
           onPress={handleSend}
           disabled={!inputText.trim() || streaming}
           activeOpacity={0.7}
         >
-          <Text className="text-white text-base font-semibold">→</Text>
+          <Text className="text-primary-foreground text-base font-semibold">→</Text>
         </TouchableOpacity>
       </View>
     </View>

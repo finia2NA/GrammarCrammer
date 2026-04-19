@@ -57,8 +57,8 @@ export function ExplanationOverlay({
             </Text>
           </View>
         ) : (
-          <TouchableOpacity className="bg-indigo-600 rounded-2xl py-4 items-center" onPress={onStart}>
-            <Text className="text-white font-bold text-base">Start Practising →</Text>
+          <TouchableOpacity className="bg-primary rounded-2xl py-4 items-center" onPress={onStart}>
+            <Text className="text-primary-foreground font-bold text-base">Start Practising →</Text>
           </TouchableOpacity>
         )}
       </View>

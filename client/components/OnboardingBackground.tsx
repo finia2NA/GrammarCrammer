@@ -82,7 +82,7 @@ interface OnboardingBackgroundProps {
 
 export function OnboardingBackground({ color }: OnboardingBackgroundProps) {
   const colors = useColors();
-  const tint = color ?? colors.primary;
+  const tint = color ?? colors.foreground;
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>

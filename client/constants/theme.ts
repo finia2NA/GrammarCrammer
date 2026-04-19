@@ -1,47 +1,87 @@
+import { vars } from 'nativewind';
 import { Platform, useColorScheme } from 'react-native';
 
-// ── Color palettes ────────────────────────────────────────────────────────────
-// Values mirror the CSS variables in global.css.
+// ── Raw RGB triples — single source of truth ──────────────────────────────────
+// Edit only here. Everything else (CSS vars, hex palette) is derived below.
 
-const dark = {
-  background:  '#020617', // slate-950
-  foreground:  '#ffffff',
-  card:        '#0f172a', // slate-900
-  input:       '#1e293b', // slate-800
-  muted:       '#334155', // slate-700
-  border:      '#475569', // slate-600
-  primary:     '#6366f1', // indigo-500
-  destructive: '#f87171', // red-400
+type RGB = readonly [number, number, number];
 
-  // Markdown-specific (session.tsx mdStyles only)
-  primaryLight: '#a5b4fc', // indigo-300
-  mdBody:       '#e2e8f0', // slate-200
-  mdSubtle:     '#cbd5e1', // slate-300
-  mdBright:     '#f8fafc', // slate-50
-} as const;
+const darkRgb: Record<string, RGB> = {
+  'background': [43, 6, 30],  // Midnight Violet
+  'foreground': [249, 251, 242], // Ivory
+  'card': [62, 20, 40],
+  'input': [82, 36, 58],
+  'muted': [99, 48, 80],
+  'border': [54, 73, 78],  // Iron Grey
+  'muted-foreground': [68, 157, 209], // Blue Bell
+  'primary': [241, 127, 41],  // Harvest Orange
+  'primary-foreground': [43, 6, 30],  // Midnight Violet
+  'destructive': [248, 113, 113],
+};
 
-const light = {
-  background:  '#f8fafc', // slate-50
-  foreground:  '#0f172a', // slate-900
-  card:        '#ffffff',
-  input:       '#f1f5f9', // slate-100
-  muted:       '#e2e8f0', // slate-200
-  border:      '#cbd5e1', // slate-300
-  primary:     '#6366f1', // indigo-500
-  destructive: '#dc2626', // red-600
+const lightRgb: Record<string, RGB> = {
+  'background': [255, 248, 235],
+  'foreground': [43, 6, 30],  // Midnight Violet
+  'card': [255, 255, 255],
+  'input': [236, 238, 230],
+  'muted': [220, 224, 215],
+  'border': [184, 192, 176],
+  'muted-foreground': [54, 73, 78],  // Iron Grey
+  'primary': [241, 127, 41],  // Harvest Orange
+  'primary-foreground': [43, 6, 30],  // Midnight Violet
+  'destructive': [220, 38, 38],
+};
 
-  primaryLight: '#4f46e5', // indigo-600
-  mdBody:       '#1e293b', // slate-800
-  mdSubtle:     '#475569', // slate-600
-  mdBright:     '#0f172a', // slate-900
-} as const;
+// ── Derived helpers ───────────────────────────────────────────────────────────
+
+function toHex([r, g, b]: RGB) {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function buildVars(rgb: Record<string, RGB>) {
+  return vars(Object.fromEntries(
+    Object.entries(rgb).map(([k, v]) => [`--color-${k}`, `${v[0]} ${v[1]} ${v[2]}`])
+  ));
+}
+
+function buildPalette(rgb: Record<string, RGB>) {
+  return Object.fromEntries(
+    Object.entries(rgb).map(([k, v]) => [k.replace('-', '_').replace('-', '_'), toHex(v)])
+  ) as Record<string, string>;
+}
+
+// ── NativeWind theme vars — apply to root <View> in _layout.tsx ───────────────
+
+export const darkThemeVars = buildVars(darkRgb);
+export const lightThemeVars = buildVars(lightRgb);
+
+// ── JS hex palette — for inline styles, ActivityIndicator, placeholderTextColor
+
+const darkBase = buildPalette(darkRgb);
+const lightBase = buildPalette(lightRgb);
+
+// Markdown-specific values (GrammarMarkdown only — no CSS var equivalent)
+const darkExtras = {
+  primaryLight: '#f9a86a', // Harvest Orange lightened
+  mdBody: '#d4d7cc',
+  mdSubtle: '#8cc5e3', // Blue Bell lightened
+  mdBright: '#f9fbf2',
+};
+
+const lightExtras = {
+  primaryLight: '#c45e0e', // Harvest Orange darkened
+  mdBody: '#2b061e',
+  mdSubtle: '#36494e',
+  mdBright: '#1a0412',
+};
+
+const dark = { ...darkBase, ...darkExtras };
+const light = { ...lightBase, ...lightExtras };
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
-// Static dark-theme constants — for StyleSheet.create() and other non-hook contexts.
 export const Colors = dark;
 
-// Hook for components — returns the palette matching the current color scheme.
 export function useColors() {
   const scheme = useColorScheme();
   return scheme === 'light' ? light : dark;
@@ -49,21 +89,15 @@ export function useColors() {
 
 export const Fonts = Platform.select({
   ios: {
-    sans:    'system-ui',
-    serif:   'ui-serif',
-    rounded: 'ui-rounded',
-    mono:    'ui-monospace',
+    sans: 'system-ui', serif: 'ui-serif', rounded: 'ui-rounded', mono: 'ui-monospace',
   },
   default: {
-    sans:    'normal',
-    serif:   'serif',
-    rounded: 'normal',
-    mono:    'monospace',
+    sans: 'normal', serif: 'serif', rounded: 'normal', mono: 'monospace',
   },
   web: {
-    sans:    "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif:   "Georgia, 'Times New Roman', serif",
+    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    serif: "Georgia, 'Times New Roman', serif",
     rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono:    "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });

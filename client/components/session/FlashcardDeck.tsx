@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 import type { Card, CardPhase, ChatMessage } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { CardChat } from './CardChat';
@@ -15,18 +15,18 @@ import { CardChat } from './CardChat';
 
 function AnswerBox({ answer }: { answer: string }) {
   return (
-    <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-      <Text className="text-slate-500 text-xs">Your answer</Text>
-      <Text className="text-slate-300 text-sm">{answer}</Text>
+    <View className="bg-input rounded-lg px-3 py-2 gap-1">
+      <Text className="text-muted-foreground text-xs">Your answer</Text>
+      <Text className="text-foreground/70 text-sm">{answer}</Text>
     </View>
   );
 }
 
 function ExampleBox({ example }: { example: string }) {
   return (
-    <View className="bg-slate-800 rounded-lg px-3 py-2 gap-1">
-      <Text className="text-slate-500 text-xs">My example sentence</Text>
-      <Text className="text-white text-base font-medium">{example}</Text>
+    <View className="bg-input rounded-lg px-3 py-2 gap-1">
+      <Text className="text-muted-foreground text-xs">My example sentence</Text>
+      <Text className="text-foreground text-base font-medium">{example}</Text>
     </View>
   );
 }
@@ -64,6 +64,7 @@ export function FlashcardDeck({
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
   inputRef, chatMessages, chatStreaming, onChatSend, deckName, onBack,
 }: FlashcardDeckProps) {
+  const colors = useColors();
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
 
   return (
@@ -72,31 +73,31 @@ export function FlashcardDeck({
       <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
         <View className="flex-row items-center gap-3">
           {onBack && (
-            <TouchableOpacity onPress={onBack} activeOpacity={0.7} className="w-8 h-8 items-center justify-center rounded-full bg-slate-800 border border-slate-600">
-              <Text className="text-slate-300 text-sm font-semibold">←</Text>
+            <TouchableOpacity onPress={onBack} activeOpacity={0.7} className="w-8 h-8 items-center justify-center rounded-full bg-input border border-border">
+              <Text className="text-foreground/70 text-sm font-semibold">←</Text>
             </TouchableOpacity>
           )}
-          <Text className="text-slate-500 text-sm">
+          <Text className="text-muted-foreground text-sm">
             {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
           </Text>
         </View>
-        <Text className="text-slate-600 text-xs font-mono">
+        <Text className="text-muted-foreground/60 text-xs font-mono">
           ${totalCost.toFixed(4)}
         </Text>
       </View>
 
       {/* Card */}
-      <View className="w-full max-w-xl bg-slate-900 rounded-3xl p-8 mb-6">
+      <View className="w-full max-w-xl bg-card rounded-3xl p-8 mb-6">
         <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-slate-400 text-xs uppercase tracking-widest">Translate to {language}</Text>
-          {deckName ? <Text className="text-slate-500 text-xs">{deckName}</Text> : null}
+          <Text className="text-muted-foreground text-xs uppercase tracking-widest">Translate to {language}</Text>
+          {deckName ? <Text className="text-muted-foreground text-xs">{deckName}</Text> : null}
         </View>
-        <Text className="text-white text-xl font-semibold leading-8 mb-2">
+        <Text className="text-foreground text-xl font-semibold leading-8 mb-2">
           {currentCard.english}
         </Text>
         {currentCard.sentenceContext && (
-          <View className="self-end bg-indigo-950 border border-indigo-700 rounded-md px-2 py-0.5 mb-4">
-            <Text className="text-indigo-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
+          <View className="self-end bg-amber-950 border border-amber-700 rounded-md px-2 py-0.5 mb-4">
+            <Text className="text-amber-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
           </View>
         )}
 
@@ -105,9 +106,9 @@ export function FlashcardDeck({
           <>
             <TextInput
               ref={inputRef}
-              className="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-base mb-4"
+              className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-base mb-4"
               placeholder="Your translation…"
-              placeholderTextColor={Colors.border}
+              placeholderTextColor={colors.border}
               value={answer}
               onChangeText={onChangeAnswer}
               onSubmitEditing={onSubmitAnswer}
@@ -116,27 +117,27 @@ export function FlashcardDeck({
             />
             <TouchableOpacity
               className={`py-3.5 rounded-xl items-center mb-3 ${
-                cardPhase === 'judging' ? 'bg-slate-700' : 'bg-indigo-600'
+                cardPhase === 'judging' ? 'bg-muted' : 'bg-primary'
               }`}
               onPress={onSubmitAnswer}
               disabled={cardPhase === 'judging'}
             >
               {cardPhase === 'judging' ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={colors.foreground} />
               ) : (
-                <Text className="text-white font-semibold">Check answer</Text>
+                <Text className="text-primary-foreground font-semibold">Check answer</Text>
               )}
             </TouchableOpacity>
 
             {/* Hint */}
             {currentCard.notes && (
               showHint ? (
-                <View className="bg-slate-800 rounded-lg px-3 py-2">
-                  <Text className="text-slate-400 text-xs">{currentCard.notes}</Text>
+                <View className="bg-input rounded-lg px-3 py-2">
+                  <Text className="text-muted-foreground text-xs">{currentCard.notes}</Text>
                 </View>
               ) : (
                 <TouchableOpacity onPress={onToggleHint}>
-                  <Text className="text-slate-600 text-xs text-center">Show hint</Text>
+                  <Text className="text-muted-foreground/50 text-xs text-center">Show hint</Text>
                 </TouchableOpacity>
               )
             )}
@@ -151,7 +152,7 @@ export function FlashcardDeck({
               <Text className="text-green-400 font-semibold">Correct!</Text>
             </View>
             <AnswerBox answer={submittedAnswer} />
-            <Text className="text-slate-300 text-sm leading-6">{feedback}</Text>
+            <Text className="text-foreground/70 text-sm leading-6">{feedback}</Text>
             <ExampleBox example={currentCard.targetLanguage} />
             <TouchableOpacity
               className="bg-green-700 rounded-xl py-3.5 items-center mt-2"
@@ -166,8 +167,8 @@ export function FlashcardDeck({
         {/* Wrong — explaining */}
         {cardPhase === 'wrong_explaining' && (
           <View className="items-center gap-3 py-2">
-            <ActivityIndicator color={Colors.destructive} />
-            <Text className="text-slate-400 text-sm">Getting feedback…</Text>
+            <ActivityIndicator color={colors.destructive} />
+            <Text className="text-muted-foreground text-sm">Getting feedback…</Text>
           </View>
         )}
 

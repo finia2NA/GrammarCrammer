@@ -10,9 +10,11 @@ import {
   Platform,
   Animated,
   StyleSheet,
+  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { darkThemeVars, lightThemeVars } from '@/constants/theme';
 
 interface HeaderAction {
   label: string;
@@ -39,6 +41,8 @@ export function PageSheetModal({
 }: PageSheetModalProps) {
   const insets = useSafeAreaInsets();
   const { height, isSmallScreen } = useScreenSize();
+  const scheme = useColorScheme();
+  const themeVars = scheme === 'dark' ? darkThemeVars : lightThemeVars;
 
   // Internal state keeps Modal mounted while the exit animation plays.
   const [shown, setShown] = useState(false);
@@ -136,6 +140,7 @@ export function PageSheetModal({
       >
         <KeyboardAvoidingView
           className="flex-1 bg-background"
+          style={themeVars}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
@@ -163,7 +168,7 @@ export function PageSheetModal({
       animationType="none"
       onRequestClose={handleDismiss}
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, themeVars]}>
         {/* Backdrop — tap to dismiss */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss}>
           <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />

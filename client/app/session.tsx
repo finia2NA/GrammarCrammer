@@ -350,7 +350,7 @@ function SessionUI({
         <Text className="text-slate-400 text-base text-center">
           You cleared all the cards. Great work.
         </Text>
-        <TouchableOpacity className="bg-indigo-600 rounded-2xl px-8 py-4" onPress={() => router.replace('/home')}>
+        <TouchableOpacity className="bg-primary rounded-2xl px-8 py-4" onPress={() => router.replace('/home')}>
           <Text className="text-white font-bold text-base">Back to home</Text>
         </TouchableOpacity>
       </View>
