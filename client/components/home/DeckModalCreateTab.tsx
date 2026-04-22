@@ -1,8 +1,7 @@
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { PillDropdown } from '@/components/PillDropdown';
-import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
+import { Text, TextInput, TouchableOpacity } from 'react-native';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
+import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
 
 interface DeckModalCreateTabProps {
   isCollection: boolean;
@@ -35,18 +34,12 @@ export function DeckModalCreateTab({
 
   return (
     <>
-      <Text className="text-foreground/80 text-sm font-medium mb-2">
-        {isCollection ? 'Collection Name' : 'Deck Name'}
-      </Text>
-      <Text className="text-foreground-secondary text-xs mb-2">
-        {isCollection
+      <SharedCreationNameField
+        label={isCollection ? 'Collection Name' : 'Deck Name'}
+        description={isCollection
           ? 'Rename this collection.'
           : 'Use :: to nest in collections, e.g. "Japanese::N5::Te-form"'}
-      </Text>
-      <TextInput
-        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-6"
         placeholder={isCollection ? 'Collection name' : 'Japanese::N5::Te-form'}
-        placeholderTextColor={colors.foreground_muted}
         value={name}
         onChangeText={onNameChange}
         autoFocus
@@ -68,16 +61,12 @@ export function DeckModalCreateTab({
             style={{ minHeight: 80, textAlignVertical: 'top' }}
           />
 
-          <Text className="text-foreground/80 text-sm font-medium mb-3">Options</Text>
-          <View className="flex-row gap-3 mb-6">
-            <PillDropdown value={language} options={LANGUAGES} onChange={onLanguageChange} />
-            <PillDropdown
-              value={cardCount}
-              options={CARD_COUNTS}
-              onChange={onCardCountChange}
-              formatLabel={(v: number) => `${v} cards`}
-            />
-          </View>
+          <SharedCreationOptionsSection
+            language={language}
+            onLanguageChange={onLanguageChange}
+            cardCount={cardCount}
+            onCardCountChange={onCardCountChange}
+          />
         </>
       )}
 

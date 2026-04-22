@@ -75,17 +75,19 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
     ? 'Import CSV'
     : isCollection ? 'Edit Collection' : isEdit ? 'Edit Deck' : 'New Deck';
 
-  const rightAction = showingCsvTab
-    ? { label: 'Import', onPress: () => {}, disabled: true }
-    : { label: isEdit ? 'Save' : 'Create', onPress: handleSubmit, disabled: !canSubmit };
+  const confirmText = showingCsvTab ? 'Import' : isEdit ? 'Save' : 'Create';
+  const confirmDisabled = showingCsvTab ? true : !canSubmit;
+  const handleConfirm = showingCsvTab ? () => {} : handleSubmit;
 
   return (
     <PageSheetModal
       visible={visible}
-      onClose={onClose}
       title={title}
-      leftAction={{ label: 'Cancel', onPress: onClose }}
-      rightAction={rightAction}
+      cancelText="Cancel"
+      onCancel={onClose}
+      confirmText={confirmText}
+      onConfirm={handleConfirm}
+      confirmDisabled={confirmDisabled}
     >
       {canUseCsvTab && (
         <View className="mb-6 p-1 rounded-xl bg-background-muted border border-border flex-row gap-1">
@@ -111,7 +113,14 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
       )}
 
       {showingCsvTab ? (
-        <DeckModalCsvTab />
+        <DeckModalCsvTab
+          collectionPath={name}
+          onCollectionPathChange={setName}
+          language={language}
+          onLanguageChange={setLanguage}
+          cardCount={cardCount}
+          onCardCountChange={setCardCount}
+        />
       ) : (
         <DeckModalCreateTab
           isCollection={isCollection}

@@ -16,27 +16,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { darkThemeVars, lightThemeVars } from '@/constants/theme';
 
-interface HeaderAction {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}
-
 interface PageSheetModalProps {
   visible: boolean;
-  onClose: () => void;
   title: string;
-  leftAction?: HeaderAction;
-  rightAction?: HeaderAction;
+  cancelText: string;
+  onCancel: () => void;
+  confirmText?: string;
+  onConfirm?: () => void;
+  confirmDisabled?: boolean;
   children: ReactNode;
 }
 
 export function PageSheetModal({
   visible,
-  onClose,
   title,
-  leftAction,
-  rightAction,
+  cancelText,
+  onCancel,
+  confirmText,
+  onConfirm,
+  confirmDisabled = false,
   children,
 }: PageSheetModalProps) {
   const insets = useSafeAreaInsets();
@@ -44,12 +42,11 @@ export function PageSheetModal({
   const scheme = useColorScheme();
   const themeVars = scheme === 'dark' ? darkThemeVars : lightThemeVars;
 
-  // Internal state keeps Modal mounted while the exit animation plays.
+  // Internal state keeps Modal mounted while the exit animation plays on large screens.
   const [shown, setShown] = useState(false);
   const slideY = useRef(new Animated.Value(height)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
-  // Open: mount modal, then animate in
   useEffect(() => {
     if (visible && !isSmallScreen) {
       setShown(true);
@@ -69,11 +66,9 @@ export function PageSheetModal({
         }),
       ]).start();
     }
-    // External close (e.g. programmatic) — just sync internal state
     if (!visible) setShown(false);
-  }, [visible, isSmallScreen]);
+  }, [visible, isSmallScreen, height, slideY, backdropOpacity]);
 
-  // Animate out, then call a callback
   const animateOut = useCallback((then: () => void) => {
     Animated.parallel([
       Animated.timing(slideY, {
@@ -90,111 +85,123 @@ export function PageSheetModal({
       setShown(false);
       then();
     });
-  }, [height]);
+  }, [height, slideY, backdropOpacity]);
 
-  const handleDismiss = useCallback(() => animateOut(onClose), [animateOut, onClose]);
+  const handleCancel = useCallback(() => {
+    if (isSmallScreen) {
+      onCancel();
+      return;
+    }
+    animateOut(onCancel);
+  }, [isSmallScreen, onCancel, animateOut]);
 
-  // On large screens, wrap header action presses to animate out first
-  function wrapAction(action: HeaderAction): HeaderAction {
-    if (isSmallScreen) return action;
-    return { ...action, onPress: () => animateOut(action.onPress) };
-  }
-
-  const resolvedLeft = leftAction ? wrapAction(leftAction) : undefined;
-  const resolvedRight = rightAction ? wrapAction(rightAction) : undefined;
+  const handleConfirm = useCallback(() => {
+    if (!onConfirm || confirmDisabled) return;
+    if (isSmallScreen) {
+      onConfirm();
+      return;
+    }
+    animateOut(onConfirm);
+  }, [onConfirm, confirmDisabled, isSmallScreen, animateOut]);
 
   const header = (
-    <View className="flex-row items-center justify-between mb-8">
-      {resolvedLeft ? (
-        <TouchableOpacity onPress={resolvedLeft.onPress} className="w-16">
-          <Text className="text-primary text-base">{resolvedLeft.label}</Text>
-        </TouchableOpacity>
-      ) : (
-        <View className="w-16" />
-      )}
-      <Text className="text-foreground text-lg font-bold">{title}</Text>
-      {resolvedRight ? (
+    <View
+      className="flex-row items-center border-b border-border"
+      style={{
+        paddingHorizontal: 24,
+        paddingTop: isSmallScreen ? insets.top + 16 : 20,
+        paddingBottom: 16,
+      }}
+    >
+      <TouchableOpacity onPress={handleCancel} style={styles.headerSide}>
+        <Text className="text-primary text-base">{cancelText}</Text>
+      </TouchableOpacity>
+
+      <Text className="flex-1 text-center text-foreground text-lg font-bold" numberOfLines={1}>
+        {title}
+      </Text>
+
+      {confirmText ? (
         <TouchableOpacity
-          onPress={resolvedRight.onPress}
-          disabled={resolvedRight.disabled}
-          className="w-16 items-end"
+          onPress={handleConfirm}
+          disabled={confirmDisabled}
+          style={[styles.headerSide, styles.headerSideRight]}
         >
-          <Text className={`text-base font-semibold ${resolvedRight.disabled ? 'text-foreground-secondary' : 'text-primary'}`}>
-            {resolvedRight.label}
+          <Text className={`text-base font-semibold ${confirmDisabled ? 'text-foreground-secondary' : 'text-primary'}`}>
+            {confirmText}
           </Text>
         </TouchableOpacity>
       ) : (
-        <View className="w-16" />
+        <View style={styles.headerSide} />
       )}
     </View>
   );
 
-  // ── Small screen: native page sheet ──────────────────────────────────────────
   if (isSmallScreen) {
     return (
       <Modal
         visible={visible}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={onClose}
+        onRequestClose={handleCancel}
       >
         <KeyboardAvoidingView
           className="flex-1 bg-background"
           style={themeVars}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: 24,
-              paddingTop: insets.top + 16,
-              paddingBottom: insets.bottom + 24,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
+          <View style={styles.sheetContainer}>
             {header}
-            {children}
-          </ScrollView>
+            <ScrollView
+              style={styles.bodyScroll}
+              contentContainerStyle={{
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: insets.bottom + 24,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {children}
+            </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     );
   }
 
-  // ── Large screen: floating card with backdrop ────────────────────────────────
   return (
     <Modal
       visible={shown}
       transparent
       animationType="none"
-      onRequestClose={handleDismiss}
+      onRequestClose={handleCancel}
     >
       <View style={[styles.overlay, themeVars]}>
-        {/* Backdrop — tap to dismiss */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleCancel}>
           <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
         </Pressable>
 
-        {/* Card */}
         <Animated.View
           style={[
             styles.card,
-            { maxHeight: height * 0.85, transform: [{ translateY: slideY }] },
+            { maxHeight: height * 0.9, transform: [{ translateY: slideY }] },
           ]}
         >
           <KeyboardAvoidingView
             className="bg-background rounded-2xl overflow-hidden"
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ maxHeight: height * 0.9 }}
           >
+            {header}
             <ScrollView
+              style={styles.bodyScroll}
               contentContainerStyle={{
-                flexGrow: 1,
                 paddingHorizontal: 24,
-                paddingTop: 24,
+                paddingTop: 16,
                 paddingBottom: 24,
               }}
               keyboardShouldPersistTaps="handled"
             >
-              {header}
               {children}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -223,5 +230,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 24,
+  },
+  sheetContainer: {
+    flex: 1,
+    maxHeight: '100%',
+  },
+  bodyScroll: {
+    flex: 1,
+  },
+  headerSide: {
+    width: 92,
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
   },
 });

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import type { TreeNode } from '@/lib/types';
+import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 
 interface DeckTreeProps {
   tree: TreeNode[];
@@ -85,9 +86,15 @@ function TreeRow({ node, depth, onStudy, onEdit }: TreeRowProps) {
       </View>
 
       {/* Children */}
-      {isCollection && expanded && node.children.map(child => (
-        <TreeRow key={child.id} node={child} depth={depth + 1} onStudy={onStudy} onEdit={onEdit} />
-      ))}
+      {isCollection && (
+        <AnimatedCollapsible expanded={expanded} keepMounted={false}>
+          <View>
+            {node.children.map(child => (
+              <TreeRow key={child.id} node={child} depth={depth + 1} onStudy={onStudy} onEdit={onEdit} />
+            ))}
+          </View>
+        </AnimatedCollapsible>
+      )}
     </View>
   );
 }

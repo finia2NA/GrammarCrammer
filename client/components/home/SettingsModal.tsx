@@ -268,9 +268,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   return (
     <PageSheetModal
       visible={visible}
-      onClose={onClose}
       title="Settings"
-      rightAction={{ label: 'Done', onPress: onClose }}
+      cancelText="Cancel"
+      onCancel={onClose}
+      confirmText="Done"
+      onConfirm={onClose}
     >
       {/* Card order */}
       <SettingsRow
