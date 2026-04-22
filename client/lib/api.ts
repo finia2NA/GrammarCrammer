@@ -159,6 +159,47 @@ export async function markStudied(nodeId: string) {
   return request<{ success: boolean }>(`/decks/${nodeId}/mark-studied`, { method: 'POST' });
 }
 
+export interface CsvImportResult {
+  createdCount: number;
+  queuedCount: number;
+  failedCount: number;
+  failures: Array<{ line: number; context: string; error: string }>;
+}
+
+export async function importDecksFromCsv(
+  csvContent: string,
+  collectionPath: string,
+  language: string,
+  cardCount: number,
+): Promise<CsvImportResult> {
+  const token = await getAuthToken();
+  const formData = new FormData();
+  formData.append('file', new Blob([csvContent], { type: 'text/csv' }), 'import.csv');
+  formData.append('collectionPath', collectionPath);
+  formData.append('language', language);
+  formData.append('cardCount', String(cardCount));
+
+  const res = await fetch(`${BASE_URL}/decks/import-csv`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      await clearAuthToken();
+      router.replace('/onboarding');
+      throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
+    }
+    const body = await res.json().catch(() => ({})) as any;
+    const message = body?.error?.message ?? `HTTP ${res.status}`;
+    const code = body?.error?.code;
+    throw new ApiError(message, res.status, code);
+  }
+
+  return res.json() as Promise<CsvImportResult>;
+}
+
 // ─── Collections ──────────────────────────────────────────────────────────────
 
 export async function renameCollection(nodeId: string, name: string) {

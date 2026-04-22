@@ -18,16 +18,18 @@ import {
   getDescendantDeckIds,
   getNodePath,
   moveNode,
+  importDecksFromCsv,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 import type { DeckFormData } from '@/components/home/DeckModal';
+import type { CsvImportData } from '@/components/home/DeckModal';
 
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { isSmallScreen } = useScreenSize();
-  const { tree, loading } = useDeckTree();
+  const { tree, loading, refreshing, refresh } = useDeckTree();
 
   // Quick study state
   const [topic, setTopic] = useState('');
@@ -99,17 +101,35 @@ export default function Home() {
       }
       setDeckModalVisible(false);
       setEditNode(null);
+      refresh();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'An error occurred.');
     }
-  }, [editNode, editNodePathStr]);
+  }, [editNode, editNodePathStr, refresh]);
+
+  const handleCsvImport = useCallback(async (data: CsvImportData) => {
+    const result = await importDecksFromCsv(
+      data.csvContent,
+      data.collectionPath,
+      data.language,
+      data.cardCount,
+    );
+    if (result.createdCount > 0 && result.failedCount === 0) {
+      setDeckModalVisible(false);
+    }
+    if (result.createdCount > 0) {
+      refresh();
+    }
+    return result;
+  }, [refresh]);
 
   const handleDelete = useCallback(async () => {
     if (!editNode) return;
     await deleteNode(editNode.id);
     setDeckModalVisible(false);
     setEditNode(null);
-  }, [editNode]);
+    refresh();
+  }, [editNode, refresh]);
 
   // ─── Render ─────────────────────────────────────────────────────────
 
@@ -152,7 +172,14 @@ export default function Home() {
               <Text className="text-foreground-secondary text-base">Loading…</Text>
             </View>
           ) : (
-            <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
+            <>
+              {refreshing && (
+                <View className="items-center py-2">
+                  <Text className="text-foreground-muted text-xs">Updating…</Text>
+                </View>
+              )}
+              <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
+            </>
           )}
         </View>
 
@@ -234,6 +261,7 @@ export default function Home() {
         visible={deckModalVisible}
         onClose={() => { setDeckModalVisible(false); setEditNode(null); }}
         onSubmit={handleSubmit}
+        onCsvImport={handleCsvImport}
         onDelete={editNode ? handleDelete : undefined}
         editNode={editNode}
         editNodePath={editNodePathStr}

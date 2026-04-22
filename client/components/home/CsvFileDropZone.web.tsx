@@ -3,25 +3,32 @@ import { useColors } from '@/constants/theme';
 
 interface CsvFileDropZoneProps {
   fileName: string | null;
-  onFileNameChange: (name: string | null) => void;
+  onFileSelected: (name: string, content: string) => void;
 }
 
-export function CsvFileDropZone({ fileName, onFileNameChange }: CsvFileDropZoneProps) {
+export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZoneProps) {
   const colors = useColors();
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function applySelectedFile(file: File | null | undefined) {
+  function readFile(file: File | null | undefined) {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) return;
-    onFileNameChange(file.name);
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.csv') && !name.endsWith('.tsv') && !name.endsWith('.txt')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onFileSelected(file.name, reader.result);
+      }
+    };
+    reader.readAsText(file);
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
     setIsDragActive(false);
-    applySelectedFile(event.dataTransfer.files?.[0]);
+    readFile(event.dataTransfer.files?.[0]);
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
@@ -37,7 +44,7 @@ export function CsvFileDropZone({ fileName, onFileNameChange }: CsvFileDropZoneP
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
-    applySelectedFile(event.target.files?.[0]);
+    readFile(event.target.files?.[0]);
   }
 
   function handleOpenPicker() {
@@ -71,7 +78,7 @@ export function CsvFileDropZone({ fileName, onFileNameChange }: CsvFileDropZoneP
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel"
+        accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
         style={{ display: 'none' }}
         onChange={handleInputChange}
       />

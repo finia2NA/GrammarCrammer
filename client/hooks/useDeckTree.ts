@@ -2,12 +2,19 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getTree } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 
-export function useDeckTree(): { tree: TreeNode[]; loading: boolean; refresh: () => void } {
+export function useDeckTree(): {
+  tree: TreeNode[];
+  loading: boolean;
+  refreshing: boolean;
+  refresh: () => Promise<void>;
+} {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const manualRef = useRef(false);
 
-  const refresh = useCallback(async () => {
+  const doFetch = useCallback(async () => {
     try {
       const result = await getTree();
       setTree(result);
@@ -15,19 +22,26 @@ export function useDeckTree(): { tree: TreeNode[]; loading: boolean; refresh: ()
       // silently fail on poll errors
     } finally {
       setLoading(false);
+      if (manualRef.current) {
+        manualRef.current = false;
+        setRefreshing(false);
+      }
     }
   }, []);
 
+  const refresh = useCallback(async () => {
+    manualRef.current = true;
+    setRefreshing(true);
+    await doFetch();
+  }, [doFetch]);
+
   useEffect(() => {
-    refresh();
-
-    // Poll every 5s to pick up generating → ready transitions
-    intervalRef.current = setInterval(refresh, 5000);
-
+    doFetch();
+    intervalRef.current = setInterval(doFetch, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [refresh]);
+  }, [doFetch]);
 
-  return { tree, loading, refresh };
+  return { tree, loading, refreshing, refresh };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { getAuthToken } from '@/lib/storage';
 import {
@@ -22,6 +22,11 @@ export interface DeckInfo {
   deckName: string;
 }
 
+interface DeckMeta extends DeckData {
+  id: string;
+  deckName: string;
+}
+
 export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
   const router = useRouter();
 
@@ -34,13 +39,30 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
 
   const addCost = (usd: number) => setTotalCost(prev => prev + usd);
 
+  const deckMetaRef = useRef<DeckMeta[]>([]);
+  const generatedDecksRef = useRef<Set<string>>(new Set());
+  const cardOrderRef = useRef<'shuffled' | 'sequential'>('shuffled');
+  const generatingRef = useRef<Set<string>>(new Set());
+
+  const generateForDeck = useCallback(async (meta: DeckMeta): Promise<DeckCard[]> => {
+    if (generatedDecksRef.current.has(meta.id) || generatingRef.current.has(meta.id)) return [];
+    generatingRef.current.add(meta.id);
+    try {
+      const result = await generateCards(meta.topic, meta.language, meta.cardCount, meta.explanation!);
+      if (result.cost) addCost(result.cost);
+      generatedDecksRef.current.add(meta.id);
+      return result.cards.map((c): DeckCard => ({ ...c, deckId: meta.id }));
+    } finally {
+      generatingRef.current.delete(meta.id);
+    }
+  }, []);
+
   useEffect(() => {
     async function load() {
       try {
         const token = await getAuthToken();
         if (!token) { router.replace('/onboarding'); return; }
 
-        // Resolve nodeId to deck IDs
         const ids = await getDescendantDeckIds(nodeId);
         if (ids.length === 0) {
           setLoadError('No decks found for this item.');
@@ -49,69 +71,56 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
         }
         setDeckIds(ids);
 
-        // Load all deck data
-        const deckDataList: (DeckData & { id: string })[] = [];
+        const metaList: DeckMeta[] = [];
+        const infoMap = new Map<string, DeckInfo>();
+
         for (const id of ids) {
           try {
             const d = await getDeck(id);
             if (!d || d.explanationStatus !== 'ready' || !d.explanation) continue;
-            deckDataList.push({ ...d, id });
+            let deckName = d.topic;
+            try {
+              const node = await getNode(id);
+              if (node) deckName = node.name;
+            } catch {}
+            metaList.push({ ...d, id, deckName });
+            infoMap.set(id, {
+              explanation: d.explanation!,
+              wasTruncated: false,
+              topic: d.topic,
+              deckName,
+            });
           } catch { continue; }
         }
 
-        if (deckDataList.length === 0) {
+        if (metaList.length === 0) {
           setLoadError('No decks have finished generating their explanations yet.');
           setLoading(false);
           return;
         }
 
-        // Build deck info map
-        const infoMap = new Map<string, DeckInfo>();
-        for (const d of deckDataList) {
-          try {
-            const node = await getNode(d.id);
-            infoMap.set(d.id, {
-              explanation: d.explanation!,
-              wasTruncated: false,
-              topic: d.topic,
-              deckName: node?.name ?? d.topic,
-            });
-          } catch {
-            infoMap.set(d.id, {
-              explanation: d.explanation!,
-              wasTruncated: false,
-              topic: d.topic,
-              deckName: d.topic,
-            });
-          }
-        }
+        deckMetaRef.current = metaList;
         setDecks(infoMap);
 
-        // Generate cards for all decks in parallel
-        const cardArrays = await Promise.all(
-          deckDataList.map(async (d) => {
-            const result = await generateCards(d.topic, d.language, d.cardCount, d.explanation!);
-            if (result.cost) addCost(result.cost);
-            return result.cards.map((c): DeckCard => ({ ...c, deckId: d.id }));
-          }),
-        );
-
-        // Flatten and order
-        let allCards = cardArrays.flat();
         const cardOrder = await getSetting('card_order') ?? 'shuffled';
+        cardOrderRef.current = cardOrder as 'shuffled' | 'sequential';
 
-        if (cardOrder === 'shuffled') {
-          // Fisher-Yates shuffle
+        if (cardOrder === 'sequential') {
+          const initial = metaList.slice(0, 2);
+          const cardArrays = await Promise.all(initial.map(m => generateForDeck(m)));
+          let allCards = cardArrays.flat();
+          allCards = allCards.map((c, i) => ({ ...c, id: String(i) }));
+          setCards(allCards);
+        } else {
+          const cardArrays = await Promise.all(metaList.map(m => generateForDeck(m)));
+          let allCards = cardArrays.flat();
           for (let i = allCards.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
           }
+          allCards = allCards.map((c, i) => ({ ...c, id: String(i) }));
+          setCards(allCards);
         }
-
-        // Re-index IDs to be unique across all decks
-        allCards = allCards.map((c, i) => ({ ...c, id: String(i) }));
-
-        setCards(allCards);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to generate session.');
       } finally {
@@ -119,9 +128,40 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
       }
     }
     load();
-  }, [nodeId, router]);
+  }, [nodeId, router, generateForDeck]);
 
-  /** Mark all studied decks as last studied. */
+  // In sequential mode, when the current deck's cards are exhausted,
+  // pre-generate the next-not-yet-generated deck's cards.
+  const prevFirstDeckId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (cardOrderRef.current !== 'sequential') return;
+    if (cards.length === 0) return;
+
+    const currentDeckId = cards[0].deckId;
+    if (currentDeckId === prevFirstDeckId.current) return;
+    prevFirstDeckId.current = currentDeckId;
+
+    const metaList = deckMetaRef.current;
+    const currentIdx = metaList.findIndex(m => m.id === currentDeckId);
+    if (currentIdx === -1) return;
+
+    const nextMeta = metaList[currentIdx + 1];
+    if (!nextMeta) return;
+    if (generatedDecksRef.current.has(nextMeta.id)) return;
+
+    generateForDeck(nextMeta).then(newCards => {
+      if (newCards.length === 0) return;
+      setCards(prev => {
+        const maxId = prev.reduce((max, c) => Math.max(max, parseInt(c.id)), 0);
+        const indexed = newCards.map((c, i) => ({ ...c, id: String(maxId + 1 + i) }));
+        return [...prev, ...indexed];
+      });
+    }).catch(err => {
+      console.error('[session] Failed to pre-generate next deck cards:', err);
+    });
+  }, [cards, generateForDeck]);
+
   async function markStudied() {
     for (const id of deckIds) {
       await apiMarkStudied(id);

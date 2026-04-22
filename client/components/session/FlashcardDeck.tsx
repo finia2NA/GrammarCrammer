@@ -37,6 +37,7 @@ interface FlashcardDeckProps {
   cards: Card[];
   language: string;
   totalCost: number;
+  totalSpend: number | null;
   cardPhase: CardPhase;
   answer: string;
   onChangeAnswer: (text: string) => void;
@@ -57,7 +58,7 @@ interface FlashcardDeckProps {
 }
 
 export function FlashcardDeck({
-  cards, language, totalCost, cardPhase,
+  cards, language, totalCost, totalSpend, cardPhase,
   answer, onChangeAnswer, submittedAnswer,
   feedback, wrongExplanation,
   showHint, onToggleHint,
@@ -83,6 +84,9 @@ export function FlashcardDeck({
         </View>
         <Text className="text-foreground-secondary/60 text-xs font-mono">
           ${totalCost.toFixed(4)}
+          {totalSpend !== null && (
+            <Text className="text-foreground-secondary/40"> (${totalSpend.toFixed(4)} total)</Text>
+          )}
         </Text>
       </View>
 

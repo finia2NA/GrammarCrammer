@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import type { Language, CardCount } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
+import type { CsvImportResult } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
 
@@ -10,9 +11,9 @@ interface DeckModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: DeckFormData) => void;
+  onCsvImport?: (data: CsvImportData) => Promise<CsvImportResult>;
   onDelete?: () => void;
   editNode?: TreeNode | null;
-  /** Full :: path for the edit node, fetched by the parent. */
   editNodePath?: string;
 }
 
@@ -23,7 +24,20 @@ export interface DeckFormData {
   cardCount: CardCount;
 }
 
-export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, editNodePath }: DeckModalProps) {
+export interface CsvImportData {
+  csvContent: string;
+  collectionPath: string;
+  language: Language;
+  cardCount: CardCount;
+}
+
+export type CsvImportStatus =
+  | { state: 'idle' }
+  | { state: 'importing' }
+  | { state: 'error'; message: string }
+  | { state: 'done'; result: CsvImportResult };
+
+export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, editNode, editNodePath }: DeckModalProps) {
   const isEdit = editNode !== null && editNode !== undefined;
   const isCollection = isEdit && editNode.deck === null;
   const canUseCsvTab = !isEdit;
@@ -33,11 +47,14 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(10);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
+  const [csvContent, setCsvContent] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
 
-  // Reset form when modal opens / editNode changes
   useEffect(() => {
     if (visible) {
       setActiveTab('create');
+      setCsvContent(null);
+      setImportStatus({ state: 'idle' });
       if (isEdit && editNode) {
         setName(editNodePath ?? editNode.name);
         if (editNode.deck) {
@@ -68,16 +85,48 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
     });
   }
 
+  function handleFileSelected(fileName: string, content: string) {
+    setCsvContent(content);
+    setImportStatus({ state: 'idle' });
+    if (!name.trim()) {
+      setName(fileName.replace(/\.[^.]+$/, ''));
+    }
+  }
+
+  const handleCsvImport = useCallback(async () => {
+    if (!csvContent || !onCsvImport || importStatus.state === 'importing') return;
+    setImportStatus({ state: 'importing' });
+    try {
+      const result = await onCsvImport({
+        csvContent,
+        collectionPath: name.trim(),
+        language,
+        cardCount,
+      });
+      if (result.failedCount > 0 && result.createdCount === 0) {
+        setImportStatus({ state: 'done', result });
+      } else if (result.failedCount > 0) {
+        setImportStatus({ state: 'done', result });
+      } else {
+        setImportStatus({ state: 'idle' });
+      }
+    } catch (e: any) {
+      setImportStatus({ state: 'error', message: e?.message ?? 'Import failed.' });
+    }
+  }, [csvContent, onCsvImport, importStatus.state, name, language, cardCount]);
+
+  const isImporting = importStatus.state === 'importing';
   const canSubmit = name.trim().length > 0 && (isCollection || topic.trim().length > 0);
   const showingCsvTab = canUseCsvTab && activeTab === 'csv';
+  const csvCanImport = showingCsvTab && csvContent !== null && !isImporting;
 
   const title = showingCsvTab
     ? 'Import CSV'
     : isCollection ? 'Edit Collection' : isEdit ? 'Edit Deck' : 'New Deck';
 
-  const confirmText = showingCsvTab ? 'Import' : isEdit ? 'Save' : 'Create';
-  const confirmDisabled = showingCsvTab ? true : !canSubmit;
-  const handleConfirm = showingCsvTab ? () => {} : handleSubmit;
+  const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : isEdit ? 'Save' : 'Create';
+  const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit;
+  const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
 
   return (
     <PageSheetModal
@@ -120,6 +169,8 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
           onLanguageChange={setLanguage}
           cardCount={cardCount}
           onCardCountChange={setCardCount}
+          onFileSelected={handleFileSelected}
+          importStatus={importStatus}
         />
       ) : (
         <DeckModalCreateTab

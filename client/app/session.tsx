@@ -12,11 +12,13 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
-import { judgeAnswer, explainRejection, chatAboutCard, getSetting } from '@/lib/api';
+import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
 import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
+import type { OverlayDeck } from '@/components/session';
+
 import {
   SidePanel,
   BottomSheet,
@@ -91,9 +93,20 @@ function DeckSession({ nodeId }: { nodeId: string }) {
     }
   }, [multi.decks, language]);
 
-  // Derive current card's explanation
+  // Derive current card's explanation — while loading, show first deck's explanation
   const currentDeckId = multi.cards.length > 0 ? multi.cards[0].deckId : null;
   const currentDeck: DeckInfo | undefined = currentDeckId ? multi.decks.get(currentDeckId) : undefined;
+  const firstDeck: DeckInfo | undefined = multi.decks.size > 0
+    ? multi.decks.values().next().value
+    : undefined;
+  const displayDeck = currentDeck ?? firstDeck;
+
+  const overlayDecks: OverlayDeck[] = Array.from(multi.decks.entries()).map(([, info]) => ({
+    topic: info.topic,
+    deckName: info.deckName,
+    explanation: info.explanation,
+    wasTruncated: info.wasTruncated,
+  }));
 
   return (
     <SessionUI
@@ -105,13 +118,14 @@ function DeckSession({ nodeId }: { nodeId: string }) {
       setCards={multi.setCards}
       totalCost={multi.totalCost}
       addCost={multi.addCost}
-      explanation={currentDeck?.explanation ?? ''}
-      wasTruncated={currentDeck?.wasTruncated ?? false}
-      topic={currentDeck?.topic ?? ''}
+      explanation={displayDeck?.explanation ?? ''}
+      wasTruncated={displayDeck?.wasTruncated ?? false}
+      topic={displayDeck?.topic ?? ''}
       language={language}
-      showExplanationOverlay={false}
+      showExplanationOverlay
       markStudied={multi.markStudied}
-      deckName={currentDeck?.deckName}
+      deckName={displayDeck?.deckName}
+      overlayDecks={overlayDecks}
     />
   );
 }
@@ -134,13 +148,14 @@ interface SessionUIProps {
   showExplanationOverlay: boolean;
   markStudied: () => Promise<void>;
   deckName?: string;
+  overlayDecks?: OverlayDeck[];
 }
 
 function SessionUI({
   loading, loadPhase, loadError, setLoadError,
   cards, setCards, totalCost, addCost,
   explanation, wasTruncated, topic, language,
-  showExplanationOverlay, markStudied, deckName,
+  showExplanationOverlay, markStudied, deckName, overlayDecks,
 }: SessionUIProps) {
   const router = useRouter();
   const { isSmallScreen } = useScreenSize();
@@ -148,6 +163,8 @@ function SessionUI({
 
   const [showOverlay, setShowOverlay] = useState(showExplanationOverlay);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
+  const [beginningTotalSpend, setBeginningTotalSpend] = useState<number | null>(null);
+  const beginningSessionCostRef = useRef<number | null>(null);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
   const [answer, setAnswer] = useState('');
   const [submittedAnswer, setSubmittedAnswer] = useState('');
@@ -169,11 +186,16 @@ function SessionUI({
     router.replace('/home');
   }
 
-  // Fetch judge_with_explanation setting
+  // Fetch judge_with_explanation setting + total spend baseline
   useEffect(() => {
     getSetting('judge_with_explanation').then(v => {
       if (v === 'off') setJudgeWithExplanation(false);
     });
+    getUsageStatus().then(status => {
+      const total = status.usage.central + status.usage.own;
+      setBeginningTotalSpend(total);
+      beginningSessionCostRef.current = totalCost;
+    }).catch(() => {});
   }, []);
 
   // Focus input when card phase resets
@@ -359,8 +381,12 @@ function SessionUI({
 
   // ── Shared flashcard deck props ────────────────────────────────────────────
 
+  const computedTotalSpend = beginningTotalSpend !== null
+    ? totalCost + beginningTotalSpend - (beginningSessionCostRef.current ?? 0)
+    : null;
+
   const deckProps = {
-    cards, language, totalCost, cardPhase,
+    cards, language, totalCost, totalSpend: computedTotalSpend, cardPhase,
     answer, onChangeAnswer: setAnswer, submittedAnswer,
     feedback, wrongExplanation,
     showHint, onToggleHint: () => setShowHint(true),
@@ -384,6 +410,7 @@ function SessionUI({
             topic={topic} explanation={explanation} wasTruncated={wasTruncated}
             loading={loading} loadPhase={loadPhase}
             onStart={() => setShowOverlay(false)} insets={insets}
+            allDecks={overlayDecks}
           />
         ) : (
           <View className="flex-1">
@@ -411,6 +438,7 @@ function SessionUI({
                   topic={topic} explanation={explanation} wasTruncated={wasTruncated}
                   loading={loading} loadPhase={loadPhase}
                   onStart={handleStartPractising} insets={insets}
+                  allDecks={overlayDecks}
                 />
               </View>
             )}

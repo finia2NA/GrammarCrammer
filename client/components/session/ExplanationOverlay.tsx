@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +11,13 @@ import type { LoadPhase } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { TruncationWarning } from './ExplanationPanel';
 
+export interface OverlayDeck {
+  topic: string;
+  deckName: string;
+  explanation: string;
+  wasTruncated: boolean;
+}
+
 interface ExplanationOverlayProps {
   topic: string;
   explanation: string;
@@ -18,14 +26,29 @@ interface ExplanationOverlayProps {
   loadPhase: LoadPhase;
   onStart: () => void;
   insets: { top: number; bottom: number };
+  allDecks?: OverlayDeck[];
 }
 
 export function ExplanationOverlay({
-  topic, explanation, wasTruncated, loading, loadPhase, onStart, insets,
+  topic, explanation, wasTruncated, loading, loadPhase, onStart, insets, allDecks,
 }: ExplanationOverlayProps) {
+  const [deckIndex, setDeckIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const hasMultiple = allDecks && allDecks.length > 1;
+
+  const displayTopic = hasMultiple ? allDecks[deckIndex].topic : topic;
+  const displayExplanation = hasMultiple ? allDecks[deckIndex].explanation : explanation;
+  const displayTruncated = hasMultiple ? allDecks[deckIndex].wasTruncated : wasTruncated;
+  const displayName = hasMultiple ? allDecks[deckIndex].deckName : undefined;
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [deckIndex]);
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView
+        ref={scrollRef}
         className="flex-1 px-8"
         contentContainerStyle={{
           maxWidth: 720,
@@ -37,18 +60,54 @@ export function ExplanationOverlay({
       >
         <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest mb-2">
           Grammar Explanation
+          {hasMultiple && (
+            <Text className="text-foreground-muted"> — {deckIndex + 1}/{allDecks.length}</Text>
+          )}
         </Text>
-        <Text className="text-foreground text-2xl font-bold mb-6">{topic}</Text>
-        {explanation ? (
-          <GrammarMarkdown>{explanation}</GrammarMarkdown>
+        {displayName && displayName !== displayTopic && (
+          <Text className="text-foreground-secondary text-sm mb-1">{displayName}</Text>
+        )}
+        <Text className="text-foreground text-2xl font-bold mb-6">{displayTopic}</Text>
+        {displayExplanation ? (
+          <GrammarMarkdown>{displayExplanation}</GrammarMarkdown>
         ) : (
           <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
         )}
-        {!loading && wasTruncated && <TruncationWarning />}
+        {!loading && displayTruncated && <TruncationWarning />}
         <View className="h-8" />
       </ScrollView>
 
       <View className="px-8 pb-10" style={{ maxWidth: 720, alignSelf: 'center', width: '100%' } as any}>
+        {hasMultiple && (
+          <View className="flex-row items-center justify-between mb-3">
+            <TouchableOpacity
+              onPress={() => setDeckIndex(i => i - 1)}
+              disabled={deckIndex === 0}
+              className="px-4 py-2 rounded-xl bg-surface border border-border"
+              activeOpacity={0.7}
+            >
+              <Text className={`text-sm font-semibold ${deckIndex === 0 ? 'text-foreground-muted' : 'text-foreground'}`}>
+                ← Prev
+              </Text>
+            </TouchableOpacity>
+
+            <Text className="text-foreground-secondary text-xs font-mono">
+              {deckIndex + 1} / {allDecks.length}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setDeckIndex(i => i + 1)}
+              disabled={deckIndex === allDecks.length - 1}
+              className="px-4 py-2 rounded-xl bg-surface border border-border"
+              activeOpacity={0.7}
+            >
+              <Text className={`text-sm font-semibold ${deckIndex === allDecks.length - 1 ? 'text-foreground-muted' : 'text-foreground'}`}>
+                Next →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {loading ? (
           <View className="flex-row items-center justify-center gap-3 py-4">
             <ActivityIndicator size="small" color={Colors.primary} />

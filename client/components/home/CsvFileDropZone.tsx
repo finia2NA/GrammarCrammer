@@ -1,21 +1,24 @@
 import { TouchableOpacity, View, Text } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 interface CsvFileDropZoneProps {
   fileName: string | null;
-  onFileNameChange: (name: string | null) => void;
+  onFileSelected: (name: string, content: string) => void;
 }
 
-export function CsvFileDropZone({ fileName, onFileNameChange }: CsvFileDropZoneProps) {
+export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZoneProps) {
   async function handlePickFile() {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel'],
+      type: ['text/csv', 'text/tab-separated-values', 'text/comma-separated-values', 'application/vnd.ms-excel'],
       multiple: false,
-      copyToCacheDirectory: false,
+      copyToCacheDirectory: true,
     });
 
     if (result.canceled || result.assets.length === 0) return;
-    onFileNameChange(result.assets[0].name);
+    const asset = result.assets[0];
+    const content = await FileSystem.readAsStringAsync(asset.uri);
+    onFileSelected(asset.name, content);
   }
 
   return (

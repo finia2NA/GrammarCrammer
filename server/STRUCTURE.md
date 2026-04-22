@@ -17,7 +17,7 @@ server/
 │   ├── routes/
 │   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key
 │   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids
-│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, generate-explanation trigger
+│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, generate-explanation trigger, CSV import
 │   │   ├── collections.ts          ← /api/collections — rename, move
 │   │   ├── settings.ts             ← /api/settings — generic key/value + API key management
 │   │   └── claude-proxy.ts         ← /api/ai — cards, judge, explanation/stream, rejection/stream, chat/stream
@@ -29,7 +29,8 @@ server/
 │   │   ├── settings.service.ts     ← Generic user settings persistence
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
-│   │   └── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
+│   │   ├── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
+│   │   └── scheduler.service.ts   ← Per-user FIFO queue for background explanation jobs (max 5 concurrent per user)
 │   │
 │   ├── lib/
 │   │   ├── prisma.ts               ← Singleton Prisma client export
@@ -84,6 +85,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | GET    | `/:nodeId`                | Get deck data (topic, language, explanation, status, etc.)     |
 | PATCH  | `/:nodeId`                | Update deck (name, topic, language, cardCount)                 |
 | POST   | `/:nodeId/mark-studied`   | Set lastStudiedAt to now                                       |
+| POST   | `/import-csv`             | Bulk-import decks from CSV (multipart, max 5000 data rows)     |
 
 ### `/api/collections`
 
