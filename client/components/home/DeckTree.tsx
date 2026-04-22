@@ -97,9 +97,9 @@ function TreeRow({ node, depth, onStudy, onEdit }: TreeRowProps) {
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'ready':
-      return <Text className="text-green-400 text-xs">✓</Text>;
+      return <Text className="text-success text-xs">✓</Text>;
     case 'generating':
-      return <Text className="text-yellow-400 text-xs">⏳</Text>;
+      return <Text className="text-warning text-xs">⏳</Text>;
     case 'error':
       return <Text className="text-error text-xs">⚠</Text>;
     case 'pending':

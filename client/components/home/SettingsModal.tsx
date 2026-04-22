@@ -147,6 +147,7 @@ function UsageBar({ used, limit, colors }: { used: number; limit: number; colors
 }
 
 function AddApiKeyForm({ onAdded }: { onAdded: () => void }) {
+  const colors = useColors();
   const [key, setKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -175,9 +176,9 @@ function AddApiKeyForm({ onAdded }: { onAdded: () => void }) {
   return (
     <View className="mt-2 gap-2">
       <TextInput
-        className="bg-background-muted text-foreground rounded-lg px-3 py-2 text-sm border border-border"
+        className="bg-background-muted text-foreground placeholder:text-foreground-muted rounded-lg px-3 py-2 text-sm border border-border"
         placeholder="sk-ant-..."
-        placeholderTextColor="#888"
+        placeholderTextColor={colors.foreground_muted}
         value={key}
         onChangeText={setKey}
         autoCapitalize="none"

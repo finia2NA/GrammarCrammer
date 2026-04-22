@@ -106,9 +106,9 @@ export function FlashcardDeck({
           <>
             <TextInput
               ref={inputRef}
-              className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-base mb-4"
+              className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-4"
               placeholder="Your translation…"
-              placeholderTextColor={colors.border}
+              placeholderTextColor={colors.foreground_muted}
               value={answer}
               onChangeText={onChangeAnswer}
               onSubmitEditing={onSubmitAnswer}
@@ -116,9 +116,8 @@ export function FlashcardDeck({
               autoFocus
             />
             <TouchableOpacity
-              className={`py-3.5 rounded-xl items-center mb-3 ${
-                cardPhase === 'judging' ? 'bg-background-muted' : 'bg-primary'
-              }`}
+              className={`py-3.5 rounded-xl items-center mb-3 ${cardPhase === 'judging' ? 'bg-background-muted' : 'bg-primary'
+                }`}
               onPress={onSubmitAnswer}
               disabled={cardPhase === 'judging'}
             >
@@ -148,8 +147,8 @@ export function FlashcardDeck({
         {cardPhase === 'correct' && (
           <View className="gap-3">
             <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-green-400 text-lg">✓</Text>
-              <Text className="text-green-400 font-semibold">Correct!</Text>
+              <Text className="text-success text-lg">✓</Text>
+              <Text className="text-success font-semibold">Correct!</Text>
             </View>
             <AnswerBox answer={submittedAnswer} />
             <Text className="text-foreground/70 text-sm leading-6">{feedback}</Text>
@@ -158,7 +157,7 @@ export function FlashcardDeck({
               className="bg-success rounded-xl py-3.5 items-center mt-2"
               onPress={onConfirmCorrect}
             >
-              <Text className="text-white font-semibold">Next card →</Text>
+              <Text className="text-primary-foreground font-semibold">Next card →</Text>
             </TouchableOpacity>
             <CardChat messages={chatMessages} streaming={chatStreaming} onSend={onChatSend} />
           </View>
@@ -183,10 +182,10 @@ export function FlashcardDeck({
             <ExampleBox example={currentCard.targetLanguage} />
             <GrammarMarkdown>{wrongExplanation}</GrammarMarkdown>
             <TouchableOpacity
-              className="bg-warning rounded-xl py-3.5 items-center mt-2"
+              className="bg-primary rounded-xl py-3.5 items-center mt-2"
               onPress={onConfirmWrong}
             >
-              <Text className="text-white font-semibold">Try again later →</Text>
+              <Text className="text-primary-foreground font-semibold">Try again later →</Text>
             </TouchableOpacity>
             <CardChat messages={chatMessages} streaming={chatStreaming} onSend={onChatSend} />
           </View>

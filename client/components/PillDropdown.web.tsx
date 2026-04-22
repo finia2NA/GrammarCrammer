@@ -4,6 +4,7 @@
  */
 import type { PillDropdownProps } from './PillDropdown';
 import { useColors } from '@/constants/theme';
+import { useState } from 'react';
 
 
 // TODO: looks bad on safari rn because it ignores the select padding, and the chrome chevron down is here a chevron updown.
@@ -11,6 +12,7 @@ export function PillDropdown<T extends string | number>({
   value, options, onChange, formatLabel,
 }: PillDropdownProps<T>) {
   const colors = useColors();
+  const [focused, setFocused] = useState(false);
   const label = (v: T) => formatLabel ? formatLabel(v) : String(v);
 
   return (
@@ -20,16 +22,20 @@ export function PillDropdown<T extends string | number>({
         const selected = options.find(o => String(o) === e.target.value);
         if (selected !== undefined) onChange(selected);
       }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={{
         backgroundColor: colors.background_muted,
         color: colors.foreground,
-        border: 'none',
+        border: `1px solid ${focused ? colors.primary : colors.border}`,
         borderRadius: '8px',
         padding: '6px 12px',
         fontSize: '14px',
         fontWeight: '500',
         cursor: 'pointer',
         outline: 'none',
+        boxShadow: focused ? `0 0 0 3px ${colors.primary}40` : 'none',
+        transition: 'border-color 120ms ease, box-shadow 120ms ease',
       }}
     >
       {options.map((opt) => (

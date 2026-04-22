@@ -93,9 +93,9 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
           : 'Use :: to nest in collections, e.g. "Japanese::N5::Te-form"'}
       </Text>
       <TextInput
-        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
+        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-6"
         placeholder={isCollection ? 'Collection name' : 'Japanese::N5::Te-form'}
-        placeholderTextColor={colors.border}
+        placeholderTextColor={colors.foreground_muted}
         value={name}
         onChangeText={setName}
         autoFocus
@@ -109,9 +109,9 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
             Describe the grammar topic to study. This is sent to Claude to generate the explanation.
           </Text>
           <TextInput
-            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-6"
             placeholder='e.g. "Japanese て-form conjugation"'
-            placeholderTextColor={colors.border}
+            placeholderTextColor={colors.foreground_muted}
             value={topic}
             onChangeText={setTopic}
             multiline

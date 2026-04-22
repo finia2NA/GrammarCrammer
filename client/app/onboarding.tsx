@@ -208,9 +208,9 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
       <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
         <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
         <TextInput
-          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm mb-3"
+          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm mb-3"
           placeholder="you@example.com"
-          placeholderTextColor={colors.border}
+          placeholderTextColor={colors.foreground_muted}
           value={email}
           onChangeText={onEmailChange}
           autoCapitalize="none"
@@ -223,9 +223,9 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
         <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
         <TextInput
           ref={passwordRef}
-          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm"
+          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
           placeholder="At least 8 characters"
-          placeholderTextColor={colors.border}
+          placeholderTextColor={colors.foreground_muted}
           value={password}
           onChangeText={onPasswordChange}
           secureTextEntry
@@ -280,9 +280,9 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
         Anthropic API Key
       </Text>
       <TextInput
-        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm font-mono"
+        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
         placeholder="sk-ant-..."
-        placeholderTextColor={colors.border}
+        placeholderTextColor={colors.foreground_muted}
         value={apiKey}
         onChangeText={onApiKeyChange}
         secureTextEntry

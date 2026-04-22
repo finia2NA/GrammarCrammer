@@ -7,7 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 import type { ChatMessage } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 
@@ -18,6 +18,7 @@ interface CardChatProps {
 }
 
 export function CardChat({ messages, streaming, onSend }: CardChatProps) {
+  const colors = useColors();
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -55,7 +56,7 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
                 {msg.content ? (
                   <GrammarMarkdown>{msg.content}</GrammarMarkdown>
                 ) : (
-                  <ActivityIndicator size="small" color={Colors.border} />
+                  <ActivityIndicator size="small" color={colors.border} />
                 )}
               </View>
             )}
@@ -67,9 +68,9 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
       <View className="flex-row items-end gap-2">
         <TextInput
           ref={inputRef}
-          className="flex-1 bg-background-muted border border-border rounded-xl px-4 py-2.5 text-foreground text-sm"
+          className="flex-1 bg-background-muted border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-foreground-muted text-sm"
           placeholder="Ask about this card…"
-          placeholderTextColor={Colors.border}
+          placeholderTextColor={colors.foreground_muted}
           value={inputText}
           onChangeText={setInputText}
           onSubmitEditing={handleSend}

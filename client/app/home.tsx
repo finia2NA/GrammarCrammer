@@ -165,10 +165,10 @@ export default function Home() {
               />
             </View>
             <TextInput
-              className="flex-1 text-foreground text-base px-5 pb-4 focus:ring-0 focus:outline-none"
+              className="flex-1 text-foreground placeholder:text-foreground-muted text-base px-5 pb-4 focus:ring-0 focus:outline-none"
               style={{ paddingTop: 48, textAlignVertical: 'top', minHeight: 100 }}
               placeholder="Quick study — type any grammar topic"
-              placeholderTextColor={colors.border}
+              placeholderTextColor={colors.foreground_muted}
               value={topic}
               onChangeText={setTopic}
               onFocus={() => setInputFocused(true)}
