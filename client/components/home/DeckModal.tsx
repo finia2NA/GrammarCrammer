@@ -268,22 +268,23 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
             />
           )}
           <TouchableOpacity
-            className="flex-1 py-2.5 rounded-lg items-center"
+            className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === 'create' ? 'bg-primary' : 'bg-background-muted'}`}
             style={{ zIndex: 1 }}
             onPress={() => setActiveTab('create')}
             activeOpacity={0.85}
           >
-            <Text className={`text-sm font-semibold ${activeTab === 'create' ? 'text-foreground' : 'text-foreground-secondary'}`}>
+            <Text className={`text-sm font-semibold ${activeTab === 'create' ? 'text-primary-foreground' : 'text-primary'}`}>
               Create Deck
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="flex-1 py-2.5 rounded-lg items-center"
+            className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === 'csv' ? 'bg-primary' : 'bg-background-muted'}`}
             style={{ zIndex: 1 }}
             onPress={() => setActiveTab('csv')}
             activeOpacity={0.85}
           >
-            <Text className={`text-sm font-semibold ${activeTab === 'csv' ? 'text-foreground' : 'text-foreground-secondary'}`}>
+            <Text className={`text-sm font-semibold ${activeTab === 'csv' ? 'text-primary-foreground' : 'text-primary'}`}>
+
               Import CSV
             </Text>
           </TouchableOpacity>
