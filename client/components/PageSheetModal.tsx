@@ -137,60 +137,37 @@ export function PageSheetModal({
     </View>
   );
 
-  if (isSmallScreen) {
-    return (
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCancel}
-      >
-        <KeyboardAvoidingView
-          className="flex-1 bg-background"
-          style={themeVars}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.sheetContainer}>
-            {header}
-            <ScrollView
-              style={styles.bodyScroll}
-              contentContainerStyle={{
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: insets.bottom + 24,
-              }}
-              keyboardShouldPersistTaps="handled"
-            >
-              {children}
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    );
-  }
+  const modalVisible = isSmallScreen ? visible : shown;
+  const bodyPaddingBottom = isSmallScreen ? insets.bottom + 24 : 24;
 
   return (
     <Modal
-      visible={shown}
+      visible={modalVisible}
       transparent
       animationType="none"
       onRequestClose={handleCancel}
     >
-      <View style={[styles.overlay, themeVars]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleCancel}>
-          <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
-        </Pressable>
+      <View style={[styles.overlay, isSmallScreen ? styles.overlaySmall : styles.overlayLarge, themeVars]}>
+        {!isSmallScreen && (
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleCancel}>
+            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
+          </Pressable>
+        )}
 
         <Animated.View
           style={[
-            styles.card,
-            { maxHeight: height * 0.9, transform: [{ translateY: slideY }] },
+            isSmallScreen
+              ? styles.sheet
+              : styles.card,
+            isSmallScreen
+              ? undefined
+              : { maxHeight: height * 0.9, transform: [{ translateY: slideY }] },
           ]}
         >
           <KeyboardAvoidingView
-            className="bg-background rounded-2xl overflow-hidden"
+            className={isSmallScreen ? 'flex-1 bg-background' : 'bg-background rounded-2xl overflow-hidden'}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ maxHeight: height * 0.9 }}
+            style={isSmallScreen ? styles.sheetContainer : { maxHeight: height * 0.9 }}
           >
             {header}
             <ScrollView
@@ -198,7 +175,7 @@ export function PageSheetModal({
               contentContainerStyle={{
                 paddingHorizontal: 24,
                 paddingTop: 16,
-                paddingBottom: 24,
+                paddingBottom: bodyPaddingBottom,
               }}
               keyboardShouldPersistTaps="handled"
             >
@@ -214,8 +191,14 @@ export function PageSheetModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+  },
+  overlayLarge: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  overlaySmall: {
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
   },
   backdrop: {
     flex: 1,
@@ -234,6 +217,10 @@ const styles = StyleSheet.create({
   sheetContainer: {
     flex: 1,
     maxHeight: '100%',
+  },
+  sheet: {
+    flex: 1,
+    width: '100%',
   },
   bodyScroll: {
     flex: 1,
