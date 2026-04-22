@@ -6,6 +6,7 @@ import { useColors } from '@/constants/theme';
 import { PillDropdown } from '@/components/PillDropdown';
 import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
+import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
 import { DeckModal } from '@/components/home/DeckModal';
@@ -25,6 +26,7 @@ export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const { isSmallScreen } = useScreenSize();
   const { tree, loading } = useDeckTree();
 
   // Quick study state
@@ -118,7 +120,7 @@ export default function Home() {
           flexGrow: 1,
           paddingHorizontal: 24,
           paddingTop: insets.top + 16,
-          paddingBottom: insets.bottom + 80,
+          paddingBottom: insets.bottom + (isSmallScreen ? 80 : 32),
         }}
       >
         {/* Header */}
@@ -131,6 +133,20 @@ export default function Home() {
 
         {/* Deck tree */}
         <View className="w-full max-w-2xl self-center">
+          {!isSmallScreen && (
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-foreground-secondary text-sm font-semibold">Decks</Text>
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  className="px-4 py-2 rounded-xl bg-primary"
+                  onPress={handleCreate}
+                  activeOpacity={0.85}
+                >
+                  <Text className="text-primary-foreground text-sm font-semibold">New Deck</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           {loading ? (
             <View className="items-center py-16">
               <Text className="text-foreground-secondary text-base">Loading…</Text>
@@ -192,20 +208,26 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {/* FAB */}
-      <TouchableOpacity
-        className="absolute bg-primary rounded-full items-center justify-center shadow-lg"
-        style={{
-          width: 56,
-          height: 56,
-          right: 24,
-          bottom: insets.bottom + 24,
-        }}
-        onPress={handleCreate}
-        activeOpacity={0.85}
-      >
-        <Text className="text-primary-foreground text-2xl font-light" style={{ marginTop: -2 }}>+</Text>
-      </TouchableOpacity>
+      {/* Mobile FABs */}
+      {isSmallScreen && (
+        <View
+          className="absolute items-center"
+          style={{
+            width: 56,
+            right: 24,
+            bottom: insets.bottom + 24,
+          }}
+        >
+          <TouchableOpacity
+            className="bg-primary rounded-full items-center justify-center shadow-lg"
+            style={{ width: 56, height: 56 }}
+            onPress={handleCreate}
+            activeOpacity={0.85}
+          >
+            <Text className="text-primary-foreground text-2xl font-light" style={{ marginTop: -2 }}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Modals */}
       <DeckModal

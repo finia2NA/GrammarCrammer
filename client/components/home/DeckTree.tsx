@@ -13,7 +13,7 @@ export function DeckTree({ tree, onStudy, onEdit }: DeckTreeProps) {
     return (
       <View className="items-center py-16 px-8">
         <Text className="text-foreground-secondary text-base text-center leading-6">
-          No decks yet.{'\n'}Tap + to create your first deck.
+          No decks yet.{'\n'}Use New Deck or + to create your first deck.
         </Text>
       </View>
     );
