@@ -59,6 +59,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const tabHeightTransition = useRef<Animated.CompositeAnimation | null>(null);
   const contentHeightRef = useRef(0);
   const hasMeasuredContentRef = useRef(false);
+  const [heightAnimating, setHeightAnimating] = useState(false);
   const tabWidth = tabSwitcherWidth > 0 ? (tabSwitcherWidth - 12) / 2 : 0;
 
   useEffect(() => {
@@ -170,13 +171,14 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
 
     contentHeightRef.current = nextHeight;
     tabHeightTransition.current?.stop();
+    setHeightAnimating(true);
     tabHeightTransition.current = Animated.timing(tabContentHeight, {
       toValue: nextHeight,
       duration: 230,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     });
-    tabHeightTransition.current.start();
+    tabHeightTransition.current.start(() => setHeightAnimating(false));
   }, [tabContentHeight]);
 
   function handleSubmit() {
@@ -290,7 +292,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
 
       <Animated.View
         style={{
-          overflow: 'hidden',
+          overflow: heightAnimating ? 'hidden' : 'visible',
           height: tabContentHeight,
           opacity: tabContentOpacity,
           transform: [{ translateX: tabContentTranslateX }],
