@@ -6,18 +6,7 @@ import { Platform, useColorScheme } from 'react-native';
 
 type RGB = readonly [number, number, number];
 
-const darkRgb: Record<string, RGB> = {
-  'background': [43, 6, 30],  // Midnight Violet
-  'foreground': [249, 251, 242], // Ivory
-  'card': [62, 20, 40],
-  'input': [82, 36, 58],
-  'muted': [99, 48, 80],
-  'border': [54, 73, 78],  // Iron Grey
-  'muted-foreground': [68, 157, 209], // Blue Bell
-  'primary': [241, 127, 41],  // Harvest Orange
-  'primary-foreground': [43, 6, 30],  // Midnight Violet
-  'destructive': [248, 113, 113],
-};
+
 
 const lightRgb: Record<string, RGB> = {
   'background': [255, 248, 235],
@@ -29,7 +18,12 @@ const lightRgb: Record<string, RGB> = {
   'muted-foreground': [54, 73, 78],  // Iron Grey
   'primary': [241, 127, 41],  // Harvest Orange
   'primary-foreground': [43, 6, 30],  // Midnight Violet
+  'accent': [255, 229, 196],  // Harvest Orange tint
   'destructive': [220, 38, 38],
+};
+
+const darkRgb: Record<string, RGB> = {
+  ...lightRgb,
 };
 
 // ── Derived helpers ───────────────────────────────────────────────────────────

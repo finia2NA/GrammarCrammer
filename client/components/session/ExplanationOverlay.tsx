@@ -24,7 +24,7 @@ export function ExplanationOverlay({
   topic, explanation, wasTruncated, loading, loadPhase, onStart, insets,
 }: ExplanationOverlayProps) {
   return (
-    <View className="flex-1 bg-slate-950">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1 px-8"
         contentContainerStyle={{
@@ -35,10 +35,10 @@ export function ExplanationOverlay({
           paddingBottom: insets.bottom + 32,
         }}
       >
-        <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">
+        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-2">
           Grammar Explanation
         </Text>
-        <Text className="text-white text-2xl font-bold mb-6">{topic}</Text>
+        <Text className="text-foreground text-2xl font-bold mb-6">{topic}</Text>
         {explanation ? (
           <GrammarMarkdown>{explanation}</GrammarMarkdown>
         ) : (
@@ -52,7 +52,7 @@ export function ExplanationOverlay({
         {loading ? (
           <View className="flex-row items-center justify-center gap-3 py-4">
             <ActivityIndicator size="small" color={Colors.primary} />
-            <Text className="text-slate-500 text-sm">
+            <Text className="text-muted-foreground text-sm">
               {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
             </Text>
           </View>

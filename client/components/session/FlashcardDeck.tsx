@@ -96,8 +96,8 @@ export function FlashcardDeck({
           {currentCard.english}
         </Text>
         {currentCard.sentenceContext && (
-          <View className="self-end bg-amber-950 border border-amber-700 rounded-md px-2 py-0.5 mb-4">
-            <Text className="text-amber-300 text-xs font-medium">{currentCard.sentenceContext}</Text>
+          <View className="self-end bg-muted border border-border rounded-md px-2 py-0.5 mb-4">
+            <Text className="text-primary/70 text-xs font-medium">{currentCard.sentenceContext}</Text>
           </View>
         )}
 
@@ -176,8 +176,8 @@ export function FlashcardDeck({
         {cardPhase === 'wrong_shown' && (
           <View className="gap-3">
             <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-red-400 text-lg">✗</Text>
-              <Text className="text-red-400 font-semibold">Not quite</Text>
+              <Text className="text-destructive text-lg">✗</Text>
+              <Text className="text-destructive font-semibold">Not quite</Text>
             </View>
             <AnswerBox answer={submittedAnswer} />
             <ExampleBox example={currentCard.targetLanguage} />

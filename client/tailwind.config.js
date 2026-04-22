@@ -21,6 +21,7 @@ module.exports = {
           DEFAULT:    'rgb(var(--color-primary)            / <alpha-value>)',
           foreground: 'rgb(var(--color-primary-foreground) / <alpha-value>)',
         },
+        accent:      'rgb(var(--color-accent)      / <alpha-value>)',
         destructive: 'rgb(var(--color-destructive) / <alpha-value>)',
       },
     },

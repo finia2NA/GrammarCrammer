@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+import { Colors, useColors } from '@/constants/theme';
 import { GrammarMarkdown } from './GrammarMarkdown';
 
 export const PEEK_HEIGHT = 72;
@@ -30,6 +30,7 @@ export function TruncationWarning() {
 
 export function SidePanel({ explanation, wasTruncated }: { explanation: string; wasTruncated: boolean }) {
   const insets = useSafeAreaInsets();
+  const c = useColors();
   const [width, setWidth] = useState(320);
   const widthRef = useRef(320);
   const [isDragging, setIsDragging] = useState(false);
@@ -82,10 +83,10 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
   return (
     <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
       {/* Panel content */}
-      <View className="bg-slate-900 flex-1">
+      <View className="bg-background flex-1">
         <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: insets.top + 40 }}>
-          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">
+          <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-3">
             Grammar Reference
           </Text>
           <GrammarMarkdown>{explanation}</GrammarMarkdown>
@@ -99,7 +100,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
         style={{
           width: 6,
           cursor: 'col-resize',
-          backgroundColor: isDragging ? Colors.primary : Colors.input,
+          backgroundColor: isDragging ? c.primary : c.muted,
           alignItems: 'center',
           justifyContent: 'center',
         } as any}
@@ -111,7 +112,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
               width: 2,
               height: 2,
               borderRadius: 1,
-              backgroundColor: isDragging ? Colors.primaryLight : Colors.border,
+              backgroundColor: c.primary,
               marginVertical: 2,
             }}
           />
@@ -124,6 +125,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
 // ─── Bottom sheet (small screens) ─────────────────────────────────────────────
 
 export function BottomSheet({ explanation, wasTruncated }: { explanation: string; wasTruncated: boolean }) {
+  const c = useColors();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState(false);
@@ -185,9 +187,9 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: Colors.card,
+        backgroundColor: c.card,
         borderTopWidth: 1,
-        borderTopColor: Colors.input,
+        borderTopColor: c.input,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
@@ -196,15 +198,15 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
       {/* Handle + header — tap + drag target */}
       <View {...headerPan.panHandlers}>
         <TouchableOpacity onPress={() => snapTo(!expandedRef.current)} className="items-center pt-2 pb-1" activeOpacity={1}>
-          <View className="w-10 h-1 bg-slate-600 rounded-full" />
+          <View className="w-10 h-1 bg-border rounded-full" />
         </TouchableOpacity>
         <View className="flex-row items-center justify-between px-5 pb-2">
-          <Text className="text-slate-400 text-xs font-semibold uppercase tracking-widest">
+          <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest">
             Grammar Reference
           </Text>
           {expanded && (
             <TouchableOpacity onPress={() => snapTo(false)}>
-              <Text className="text-slate-500 text-xs">↓ Dismiss</Text>
+              <Text className="text-muted-foreground text-xs">↓ Dismiss</Text>
             </TouchableOpacity>
           )}
         </View>
