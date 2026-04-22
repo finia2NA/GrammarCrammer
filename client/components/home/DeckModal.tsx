@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import type { Language, CardCount } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
@@ -47,14 +47,34 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(10);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
+  const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
+  const [tabSwitcherWidth, setTabSwitcherWidth] = useState(0);
+  const tabContentOpacity = useRef(new Animated.Value(1)).current;
+  const tabContentTranslateX = useRef(new Animated.Value(0)).current;
+  const tabContentHeight = useRef(new Animated.Value(0)).current;
+  const tabIndicatorX = useRef(new Animated.Value(4)).current;
+  const tabTransition = useRef<Animated.CompositeAnimation | null>(null);
+  const tabHeightTransition = useRef<Animated.CompositeAnimation | null>(null);
+  const contentHeightRef = useRef(0);
+  const hasMeasuredContentRef = useRef(false);
+  const tabWidth = tabSwitcherWidth > 0 ? (tabSwitcherWidth - 12) / 2 : 0;
 
   useEffect(() => {
     if (visible) {
       setActiveTab('create');
+      setContentTab('create');
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
+      tabTransition.current?.stop();
+      tabHeightTransition.current?.stop();
+      tabContentOpacity.setValue(1);
+      tabContentTranslateX.setValue(0);
+      tabContentHeight.setValue(0);
+      hasMeasuredContentRef.current = false;
+      contentHeightRef.current = 0;
+      tabIndicatorX.setValue(4);
       if (isEdit && editNode) {
         setName(editNodePath ?? editNode.name);
         if (editNode.deck) {
@@ -69,7 +89,95 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
         setCardCount(10);
       }
     }
-  }, [visible, editNode, editNodePath, isEdit]);
+  }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);
+
+  useEffect(() => {
+    if (!canUseCsvTab || tabWidth <= 0) return;
+
+    const target = activeTab === 'create' ? 4 : 8 + tabWidth;
+    Animated.spring(tabIndicatorX, {
+      toValue: target,
+      damping: 18,
+      stiffness: 240,
+      mass: 0.9,
+      useNativeDriver: true,
+    }).start();
+  }, [activeTab, canUseCsvTab, tabWidth, tabIndicatorX]);
+
+  useEffect(() => {
+    if (!visible || activeTab === contentTab) return;
+
+    const direction = activeTab === 'csv' ? 1 : -1;
+    const exitOffset = direction * -16;
+    const enterOffset = direction * 16;
+
+    tabTransition.current?.stop();
+    tabTransition.current = Animated.parallel([
+      Animated.timing(tabContentOpacity, {
+        toValue: 0,
+        duration: 110,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(tabContentTranslateX, {
+        toValue: exitOffset,
+        duration: 110,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]);
+
+    tabTransition.current.start(({ finished }) => {
+      if (!finished) return;
+
+      setContentTab(activeTab);
+      tabContentOpacity.setValue(0);
+      tabContentTranslateX.setValue(enterOffset);
+
+      tabTransition.current = Animated.parallel([
+        Animated.timing(tabContentOpacity, {
+          toValue: 1,
+          duration: 190,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(tabContentTranslateX, {
+          toValue: 0,
+          duration: 190,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]);
+      tabTransition.current.start();
+    });
+  }, [activeTab, contentTab, visible, tabContentOpacity, tabContentTranslateX]);
+
+  useEffect(() => () => {
+    tabTransition.current?.stop();
+    tabHeightTransition.current?.stop();
+  }, []);
+
+  const handleContentLayout = useCallback((nextHeight: number) => {
+    if (nextHeight <= 0) return;
+    if (!hasMeasuredContentRef.current) {
+      hasMeasuredContentRef.current = true;
+      contentHeightRef.current = nextHeight;
+      tabContentHeight.setValue(nextHeight);
+      return;
+    }
+
+    if (Math.abs(contentHeightRef.current - nextHeight) < 1) return;
+
+    contentHeightRef.current = nextHeight;
+    tabHeightTransition.current?.stop();
+    tabHeightTransition.current = Animated.timing(tabContentHeight, {
+      toValue: nextHeight,
+      duration: 230,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    });
+    tabHeightTransition.current.start();
+  }, [tabContentHeight]);
 
   function handleSubmit() {
     const trimmedName = name.trim();
@@ -139,9 +247,27 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
       confirmDisabled={confirmDisabled}
     >
       {canUseCsvTab && (
-        <View className="mb-6 p-1 rounded-xl bg-background-muted border border-border flex-row gap-1">
+        <View
+          className="mb-6 p-1 rounded-xl bg-background-muted border border-border flex-row gap-1 relative"
+          onLayout={(event) => setTabSwitcherWidth(event.nativeEvent.layout.width)}
+        >
+          {tabWidth > 0 && (
+            <Animated.View
+              pointerEvents="none"
+              className="bg-surface rounded-lg"
+              style={{
+                position: 'absolute',
+                top: 4,
+                bottom: 4,
+                left: 4,
+                width: tabWidth,
+                transform: [{ translateX: tabIndicatorX }],
+              }}
+            />
+          )}
           <TouchableOpacity
-            className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === 'create' ? 'bg-surface' : ''}`}
+            className="flex-1 py-2.5 rounded-lg items-center"
+            style={{ zIndex: 1 }}
             onPress={() => setActiveTab('create')}
             activeOpacity={0.85}
           >
@@ -150,7 +276,8 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className={`flex-1 py-2.5 rounded-lg items-center ${activeTab === 'csv' ? 'bg-surface' : ''}`}
+            className="flex-1 py-2.5 rounded-lg items-center"
+            style={{ zIndex: 1 }}
             onPress={() => setActiveTab('csv')}
             activeOpacity={0.85}
           >
@@ -161,32 +288,43 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
         </View>
       )}
 
-      {showingCsvTab ? (
-        <DeckModalCsvTab
-          collectionPath={name}
-          onCollectionPathChange={setName}
-          language={language}
-          onLanguageChange={setLanguage}
-          cardCount={cardCount}
-          onCardCountChange={setCardCount}
-          onFileSelected={handleFileSelected}
-          importStatus={importStatus}
-        />
-      ) : (
-        <DeckModalCreateTab
-          isCollection={isCollection}
-          isEdit={isEdit}
-          onDelete={onDelete}
-          name={name}
-          onNameChange={setName}
-          topic={topic}
-          onTopicChange={setTopic}
-          language={language}
-          onLanguageChange={setLanguage}
-          cardCount={cardCount}
-          onCardCountChange={setCardCount}
-        />
-      )}
+      <Animated.View
+        style={{
+          overflow: 'hidden',
+          height: tabContentHeight,
+          opacity: tabContentOpacity,
+          transform: [{ translateX: tabContentTranslateX }],
+        }}
+      >
+        <View onLayout={(event) => handleContentLayout(event.nativeEvent.layout.height)}>
+          {contentTab === 'csv' ? (
+            <DeckModalCsvTab
+              collectionPath={name}
+              onCollectionPathChange={setName}
+              language={language}
+              onLanguageChange={setLanguage}
+              cardCount={cardCount}
+              onCardCountChange={setCardCount}
+              onFileSelected={handleFileSelected}
+              importStatus={importStatus}
+            />
+          ) : (
+            <DeckModalCreateTab
+              isCollection={isCollection}
+              isEdit={isEdit}
+              onDelete={onDelete}
+              name={name}
+              onNameChange={setName}
+              topic={topic}
+              onTopicChange={setTopic}
+              language={language}
+              onLanguageChange={setLanguage}
+              cardCount={cardCount}
+              onCardCountChange={setCardCount}
+            />
+          )}
+        </View>
+      </Animated.View>
     </PageSheetModal>
   );
 }
