@@ -23,12 +23,12 @@ export function PillDropdown<T extends string | number>({
   return (
     <View style={{ position: 'relative' }}>
       <TouchableOpacity
-        className="flex-row items-center gap-1.5 bg-input rounded-lg px-3 py-1.5"
+        className="flex-row items-center gap-1.5 bg-background-muted rounded-lg px-3 py-1.5"
         onPress={() => { Keyboard.dismiss(); setOpen(o => !o); }}
         activeOpacity={0.8}
       >
         <Text className="text-foreground text-sm font-medium">{label}</Text>
-        <Text className="text-muted-foreground text-[10px]">{open ? '▲' : '▼'}</Text>
+        <Text className="text-foreground-secondary text-[10px]">{open ? '▲' : '▼'}</Text>
       </TouchableOpacity>
 
       {open && (
@@ -40,16 +40,16 @@ export function PillDropdown<T extends string | number>({
             activeOpacity={0}
           />
           <View
-            className="absolute right-0 bg-input border border-border rounded-xl shadow-2xl overflow-hidden"
+            className="absolute right-0 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden"
             style={{ top: '100%', marginTop: 4, zIndex: 100, minWidth: 130 } as any}
           >
             {options.map((opt) => (
               <TouchableOpacity
                 key={String(opt)}
-                className={`px-4 py-2.5 ${opt === value ? 'bg-primary' : ''}`}
+                className={`px-4 py-2.5 ${opt === value ? 'bg-background-muted' : ''}`}
                 onPress={() => { onChange(opt); setOpen(false); }}
               >
-                <Text className={`text-sm font-medium ${opt === value ? 'text-primary-foreground' : 'text-foreground/80'}`}>
+                <Text className={`text-sm font-medium ${opt === value ? 'text-primary' : 'text-foreground/80'}`}>
                   {formatLabel ? formatLabel(opt) : String(opt)}
                 </Text>
               </TouchableOpacity>

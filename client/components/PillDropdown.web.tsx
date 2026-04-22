@@ -21,7 +21,7 @@ export function PillDropdown<T extends string | number>({
         if (selected !== undefined) onChange(selected);
       }}
       style={{
-        backgroundColor: colors.input,
+        backgroundColor: colors.background_muted,
         color: colors.foreground,
         border: 'none',
         borderRadius: '8px',

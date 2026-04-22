@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -125,7 +125,7 @@ export default function Home() {
         <View className="flex-row items-center justify-between mb-6">
           <Text className="text-foreground text-xl font-bold">GrammarCrammer</Text>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
-            <Text className="text-muted-foreground text-xl">⚙</Text>
+            <Text className="text-foreground-secondary text-xl">⚙</Text>
           </TouchableOpacity>
         </View>
 
@@ -133,7 +133,7 @@ export default function Home() {
         <View className="w-full max-w-2xl self-center">
           {loading ? (
             <View className="items-center py-16">
-              <Text className="text-muted-foreground text-base">Loading…</Text>
+              <Text className="text-foreground-secondary text-base">Loading…</Text>
             </View>
           ) : (
             <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
@@ -143,7 +143,7 @@ export default function Home() {
         {/* Quick study */}
         <View className="w-full max-w-2xl self-center mb-6">
           <View
-            className="bg-card rounded-2xl mb-3"
+            className="bg-surface rounded-2xl mb-3"
             style={{
               minHeight: 100,
               zIndex: 10,
@@ -180,12 +180,12 @@ export default function Home() {
             />
           </View>
           <TouchableOpacity
-            className={`py-3 rounded-2xl items-center ${canStart ? 'bg-primary' : 'bg-input'}`}
+            className={`py-3 rounded-2xl items-center bg-primary`}
             onPress={handleQuickStart}
             disabled={!canStart}
             activeOpacity={0.85}
           >
-            <Text className={`text-base font-bold ${canStart ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+            <Text className={`text-base font-semibold text-primary-foreground`}>
               Start Session
             </Text>
           </TouchableOpacity>

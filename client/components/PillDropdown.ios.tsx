@@ -27,7 +27,7 @@ export function PillDropdown<T extends string | number>({
       label={label}
       options={optionLabels}
       selectedIndex={selectedIndex >= 0 ? selectedIndex : 0}
-      backgroundColor={colors.input}
+      backgroundColor={colors.background_muted}
       foregroundColor={colors.foreground}
       onValueChange={(event) => {
         Keyboard.dismiss();

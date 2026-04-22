@@ -47,11 +47,11 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
         {messages.map((msg, i) => (
           <View key={i}>
             {msg.role === 'user' ? (
-              <View className="bg-muted self-end rounded-lg px-3 py-2">
+              <View className="bg-background-muted self-end rounded-lg px-3 py-2">
                 <Text className="text-foreground text-sm">{msg.content}</Text>
               </View>
             ) : (
-              <View className="bg-accent rounded-lg px-3 py-2">
+              <View className="bg-background-warm rounded-lg px-3 py-2">
                 {msg.content ? (
                   <GrammarMarkdown>{msg.content}</GrammarMarkdown>
                 ) : (
@@ -67,7 +67,7 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
       <View className="flex-row items-end gap-2">
         <TextInput
           ref={inputRef}
-          className="flex-1 bg-input border border-border rounded-xl px-4 py-2.5 text-foreground text-sm"
+          className="flex-1 bg-background-muted border border-border rounded-xl px-4 py-2.5 text-foreground text-sm"
           placeholder="Ask about this card…"
           placeholderTextColor={Colors.border}
           value={inputText}
@@ -80,7 +80,7 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
         />
         <TouchableOpacity
           className={`w-10 h-10 rounded-xl items-center justify-center ${
-            !inputText.trim() || streaming ? 'bg-muted' : 'bg-primary'
+            !inputText.trim() || streaming ? 'bg-background-muted' : 'bg-primary'
           }`}
           onPress={handleSend}
           disabled={!inputText.trim() || streaming}

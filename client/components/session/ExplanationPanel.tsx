@@ -20,8 +20,8 @@ export const PEEK_HEIGHT = 72;
 
 export function TruncationWarning() {
   return (
-    <View className="mt-3 px-3 py-2 bg-amber-950 border border-amber-800 rounded-lg">
-      <Text className="text-amber-400 text-xs">Explanation was cut off — try a more specific topic.</Text>
+    <View className="mt-3 px-3 py-2 bg-background-warm border border-border rounded-lg">
+      <Text className="text-xs" style={{ color: '#B87010' }}>Explanation was cut off — try a more specific topic.</Text>
     </View>
   );
 }
@@ -86,7 +86,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
       <View className="bg-background flex-1">
         <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: insets.top + 40 }}>
-          <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-3">
+          <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest mb-3">
             Grammar Reference
           </Text>
           <GrammarMarkdown>{explanation}</GrammarMarkdown>
@@ -100,7 +100,7 @@ export function SidePanel({ explanation, wasTruncated }: { explanation: string; 
         style={{
           width: 6,
           cursor: 'col-resize',
-          backgroundColor: isDragging ? c.primary : c.muted,
+          backgroundColor: isDragging ? c.primary : c.background_muted,
           alignItems: 'center',
           justifyContent: 'center',
         } as any}
@@ -187,9 +187,9 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: c.card,
+        backgroundColor: c.surface,
         borderTopWidth: 1,
-        borderTopColor: c.input,
+        borderTopColor: c.primary,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
@@ -201,12 +201,12 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
           <View className="w-10 h-1 bg-border rounded-full" />
         </TouchableOpacity>
         <View className="flex-row items-center justify-between px-5 pb-2">
-          <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest">
+          <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest">
             Grammar Reference
           </Text>
           {expanded && (
             <TouchableOpacity onPress={() => snapTo(false)}>
-              <Text className="text-muted-foreground text-xs">↓ Dismiss</Text>
+              <Text className="text-foreground-secondary text-xs">↓ Dismiss</Text>
             </TouchableOpacity>
           )}
         </View>

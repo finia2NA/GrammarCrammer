@@ -87,13 +87,13 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
       <Text className="text-foreground/80 text-sm font-medium mb-2">
         {isCollection ? 'Collection Name' : 'Deck Name'}
       </Text>
-      <Text className="text-muted-foreground text-xs mb-2">
+      <Text className="text-foreground-secondary text-xs mb-2">
         {isCollection
           ? 'Rename this collection.'
           : 'Use :: to nest in collections, e.g. "Japanese::N5::Te-form"'}
       </Text>
       <TextInput
-        className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
+        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
         placeholder={isCollection ? 'Collection name' : 'Japanese::N5::Te-form'}
         placeholderTextColor={colors.border}
         value={name}
@@ -105,11 +105,11 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
       {!isCollection && (
         <>
           <Text className="text-foreground/80 text-sm font-medium mb-2">Topic / Prompt</Text>
-          <Text className="text-muted-foreground text-xs mb-2">
+          <Text className="text-foreground-secondary text-xs mb-2">
             Describe the grammar topic to study. This is sent to Claude to generate the explanation.
           </Text>
           <TextInput
-            className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-base mb-6"
             placeholder='e.g. "Japanese て-form conjugation"'
             placeholderTextColor={colors.border}
             value={topic}
@@ -134,10 +134,10 @@ export function DeckModal({ visible, onClose, onSubmit, onDelete, editNode, edit
       {/* Delete button (edit mode only) */}
       {isEdit && onDelete && (
         <TouchableOpacity
-          className="mt-auto py-3.5 rounded-xl border border-destructive items-center"
+          className="mt-auto py-3.5 rounded-xl border border-error items-center"
           onPress={onDelete}
         >
-          <Text className="text-destructive font-semibold">
+          <Text className="text-error font-semibold">
             Delete {isCollection ? 'Collection' : 'Deck'}
           </Text>
         </TouchableOpacity>

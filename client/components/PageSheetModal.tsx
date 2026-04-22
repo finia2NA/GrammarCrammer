@@ -119,7 +119,7 @@ export function PageSheetModal({
           disabled={resolvedRight.disabled}
           className="w-16 items-end"
         >
-          <Text className={`text-base font-semibold ${resolvedRight.disabled ? 'text-muted-foreground' : 'text-primary'}`}>
+          <Text className={`text-base font-semibold ${resolvedRight.disabled ? 'text-foreground-secondary' : 'text-primary'}`}>
             {resolvedRight.label}
           </Text>
         </TouchableOpacity>

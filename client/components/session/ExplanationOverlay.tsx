@@ -35,7 +35,7 @@ export function ExplanationOverlay({
           paddingBottom: insets.bottom + 32,
         }}
       >
-        <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-2">
+        <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest mb-2">
           Grammar Explanation
         </Text>
         <Text className="text-foreground text-2xl font-bold mb-6">{topic}</Text>
@@ -52,7 +52,7 @@ export function ExplanationOverlay({
         {loading ? (
           <View className="flex-row items-center justify-center gap-3 py-4">
             <ActivityIndicator size="small" color={Colors.primary} />
-            <Text className="text-muted-foreground text-sm">
+            <Text className="text-foreground-secondary text-sm">
               {loadPhase === 'cards' ? 'Generating flashcards…' : 'Generating explanation…'}
             </Text>
           </View>

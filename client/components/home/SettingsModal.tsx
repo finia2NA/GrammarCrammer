@@ -31,7 +31,7 @@ function SettingsRow({
       <View className="flex-1 mr-4">
         <Text className="text-foreground/80 text-sm font-medium">{label}</Text>
         {description && (
-          <Text className="text-muted-foreground text-xs mt-1">{description}</Text>
+          <Text className="text-foreground-secondary text-xs mt-1">{description}</Text>
         )}
       </View>
       {children}
@@ -87,12 +87,12 @@ function ConfirmButton({
 
   const bgColor = fill.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', destructive ? colors.destructive : colors.foreground],
+    outputRange: ['transparent', destructive ? colors.error : colors.foreground],
   });
 
   const textColor = fill.interpolate({
     inputRange: [0, 1],
-    outputRange: [destructive ? colors.destructive : colors.foreground, destructive ? '#ffffff' : colors.background],
+    outputRange: [destructive ? colors.error : colors.foreground, destructive ? '#ffffff' : colors.background],
   });
 
   return (
@@ -104,7 +104,7 @@ function ConfirmButton({
           borderWidth: 1,
           alignItems: 'center' as const,
           backgroundColor: bgColor,
-          borderColor: destructive ? colors.destructive : colors.border,
+          borderColor: destructive ? colors.error : colors.border,
         }}
       >
         <Animated.Text style={{ color: textColor, fontWeight: '600' }}>
@@ -124,19 +124,19 @@ function formatCost(usd: number): string {
 
 function UsageBar({ used, limit, colors }: { used: number; limit: number; colors: ReturnType<typeof useColors> }) {
   const pct = limit > 0 ? Math.min(used / limit, 1) : 0;
-  const barColor = pct >= 0.9 ? colors.destructive : colors.primary;
+  const barColor = pct >= 0.9 ? colors.error : colors.primary;
 
   return (
     <View className="mt-2">
       <View className="flex-row justify-between mb-1">
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-foreground-secondary text-xs">
           {formatCost(used)} / {formatCost(limit)}
         </Text>
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-foreground-secondary text-xs">
           {(pct * 100).toFixed(0)}%
         </Text>
       </View>
-      <View className="h-2 rounded-full bg-muted overflow-hidden">
+      <View className="h-2 rounded-full bg-background-muted overflow-hidden">
         <View
           style={{ width: `${pct * 100}%`, backgroundColor: barColor }}
           className="h-full rounded-full"
@@ -175,7 +175,7 @@ function AddApiKeyForm({ onAdded }: { onAdded: () => void }) {
   return (
     <View className="mt-2 gap-2">
       <TextInput
-        className="bg-input text-foreground rounded-lg px-3 py-2 text-sm"
+        className="bg-background-muted text-foreground rounded-lg px-3 py-2 text-sm border border-border"
         placeholder="sk-ant-..."
         placeholderTextColor="#888"
         value={key}
@@ -186,7 +186,7 @@ function AddApiKeyForm({ onAdded }: { onAdded: () => void }) {
       />
       {error ? <Text className="text-xs" style={{ color: '#f87171' }}>{error}</Text> : null}
       <TouchableOpacity
-        className="bg-primary rounded-lg py-2 items-center"
+        className="bg-secondary rounded-lg py-2 items-center"
         onPress={handleSubmit}
         disabled={loading || !key.trim()}
         activeOpacity={0.8}
@@ -304,7 +304,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
           {/* Explanation when central key is available */}
           {usageStatus.centralKeyAvailable && (
-            <Text className="text-muted-foreground text-xs leading-5 mb-4">
+            <Text className="text-foreground-secondary text-xs leading-5 mb-4">
               Some usage is included with your account using the server's API key.
               You can also connect your own Anthropic key if you'd like unlimited usage.
             </Text>
@@ -335,7 +335,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                 colors={colors}
               />
               {usageStatus.globalLimitReached && (
-                <Text className="text-xs mt-1" style={{ color: colors.destructive }}>
+                <Text className="text-xs mt-1" style={{ color: colors.error }}>
                   Global usage limit reached
                 </Text>
               )}
@@ -348,7 +348,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               {usageStatus.hasOwnKey && (
                 <View className="mb-3">
                   <Text className="text-foreground/60 text-xs font-medium mb-2 uppercase tracking-wide">This Month</Text>
-                  <Text className="text-muted-foreground text-xs">
+                  <Text className="text-foreground-secondary text-xs">
                     Used: {formatCost(usageStatus.usage.own)}
                   </Text>
                 </View>

@@ -110,7 +110,7 @@ const WelcomeCard = memo(function WelcomeCard() {
       <Text className="text-4xl font-bold text-foreground mb-3">
         Welcome to{'\n'}GrammarCrammer
       </Text>
-      <Text className="text-muted-foreground text-base leading-7">
+      <Text className="text-foreground-secondary text-base leading-7">
         GrammarCrammer is your AI-powered grammar study partner.
         Tell it what you want to practise, and it will generate
         a custom set of flashcards tailored to your topic — in any
@@ -135,7 +135,7 @@ const HowItWorksCard = memo(function HowItWorksCard() {
           <Text className="text-2xl mr-3">{icon}</Text>
           <View className="flex-1">
             <Text className="text-foreground font-semibold text-base mb-1">{title}</Text>
-            <Text className="text-muted-foreground text-sm leading-5">{desc}</Text>
+            <Text className="text-foreground-secondary text-sm leading-5">{desc}</Text>
           </View>
         </View>
       ))}
@@ -149,10 +149,10 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
       <Text className="text-3xl font-bold text-foreground mb-3">
         Alpha version
       </Text>
-      <Text className="text-muted-foreground text-base leading-7 mb-4">
+      <Text className="text-foreground-secondary text-base leading-7 mb-4">
         GrammarCrammer is in early development. Future updates may reset your data, including saved decks and collections.
       </Text>
-      <Text className="text-muted-foreground text-base leading-7">
+      <Text className="text-foreground-secondary text-base leading-7">
         For now, use it to explore the concept and practise grammar freely — but don't invest time building elaborate collections just yet.
       </Text>
     </>
@@ -194,7 +194,7 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
           ? (isLogin ? 'Signed in!' : 'Account created!')
           : (isLogin ? 'Sign in' : 'Create account')}
       </Text>
-      <Text className="text-muted-foreground text-sm leading-6 mb-6">
+      <Text className="text-foreground-secondary text-sm leading-6 mb-6">
         {success
           ? (isLogin
             ? 'Welcome back — your decks and settings are ready.'
@@ -208,7 +208,7 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
       <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
         <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
         <TextInput
-          className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm mb-3"
+          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm mb-3"
           placeholder="you@example.com"
           placeholderTextColor={colors.border}
           value={email}
@@ -223,7 +223,7 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
         <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
         <TextInput
           ref={passwordRef}
-          className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm"
+          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm"
           placeholder="At least 8 characters"
           placeholderTextColor={colors.border}
           value={password}
@@ -243,7 +243,7 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
       )}
 
       {error && (
-        <Text className="text-destructive text-xs mt-2">{error}</Text>
+        <Text className="text-error text-xs mt-2">{error}</Text>
       )}
       {!success && (
         <TouchableOpacity onPress={onToggleMode} className="mt-4">
@@ -272,7 +272,7 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
       <Text className="text-3xl font-bold text-foreground mb-2">
         Connect your Claude API key
       </Text>
-      <Text className="text-muted-foreground text-sm leading-6 mb-6">
+      <Text className="text-foreground-secondary text-sm leading-6 mb-6">
         GrammarCrammer uses Claude to generate study content and grade your
         answers. Your key is stored securely on the server — it is only used to authenticate with Anthropic.
       </Text>
@@ -280,7 +280,7 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
         Anthropic API Key
       </Text>
       <TextInput
-        className="bg-input border border-border rounded-xl px-4 py-3 text-foreground text-sm font-mono"
+        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground text-sm font-mono"
         placeholder="sk-ant-..."
         placeholderTextColor={colors.border}
         value={apiKey}
@@ -291,9 +291,9 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
         editable={!loading}
       />
       {error && (
-        <Text className="text-destructive text-xs mt-2">{error}</Text>
+        <Text className="text-error text-xs mt-2">{error}</Text>
       )}
-      <Text className="text-muted-foreground/70 text-xs mt-3 leading-5">
+      <Text className="text-foreground-secondary/70 text-xs mt-3 leading-5">
         Get a key at console.anthropic.com. Usage costs apply based on your
         Anthropic account.
       </Text>
@@ -457,13 +457,13 @@ export default function Onboarding() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Card */}
-        <View className="w-full max-w-md bg-card rounded-3xl p-8 shadow-2xl">
+        <View className="w-full max-w-md bg-surface rounded-3xl p-8 shadow-2xl">
 
           {/* Step dots */}
           <View className="flex-row mb-8 gap-2">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
               <TouchableOpacity key={i} className="flex-1 py-2" onPress={() => goToStep(i)} activeOpacity={0.7}>
-                <View className={`h-1.5 rounded-full ${i === step ? 'bg-primary' : 'bg-muted'}`} />
+                <View className={`h-1.5 rounded-full ${i === step ? 'bg-primary' : 'bg-background-muted'}`} />
               </TouchableOpacity>
             ))}
           </View>

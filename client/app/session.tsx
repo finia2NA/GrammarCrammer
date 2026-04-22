@@ -316,8 +316,8 @@ function SessionUI({
   if (loadError) {
     return (
       <View className="flex-1 bg-background items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-        <Text className="text-destructive text-base text-center">{loadError}</Text>
-        <TouchableOpacity className="bg-card rounded-xl px-6 py-3" onPress={handleBack}>
+        <Text className="text-error text-base text-center">{loadError}</Text>
+        <TouchableOpacity className="bg-surface rounded-xl px-6 py-3" onPress={handleBack}>
           <Text className="text-foreground font-semibold">← Go back</Text>
         </TouchableOpacity>
       </View>
@@ -330,7 +330,7 @@ function SessionUI({
     return (
       <View className="flex-1 bg-background items-center justify-center px-8 gap-4" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-muted-foreground text-base">Generating flashcards…</Text>
+        <Text className="text-foreground-secondary text-base">Generating flashcards…</Text>
       </View>
     );
   }
@@ -347,7 +347,7 @@ function SessionUI({
       <View className="flex-1 bg-background items-center justify-center px-8 gap-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <Text className="text-5xl">🎉</Text>
         <Text className="text-foreground text-2xl font-bold">Session complete!</Text>
-        <Text className="text-muted-foreground text-base text-center">
+        <Text className="text-foreground-secondary text-base text-center">
           You cleared all the cards. Great work.
         </Text>
         <TouchableOpacity className="bg-primary rounded-2xl px-8 py-4" onPress={() => router.replace('/home')}>
@@ -444,7 +444,7 @@ function SessionUI({
             left: 16,
             zIndex: 50,
           }}
-          className="w-10 h-10 items-center justify-center rounded-full bg-card/80"
+          className="w-10 h-10 items-center justify-center rounded-full bg-surface/80"
           activeOpacity={0.7}
         >
           <Text className="text-foreground text-base font-semibold">←</Text>

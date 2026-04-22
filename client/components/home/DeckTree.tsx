@@ -12,7 +12,7 @@ export function DeckTree({ tree, onStudy, onEdit }: DeckTreeProps) {
   if (tree.length === 0) {
     return (
       <View className="items-center py-16 px-8">
-        <Text className="text-muted-foreground text-base text-center leading-6">
+        <Text className="text-foreground-secondary text-base text-center leading-6">
           No decks yet.{'\n'}Tap + to create your first deck.
         </Text>
       </View>
@@ -49,11 +49,11 @@ function TreeRow({ node, depth, onStudy, onEdit }: TreeRowProps) {
         {/* Chevron / bullet */}
         {isCollection ? (
           <TouchableOpacity onPress={toggleExpand} className="w-8 h-10 items-center justify-center">
-            <Text className="text-muted-foreground text-xs">{expanded ? '▼' : '▶'}</Text>
+            <Text className="text-foreground-secondary text-xs">{expanded ? '▼' : '▶'}</Text>
           </TouchableOpacity>
         ) : (
           <View className="w-8 h-10 items-center justify-center">
-            <Text className="text-muted-foreground text-[8px]">●</Text>
+            <Text className="text-foreground-secondary text-[8px]">●</Text>
           </View>
         )}
 
@@ -80,7 +80,7 @@ function TreeRow({ node, depth, onStudy, onEdit }: TreeRowProps) {
           onPress={() => onEdit(node)}
           activeOpacity={0.6}
         >
-          <Text className="text-muted-foreground text-sm">✎</Text>
+          <Text className="text-foreground-secondary text-sm">✎</Text>
         </TouchableOpacity>
       </View>
 
@@ -101,9 +101,9 @@ function StatusBadge({ status }: { status: string }) {
     case 'generating':
       return <Text className="text-yellow-400 text-xs">⏳</Text>;
     case 'error':
-      return <Text className="text-destructive text-xs">⚠</Text>;
+      return <Text className="text-error text-xs">⚠</Text>;
     case 'pending':
-      return <Text className="text-muted-foreground text-xs">…</Text>;
+      return <Text className="text-foreground-secondary text-xs">…</Text>;
     default:
       return null;
   }
