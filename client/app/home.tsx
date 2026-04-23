@@ -152,7 +152,17 @@ export default function Home() {
         </View>
 
         {/* Deck tree */}
-        <View className="w-full max-w-2xl self-center">
+        <View
+          className="w-full max-w-2xl self-center mb-6"
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 20,
+            ...Platform.select({ web: { boxShadow: '0 2px 12px rgba(0,0,0,0.08)' } }),
+          }}
+        >
           {!isSmallScreen && (
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-foreground-secondary text-sm font-semibold">Decks</Text>
