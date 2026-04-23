@@ -208,7 +208,7 @@ export default function Home() {
               />
             </View>
             <TextInput
-              className="flex-1 text-foreground placeholder:text-foreground-muted text-base px-5 pb-4 focus:ring-0 focus:outline-none"
+              className="no-focus-ring flex-1 text-foreground placeholder:text-foreground-muted text-base px-5 pb-4"
               style={{ paddingTop: 48, textAlignVertical: 'top', minHeight: 100 }}
               placeholder="Quick study — type any grammar topic"
               placeholderTextColor={colors.foreground_muted}

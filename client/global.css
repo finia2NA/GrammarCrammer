@@ -12,9 +12,15 @@
     textarea,
     [role="button"],
     [tabindex]:not([tabindex="-1"])
-  ):focus-visible {
-    outline: 2px solid rgb(var(--color-primary) / 1) !important;
+  ):not(.no-focus-ring):focus-visible {
+    outline: 2px solid rgb(var(--color-primary) / 1);
     outline-offset: 2px;
-    box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.25) !important;
+    box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.25);
+  }
+
+  .no-focus-ring:focus,
+  .no-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 }
