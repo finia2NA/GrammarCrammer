@@ -43,7 +43,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     if (res.status === 401) {
       await clearAuthToken();
-      router.replace('/onboarding');
+      if (!options.signal?.aborted) router.replace('/onboarding');
       throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
     }
     const body = await res.json().catch(() => ({})) as any;
@@ -115,8 +115,8 @@ export async function getApiKeyStatus() {
 
 // ─── Tree ─────────────────────────────────────────────────────────────────────
 
-export async function getTree() {
-  return request<TreeNode[]>('/tree');
+export async function getTree(signal?: AbortSignal) {
+  return request<TreeNode[]>('/tree', { signal });
 }
 
 export async function getNode(id: string) {

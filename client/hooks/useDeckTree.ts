@@ -14,17 +14,19 @@ export function useDeckTree(): {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const manualRef = useRef(false);
 
-  const doFetch = useCallback(async () => {
+  const doFetch = useCallback(async (signal?: AbortSignal) => {
     try {
-      const result = await getTree();
-      setTree(result);
+      const result = await getTree(signal);
+      if (!signal?.aborted) setTree(result);
     } catch {
-      // silently fail on poll errors
+      console.error('Failed to fetch deck tree');
     } finally {
-      setLoading(false);
-      if (manualRef.current) {
-        manualRef.current = false;
-        setRefreshing(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        if (manualRef.current) {
+          manualRef.current = false;
+          setRefreshing(false);
+        }
       }
     }
   }, []);
@@ -36,9 +38,11 @@ export function useDeckTree(): {
   }, [doFetch]);
 
   useEffect(() => {
-    doFetch();
-    intervalRef.current = setInterval(doFetch, 5000);
+    const controller = new AbortController();
+    doFetch(controller.signal);
+    intervalRef.current = setInterval(() => doFetch(controller.signal), 5000);
     return () => {
+      controller.abort();
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [doFetch]);
