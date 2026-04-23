@@ -207,6 +207,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const colors = useColors();
   const [cardOrder, setCardOrder] = useState<CardOrder>('shuffled');
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
+  const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
 
@@ -217,6 +218,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       });
       getSetting('judge_with_explanation').then(v => {
         if (v === 'on' || v === 'off') setJudgeWithExplanation(v);
+      });
+      getSetting('feedback_brevity').then(v => {
+        if (v === 'brief' || v === 'normal') setFeedbackBrevity(v);
       });
       getUsageStatus().then(setUsageStatus).catch(() => {});
       setShowAddKey(false);
@@ -231,6 +235,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeJudgeExplanation(next: 'on' | 'off') {
     setJudgeWithExplanation(next);
     setSetting('judge_with_explanation', next);
+  }
+
+  function handleChangeFeedbackBrevity(next: 'brief' | 'normal') {
+    setFeedbackBrevity(next);
+    setSetting('feedback_brevity', next);
   }
 
   function handleChangePreference(next: KeyPreference) {
@@ -297,6 +306,19 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           options={['on', 'off'] as const}
           onChange={handleChangeJudgeExplanation}
           formatLabel={(v: 'on' | 'off') => v === 'on' ? 'On' : 'Off'}
+        />
+      </SettingsRow>
+
+      {/* Feedback Brevity */}
+      <SettingsRow
+        label="Feedback Brevity"
+        description="Brief shows a few-word hint. Normal gives a fuller explanation."
+      >
+        <PillDropdown
+          value={feedbackBrevity}
+          options={['normal', 'brief'] as const}
+          onChange={handleChangeFeedbackBrevity}
+          formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? 'Brief' : 'Normal'}
         />
       </SettingsRow>
 

@@ -11,6 +11,7 @@ import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const claudeProxyRouter = Router();
+export const DEBUG_AI = true;
 
 claudeProxyRouter.use(requireAuth);
 
@@ -34,12 +35,13 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
 // Non-streaming: judge answer
 claudeProxyRouter.post('/judge', async (req, res, next) => {
   try {
-    const { card, userAnswer, language, explanation } = req.body;
+    const { card, userAnswer, language, explanation, brevity } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
-    logAI(req.userEmail!, 'judge', 'haiku');
-    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation);
+    const resolvedBrevity = brevity === 'brief' ? 'brief' : 'normal';
+    logAI(req.userEmail!, `judge:${resolvedBrevity}`, 'haiku');
+    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation, resolvedBrevity);
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -59,12 +61,13 @@ claudeProxyRouter.post('/explanation/stream', async (req, res, next) => {
 // Non-streaming: rejection review
 claudeProxyRouter.post('/rejection', async (req, res, next) => {
   try {
-    const { card, userAnswer, language, explanation } = req.body;
+    const { card, userAnswer, language, explanation, brevity } = req.body;
     if (!card || !userAnswer || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, and language are required.');
     }
-    logAI(req.userEmail!, 'rejection', 'sonnet');
-    const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation);
+    const resolvedBrevity = brevity === 'brief' ? 'brief' : 'normal';
+    logAI(req.userEmail!, `rejection:${resolvedBrevity}`, 'sonnet');
+    const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation, resolvedBrevity);
     res.json(result);
   } catch (e) { next(e); }
 });

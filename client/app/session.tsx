@@ -174,6 +174,7 @@ function SessionUI({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatStreaming, setChatStreaming] = useState(false);
   const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
+  const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -186,10 +187,13 @@ function SessionUI({
     router.replace('/home');
   }
 
-  // Fetch judge_with_explanation setting + total spend baseline
+  // Fetch judge_with_explanation + feedback_brevity settings + total spend baseline
   useEffect(() => {
     getSetting('judge_with_explanation').then(v => {
       if (v === 'off') setJudgeWithExplanation(false);
+    });
+    getSetting('feedback_brevity').then(v => {
+      if (v === 'brief') setFeedbackBrevity('brief');
     });
     getUsageStatus().then(status => {
       const total = status.usage.central + status.usage.own;
@@ -233,7 +237,7 @@ function SessionUI({
     setCardPhase('judging');
 
     try {
-      const result = await judgeAnswer(current, trimmed, language, judgeWithExplanation ? explanation : undefined);
+      const result = await judgeAnswer(current, trimmed, language, judgeWithExplanation ? explanation : undefined, feedbackBrevity);
       if (result.cost) addCost(result.cost);
       console.log(`[judge] correct=${result.correct} reason="${result.reason}"`);
 
@@ -242,7 +246,7 @@ function SessionUI({
         setCardPhase('correct');
       } else {
         setCardPhase('wrong_explaining');
-        const rejection = await explainRejection(current, trimmed, language, explanation);
+        const rejection = await explainRejection(current, trimmed, language, explanation, feedbackBrevity);
         if (rejection.cost) addCost(rejection.cost);
         console.log(`[rejection] overrideToCorrect=${rejection.overrideToCorrect}`);
         if (rejection.overrideToCorrect) {

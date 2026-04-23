@@ -14,6 +14,7 @@ import {
   REJECTION_PROMPT,
 } from '../constants/prompts.js';
 import type { Card } from '../types/index.js';
+import { DEBUG_AI } from '../routes/claude-proxy.js';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -299,52 +300,62 @@ export async function generateCards(userId: string, topic: string, language: str
   return { cards, cost };
 }
 
-export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string) {
+export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal') {
   const { apiKey, source } = await resolveApiKey(userId);
+
+  const prompt = JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation, brevity);
+  if (DEBUG_AI) console.log('[AI:judge prompt]\n', prompt);
 
   const { result, cost } = await callTool<{ reason: string; correct: boolean }>(
     apiKey, HAIKU,
-    JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation),
+    prompt,
     'Judge the answer.',
     'submit_judgment',
-    'First explain your reasoning in one sentence, then submit whether the student answer is correct.',
+    brevity === 'brief'
+      ? 'Submit whether the student answer is correct with a very short reason (a few words).'
+      : 'First explain your reasoning in one sentence, then submit whether the student answer is correct.',
     {
       type: 'object',
       properties: {
-        reason: { type: 'string', description: 'One-sentence explanation of why the answer is correct or incorrect.' },
+        reason: { type: 'string', description: brevity === 'brief' ? 'A few-word note (e.g. "Wrong tense" or "Correct!").' : 'One-sentence explanation of why the answer is correct or incorrect.' },
         correct: { type: 'boolean', description: 'Whether the answer is correct.' },
       },
       required: ['reason', 'correct'],
     },
-    120,
+    brevity === 'brief' ? 60 : 120,
   );
 
+  if (DEBUG_AI) console.log('[AI:judge response]', JSON.stringify(result));
   await recordUsage(userId, source, 'judge', HAIKU, cost);
   return { ...result, cost };
 }
 
 export async function reviewRejection(
-  userId: string, card: Card, userAnswer: string, language: string, explanation?: string,
+  userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal',
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
 
+  const prompt = REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation, brevity);
+  if (DEBUG_AI) console.log('[AI:rejection prompt]\n', prompt);
+
   const { result, cost } = await callTool<{ explanation: string; overrideToCorrect: boolean }>(
     apiKey, SONNET,
-    REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language, explanation),
+    prompt,
     'Review the learner\'s answer.',
     'submit_review',
     'Submit the review of the learner\'s answer, including whether to override the rejection.',
     {
       type: 'object',
       properties: {
-        explanation: { type: 'string', description: 'Feedback for the learner (2–4 sentences).' },
+        explanation: { type: 'string', description: brevity === 'brief' ? 'Feedback for the learner (1–2 sentences).' : 'Feedback for the learner (2–4 sentences).' },
         overrideToCorrect: { type: 'boolean', description: 'True if the answer was actually correct and the rejection was a mistake.' },
       },
       required: ['explanation', 'overrideToCorrect'],
     },
-    400,
+    brevity === 'brief' ? 200 : 400,
   );
 
+  if (DEBUG_AI) console.log('[AI:rejection response]', JSON.stringify(result));
   await recordUsage(userId, source, 'rejection', SONNET, cost);
   return { ...result, cost };
 }

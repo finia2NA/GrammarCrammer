@@ -53,6 +53,7 @@ export const JUDGMENT_PROMPT = (
   language: string,
   sentenceContext?: string,
   explanation?: string,
+  brevity: 'brief' | 'normal' = 'normal',
 ) => `\
 You are a strict but fair ${language} language teacher giving feedback directly to the learner.
 Speak in second person — address them as "you" and refer to your example as "my example sentence".
@@ -66,7 +67,8 @@ Carefully compare their answer to your example sentence. Consider:
 - If the answers match or are very close, the answer is correct.
 - Minor spelling or punctuation differences are acceptable if the grammar is right.
 - Different but equally valid phrasings are acceptable.${sentenceContext ? `\n- The hint "${sentenceContext}" must be respected.` : ''}
-- Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.${judgmentLanguageBlock(language)}`;
+- Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.
+${brevity === 'brief' ? 'Keep your reason to a few words — no full sentences.' : 'State your reason in one clear sentence.'}${judgmentLanguageBlock(language)}`;
 
 // TODO: the full explanation can be large — consider generating a short summary of the
 // grammar points and passing that instead, to reduce token usage.
@@ -75,23 +77,25 @@ export const REJECTION_PROMPT = (
   targetLanguage: string,
   userAnswer: string,
   language: string,
+  sentenceContext?: string,
   explanation?: string,
+  brevity: 'brief' | 'normal' = 'normal',
 ) => `\
 You are a helpful ${language} language teacher reviewing a learner's answer.
 Speak in second person — address them as "you"/"your" and refer to your example as "my example sentence".
 ${explanation ? `\nThe grammar topic being studied:\n---\n${explanation}\n---\n` : ''}
-The learner tried to translate: "${english}"
+The learner tried to translate: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
 Their answer: "${userAnswer}"
 My example sentence: "${targetLanguage}"
 
 A simpler model flagged this answer as incorrect, but it may have been wrong.
 First, determine whether the learner's answer is actually correct (valid grammar, natural phrasing,
-and conveys the same meaning). If it is correct, set overrideToCorrect to true and write a short
+and conveys the same meaning${sentenceContext ? `, and respects the hint "${sentenceContext}"` : ''}). If it is correct, set overrideToCorrect to true and write a short
 encouraging note explaining why their answer is valid. Be encouraging but precise.
 Do NOT make references to the original judgement of the simpler model — this is not displayed to the student.
-If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely (2–4 sentences) why their answer
+If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely why their answer
 is wrong and what my example sentence demonstrates about the grammar.
-${explanationLanguageBlock(language)}`;
+${brevity === 'brief' ? 'Be brief — keep to a 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}${explanationLanguageBlock(language)}`;
 
 export const CARD_CHAT_PROMPT = (
   language: string,

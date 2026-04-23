@@ -252,10 +252,10 @@ export async function generateCards(topic: string, language: string, count: numb
   });
 }
 
-export async function judgeAnswer(card: Card, userAnswer: string, language: string, explanation?: string) {
+export async function judgeAnswer(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal') {
   return request<{ correct: boolean; reason: string; cost: number }>('/ai/judge', {
     method: 'POST',
-    body: JSON.stringify({ card, userAnswer, language, explanation }),
+    body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
   });
 }
 
@@ -331,10 +331,10 @@ export async function generateExplanation(
   return { wasTruncated: result.wasTruncated ?? false };
 }
 
-export async function explainRejection(card: Card, userAnswer: string, language: string, explanation?: string) {
+export async function explainRejection(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal') {
   return request<{ explanation: string; overrideToCorrect: boolean; cost: number }>('/ai/rejection', {
     method: 'POST',
-    body: JSON.stringify({ card, userAnswer, language, explanation }),
+    body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
   });
 }
 
