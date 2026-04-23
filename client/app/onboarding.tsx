@@ -155,6 +155,12 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
       <Text className="text-foreground-secondary text-base leading-7">
         For now, use it to explore the concept and practise grammar freely — but don't invest time building elaborate collections just yet.
       </Text>
+      <View className="mt-4 flex-row border-l-2 border-foreground-secondary pl-3 gap-2">
+        <Text className="text-sm leading-6">💡</Text>
+        <Text className="text-foreground-secondary text-sm leading-6 flex-1">
+          You can also use the CSV export feature to save any work you would like to stick around!
+        </Text>
+      </View>
     </>
   );
 });
