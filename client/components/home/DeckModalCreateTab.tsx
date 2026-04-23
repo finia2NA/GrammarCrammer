@@ -1,12 +1,14 @@
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
+import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 
 interface DeckModalCreateTabProps {
   isCollection: boolean;
   isEdit: boolean;
   onDelete?: () => void;
+  onExport?: () => void;
   name: string;
   onNameChange: (value: string) => void;
   topic: string;
@@ -21,6 +23,7 @@ export function DeckModalCreateTab({
   isCollection,
   isEdit,
   onDelete,
+  onExport,
   name,
   onNameChange,
   topic,
@@ -70,15 +73,29 @@ export function DeckModalCreateTab({
         </>
       )}
 
-      {isEdit && onDelete && (
-        <TouchableOpacity
-          className="mt-auto py-3.5 rounded-xl border border-error items-center"
-          onPress={onDelete}
-        >
-          <Text className="text-error font-semibold">
-            Delete {isCollection ? 'Collection' : 'Deck'}
-          </Text>
-        </TouchableOpacity>
+      {isEdit && (onExport || onDelete) && (
+        <View className="mt-auto flex-row gap-3">
+          {onExport && (
+            <TouchableOpacity
+              className="flex-1 py-3.5 rounded-xl border-secondary-light items-center bg-secondary-light"
+              onPress={onExport}
+            >
+              <Text className="text-secondary-foreground font-semibold">
+                Export as CSV
+              </Text>
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <View className="flex-1">
+            <NeedsConfirmationButton
+              label={`Delete ${isCollection ? 'Collection' : 'Deck'}`}
+              confirmLabel={`Tap again to delete`}
+              onConfirm={onDelete}
+              destructive
+            />
+            </View>
+          )}
+        </View>
       )}
     </>
   );

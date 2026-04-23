@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getTree, getNode, getNodePath, getDescendantDeckIds } from '../services/tree.service.js';
+import { getTree, getNode, getNodePath, getDescendantDeckIds, getExportRows } from '../services/tree.service.js';
 
 export const treeRouter = Router();
 
@@ -32,5 +32,15 @@ treeRouter.get('/:id/descendant-deck-ids', async (req, res, next) => {
   try {
     const deckIds = await getDescendantDeckIds(req.userId!, req.params.id);
     res.json({ deckIds });
+  } catch (e) { next(e); }
+});
+
+treeRouter.get('/:id/export-csv', async (req, res, next) => {
+  try {
+    const { filename, rows } = await getExportRows(req.userId!, req.params.id);
+    const escape = (s: string) => s.replace(/\r\n|\r|\n/g, '\\n');
+    const lines = ['DeckName\tTopic'];
+    for (const row of rows) lines.push(`${escape(row.deckName)}\t${escape(row.topic)}`);
+    res.json({ filename, csv: lines.join('\n') });
   } catch (e) { next(e); }
 });

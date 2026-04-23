@@ -105,13 +105,14 @@ function parseCsv(raw: string): { rows: CsvRow[]; skipped: CsvSkip[]; dataRowCou
   for (let i = dataStart; i < lineEntries.length; i++) {
     const { lineNumber, text } = lineEntries[i];
     const fields = text.split('\t');
-    const topic = (fields[topicIdx] ?? '').trim();
+    const unescape = (s: string) => s.replace(/\\n/g, '\n');
+    const topic = unescape((fields[topicIdx] ?? '').trim());
     if (!topic) {
       skipped.push({ lineNumber, rawLine: text, reason: 'Missing topic' });
       continue;
     }
-    const deckName = (nameIdx >= 0 ? fields[nameIdx] ?? '' : '').trim() || topic;
-    const explanation = (explIdx >= 0 ? fields[explIdx] ?? '' : '').trim();
+    const deckName = unescape((nameIdx >= 0 ? fields[nameIdx] ?? '' : '').trim() || topic);
+    const explanation = unescape((explIdx >= 0 ? fields[explIdx] ?? '' : '').trim());
     rows.push({ deckName, topic, explanation, lineNumber, rawLine: text });
   }
 

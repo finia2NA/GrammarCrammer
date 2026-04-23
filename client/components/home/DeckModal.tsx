@@ -1,11 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Easing, Alert, Platform } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import type { Language, CardCount } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
 import type { CsvImportResult } from '@/lib/api';
+import { exportNodeCsv } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
+
+function triggerCsvDownload(filename: string, csv: string) {
+  if (Platform.OS !== 'web') {
+    Alert.alert('Export', 'CSV export is only available on web.');
+    return;
+  }
+  const blob = new Blob([csv], { type: 'text/tab-separated-values;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 interface DeckModalProps {
   visible: boolean;
@@ -199,9 +216,20 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
     setCsvContent(content);
     setImportStatus({ state: 'idle' });
     if (!name.trim()) {
-      setName(fileName.replace(/\.[^.]+$/, ''));
+      const rawName = fileName.replace(/\.[^.]+$/, '');
+      setName(rawName.replace(/__/g, '::'));
     }
   }
+
+  const handleExport = useCallback(async () => {
+    if (!editNode) return;
+    try {
+      const { filename, csv } = await exportNodeCsv(editNode.id);
+      triggerCsvDownload(filename, csv);
+    } catch (e: any) {
+      Alert.alert('Export failed', e?.message ?? 'Unknown error');
+    }
+  }, [editNode]);
 
   const handleCsvImport = useCallback(async () => {
     if (!csvContent || !onCsvImport || importStatus.state === 'importing') return;
@@ -316,6 +344,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
               isCollection={isCollection}
               isEdit={isEdit}
               onDelete={onDelete}
+              onExport={isEdit ? handleExport : undefined}
               name={name}
               onNameChange={setName}
               topic={topic}

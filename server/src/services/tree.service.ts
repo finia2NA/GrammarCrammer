@@ -91,6 +91,74 @@ export async function getNodePath(userId: string, nodeId: string): Promise<strin
   return parts.join('::');
 }
 
+interface ExportRow { deckName: string; topic: string; }
+
+/** BFS to collect all nodes, then DFS to build export rows with relative paths. */
+export async function getExportRows(
+  userId: string,
+  nodeId: string,
+): Promise<{ filename: string; rows: ExportRow[] }> {
+  const pathStr = await getNodePath(userId, nodeId);
+  if (!pathStr) throw new Error('Node not found');
+
+  const filename = pathStr.replace(/::/g, '__') + '.csv';
+
+  const allNodes: Array<{
+    id: string; parentId: string | null; name: string;
+    deck: { topic: string } | null; childIds: string[];
+  }> = [];
+
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const batch = queue.splice(0, queue.length);
+    const nodes = await prisma.node.findMany({
+      where: { id: { in: batch }, userId },
+      include: {
+        deck: { select: { topic: true } },
+        children: { select: { id: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+      },
+    });
+    for (const node of nodes) {
+      allNodes.push({
+        id: node.id, parentId: node.parentId, name: node.name,
+        deck: node.deck ? { topic: node.deck.topic } : null,
+        childIds: node.children.map(c => c.id),
+      });
+      for (const child of node.children) queue.push(child.id);
+    }
+  }
+
+  const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+  const startNode = nodeMap.get(nodeId);
+  if (!startNode) throw new Error('Node not found');
+
+  function getRelativePath(id: string): string {
+    const parts: string[] = [];
+    let cur = nodeMap.get(id);
+    while (cur && cur.id !== nodeId) {
+      parts.unshift(cur.name);
+      cur = cur.parentId ? nodeMap.get(cur.parentId) : undefined;
+    }
+    return parts.join('::');
+  }
+
+  const rows: ExportRow[] = [];
+
+  if (startNode.deck) {
+    rows.push({ deckName: startNode.name, topic: startNode.deck.topic });
+  } else {
+    function dfs(id: string) {
+      const node = nodeMap.get(id);
+      if (!node) return;
+      if (node.deck) rows.push({ deckName: getRelativePath(id), topic: node.deck.topic });
+      for (const childId of node.childIds) dfs(childId);
+    }
+    for (const childId of startNode.childIds) dfs(childId);
+  }
+
+  return { filename, rows };
+}
+
 /** Iterative BFS to get all descendant deck IDs. */
 export async function getDescendantDeckIds(userId: string, nodeId: string): Promise<string[]> {
   const deckIds: string[] = [];

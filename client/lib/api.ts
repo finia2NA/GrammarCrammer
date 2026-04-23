@@ -131,6 +131,10 @@ export async function getDescendantDeckIds(nodeId: string) {
   return request<{ deckIds: string[] }>(`/tree/${nodeId}/descendant-deck-ids`).then(r => r.deckIds);
 }
 
+export async function exportNodeCsv(nodeId: string) {
+  return request<{ filename: string; csv: string }>(`/tree/${nodeId}/export-csv`);
+}
+
 export async function deleteNode(nodeId: string) {
   return request<{ success: boolean }>(`/nodes/${nodeId}`, { method: 'DELETE' });
 }

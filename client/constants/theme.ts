@@ -32,8 +32,8 @@ const lightRgb: Record<string, RGB> = {
   'primary-dark': [191, 90, 6],   // #BF5A06
   'primary-foreground': [253, 240, 224], // #FDF0E0
   // Secondary — Blue
-  'secondary': [91, 148, 212], // #5B94D4
-  'secondary-light': [37, 99, 168], // #2563A8
+  'secondary-light': [91, 148, 212], // #5B94D4
+  'secondary': [37, 99, 168], // #2563A8
   'secondary-dark': [26, 69, 128], // #1A4580
   'secondary-foreground': [253, 240, 224],// #FDF0E0
   // Accents
@@ -75,10 +75,10 @@ const darkRgb: Record<string, RGB> = {
   'primary-dark': [200, 96, 16],  // #C86010
   'primary-foreground': [20, 21, 23],   // #141517
   // Secondary — Blue
-  'secondary': [138, 184, 232], // #8AB8E8
-  'secondary-light': [91, 148, 212], // #5B94D4
+  'secondary': [91, 148, 212], // #5B94D4
+  'secondary-light': [138, 184, 232], // #8AB8E8
   'secondary-dark': [37, 99, 168], // #2563A8
-  'secondary-foreground': [20, 21, 23],   // #141517
+  'secondary-foreground': [253, 240, 224],   // #141517
   // Accents
   'accent-teal': [75, 189, 174], // #4BBDAE
   'accent-teal-light': [130, 212, 200], // #82D4C8
