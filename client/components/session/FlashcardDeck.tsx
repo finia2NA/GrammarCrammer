@@ -155,7 +155,7 @@ export function FlashcardDeck({
               <Text className="text-success font-semibold">Correct!</Text>
             </View>
             <AnswerBox answer={submittedAnswer} />
-            <Text className="text-foreground/70 text-sm leading-6">{feedback}</Text>
+            <GrammarMarkdown>{feedback}</GrammarMarkdown>
             <ExampleBox example={currentCard.targetLanguage} />
             <TouchableOpacity
               className="bg-success rounded-xl py-3.5 items-center mt-2"

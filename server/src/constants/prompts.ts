@@ -68,7 +68,8 @@ Carefully compare their answer to your example sentence. Consider:
 - Minor spelling or punctuation differences are acceptable if the grammar is right.
 - Different but equally valid phrasings are acceptable.${sentenceContext ? `\n- The hint "${sentenceContext}" must be respected.` : ''}
 - Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.
-${brevity === 'brief' ? 'Keep your reason to a few words — no full sentences.' : 'State your reason in one clear sentence.'}${judgmentLanguageBlock(language)}`;
+${brevity === 'brief' ? 'Keep your reason to a few words — no full sentences.' : 'State your reason in one clear sentence.'}
+You may use **bold** to highlight key grammar forms or example phrases.${judgmentLanguageBlock(language)}`;
 
 // TODO: the full explanation can be large — consider generating a short summary of the
 // grammar points and passing that instead, to reduce token usage.
@@ -95,7 +96,8 @@ encouraging note explaining why their answer is valid. Be encouraging but precis
 Do NOT make references to the original judgement of the simpler model — this is not displayed to the student.
 If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely why their answer
 is wrong and what my example sentence demonstrates about the grammar.
-${brevity === 'brief' ? 'Be brief — keep to a 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}${explanationLanguageBlock(language)}`;
+${brevity === 'brief' ? 'Be brief — keep to a 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}
+You may use **bold** to highlight key grammar forms or example phrases.${explanationLanguageBlock(language)}`;
 
 export const CARD_CHAT_PROMPT = (
   language: string,
