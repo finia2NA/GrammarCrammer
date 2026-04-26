@@ -13,7 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassView } from 'expo-glass-effect';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, useColors } from '@/constants/theme';
 import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
 import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
@@ -80,27 +80,20 @@ function SessionTopBar({
     );
   }
 
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[
-        { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop },
-        hasContentBelow ? { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' } as any : {},
-      ]}>
-        {inner}
-        {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
-      </View>
-    );
-  }
-
+  const bg = colors['background'] as string;
+  const solidHeight = insetTop + TOPBAR_HEIGHT;
+  const totalHeight = solidHeight + 32;
   return (
-    <BlurView
-      intensity={hasContentBelow ? 60 : 0}
-      tint="default"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop }}
-    >
-      {inner}
-      {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
-    </BlurView>
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 }}>
+      {hasContentBelow && (
+        <LinearGradient
+          colors={[bg, bg, bg + '00'] as any}
+          locations={[0, solidHeight / totalHeight, 1]}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: totalHeight }}
+        />
+      )}
+      <View style={{ paddingTop: insetTop }}>{inner}</View>
+    </View>
   );
 }
 
