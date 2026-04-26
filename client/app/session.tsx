@@ -8,10 +8,13 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+import { GlassView } from 'expo-glass-effect';
+import { BlurView } from 'expo-blur';
+import { Colors, useColors } from '@/constants/theme';
 import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
 import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
@@ -29,6 +32,77 @@ import {
 import { useScreenSize } from '@/hooks/useScreenSize';
 
 const SIDEBAR_INITIAL_WIDTH = 320;
+const TOPBAR_HEIGHT = 56;
+
+// ─── Fixed top bar ───────────────────────────────────────────────────────────
+
+function SessionTopBar({
+  cardsRemaining, totalCost, totalSpend, onBack, hasContentBelow, insetTop,
+}: {
+  cardsRemaining: number;
+  totalCost: number;
+  totalSpend: number | null;
+  onBack: () => void;
+  hasContentBelow: boolean;
+  insetTop: number;
+}) {
+  const colors = useColors();
+
+  const inner = (
+    <View style={{ height: TOPBAR_HEIGHT, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <TouchableOpacity
+          onPress={onBack}
+          activeOpacity={0.7}
+          style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(128,128,128,0.15)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(128,128,128,0.25)' }}
+        >
+          <Text style={{ color: colors['foreground'] as string, opacity: 0.7, fontSize: 14, fontWeight: '600' }}>←</Text>
+        </TouchableOpacity>
+        <Text style={{ color: colors['foreground_secondary'] as string, fontSize: 14 }}>
+          {cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''} remaining
+        </Text>
+      </View>
+      <Text style={{ color: colors['foreground_subtle'] as string, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
+        ${totalCost.toFixed(4)}{totalSpend !== null ? ` ($${totalSpend.toFixed(4)} total)` : ''}
+      </Text>
+    </View>
+  );
+
+  if (Platform.OS === 'ios') {
+    return (
+      <GlassView
+        glassEffectStyle={hasContentBelow ? 'regular' : 'none'}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop }}
+      >
+        {inner}
+        {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
+      </GlassView>
+    );
+  }
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[
+        { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop },
+        hasContentBelow ? { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' } as any : {},
+      ]}>
+        {inner}
+        {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
+      </View>
+    );
+  }
+
+  return (
+    <BlurView
+      intensity={hasContentBelow ? 60 : 0}
+      tint="default"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop }}
+    >
+      {inner}
+      {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
+    </BlurView>
+  );
+}
 
 // ─── Route entry point ──────────────────────────────────────────────────────
 
@@ -163,6 +237,7 @@ function SessionUI({
 
   const [showOverlay, setShowOverlay] = useState(showExplanationOverlay);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
+  const [hasContentBelow, setHasContentBelow] = useState(false);
   const [beginningTotalSpend, setBeginningTotalSpend] = useState<number | null>(null);
   const beginningSessionCostRef = useRef<number | null>(null);
   const [cardPhase, setCardPhase] = useState<CardPhase>('input');
@@ -390,7 +465,7 @@ function SessionUI({
     : null;
 
   const deckProps = {
-    cards, language, totalCost, totalSpend: computedTotalSpend, cardPhase,
+    cards, language, cardPhase,
     answer, onChangeAnswer: setAnswer, submittedAnswer,
     feedback, wrongExplanation,
     showHint, onToggleHint: () => setShowHint(true),
@@ -418,8 +493,25 @@ function SessionUI({
           />
         ) : (
           <View className="flex-1">
-            <ScrollView className="flex-1" contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: PEEK_HEIGHT + insets.bottom + 32 }}>
-              <FlashcardDeck {...deckProps} onBack={handleBack} />
+            <SessionTopBar
+              cardsRemaining={cards.length}
+              totalCost={totalCost}
+              totalSpend={computedTotalSpend}
+              onBack={handleBack}
+              hasContentBelow={hasContentBelow}
+              insetTop={insets.top}
+            />
+            <ScrollView
+              className="flex-1"
+              scrollEventThrottle={16}
+              onScroll={e => {
+                const y = e.nativeEvent.contentOffset.y;
+                const next = y > 4;
+                if (next !== hasContentBelow) setHasContentBelow(next);
+              }}
+              contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + TOPBAR_HEIGHT + 16, paddingBottom: PEEK_HEIGHT + insets.bottom + 32 }}
+            >
+              <FlashcardDeck {...deckProps} />
             </ScrollView>
           </View>
         )
@@ -466,21 +558,26 @@ function SessionUI({
         <BottomSheet explanation={explanation} wasTruncated={wasTruncated} />
       )}
 
-      {/* Back button (wide screens only — small screens use inline back in FlashcardDeck) */}
+      {/* Back button + info strip (wide screens only) */}
       {!isSmallScreen && !showOverlay && (
-        <TouchableOpacity
-          onPress={handleBack}
-          style={{
-            position: 'absolute',
-            top: insets.top + 8,
-            left: 16,
-            zIndex: 50,
-          }}
-          className="w-10 h-10 items-center justify-center rounded-full bg-surface/80"
-          activeOpacity={0.7}
-        >
-          <Text className="text-foreground text-base font-semibold">←</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={{ position: 'absolute', top: insets.top + 8, left: 16, zIndex: 50 }}
+            className="w-10 h-10 items-center justify-center rounded-full bg-surface/80"
+            activeOpacity={0.7}
+          >
+            <Text className="text-foreground text-base font-semibold">←</Text>
+          </TouchableOpacity>
+          <View style={{ position: 'absolute', top: insets.top + 8, right: 16, zIndex: 50, alignItems: 'flex-end', gap: 2 }}>
+            <Text className="text-foreground-secondary text-sm">
+              {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
+            </Text>
+            <Text className="text-foreground-subtle text-xs font-mono">
+              ${totalCost.toFixed(4)}{computedTotalSpend !== null ? ` ($${computedTotalSpend.toFixed(4)} total)` : ''}
+            </Text>
+          </View>
+        </>
       )}
     </View>
   );

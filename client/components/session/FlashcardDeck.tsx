@@ -36,8 +36,6 @@ function ExampleBox({ example }: { example: string }) {
 interface FlashcardDeckProps {
   cards: Card[];
   language: string;
-  totalCost: number;
-  totalSpend: number | null;
   cardPhase: CardPhase;
   answer: string;
   onChangeAnswer: (text: string) => void;
@@ -54,42 +52,21 @@ interface FlashcardDeckProps {
   chatStreaming: boolean;
   onChatSend: (text: string) => void;
   deckName?: string;
-  onBack?: () => void;
 }
 
 export function FlashcardDeck({
-  cards, language, totalCost, totalSpend, cardPhase,
+  cards, language, cardPhase,
   answer, onChangeAnswer, submittedAnswer,
   feedback, wrongExplanation,
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
-  inputRef, chatMessages, chatStreaming, onChatSend, deckName, onBack,
+  inputRef, chatMessages, chatStreaming, onChatSend, deckName,
 }: FlashcardDeckProps) {
   const colors = useColors();
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
 
   return (
     <>
-      {/* Progress + cost */}
-      <View className="flex-row justify-between items-center w-full max-w-xl mb-6">
-        <View className="flex-row items-center gap-3">
-          {onBack && (
-            <TouchableOpacity onPress={onBack} activeOpacity={0.7} className="w-8 h-8 items-center justify-center rounded-full bg-background-muted border border-border">
-              <Text className="text-foreground/70 text-sm font-semibold">←</Text>
-            </TouchableOpacity>
-          )}
-          <Text className="text-foreground-secondary text-sm">
-            {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
-          </Text>
-        </View>
-        <Text className="text-foreground-secondary/60 text-xs font-mono">
-          ${totalCost.toFixed(4)}
-          {totalSpend !== null && (
-            <Text className="text-foreground-secondary/40"> (${totalSpend.toFixed(4)} total)</Text>
-          )}
-        </Text>
-      </View>
-
       {/* Card */}
       <View className="w-full max-w-xl bg-surface rounded-3xl p-8 mb-6">
         <View className="flex-row justify-between items-center mb-3">

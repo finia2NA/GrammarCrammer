@@ -13,6 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.finite.grammarcrammer',
+    deploymentTarget: '26.0',
   },
   android: {
     adaptiveIcon: {
