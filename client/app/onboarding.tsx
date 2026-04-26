@@ -213,33 +213,37 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
       {/* Email + Password fields */}
       <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
         <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
-        <TextInput
-          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm mb-3"
-          placeholder="you@example.com"
-          placeholderTextColor={colors.foreground_muted}
-          value={email}
-          onChangeText={onEmailChange}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          returnKeyType="next"
-          onSubmitEditing={() => passwordRef.current?.focus()}
-          editable={!loading && !success}
-        />
+        <View className="p-1 mb-3">
+          <TextInput
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+            placeholder="you@example.com"
+            placeholderTextColor={colors.foreground_muted}
+            value={email}
+            onChangeText={onEmailChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            editable={!loading && !success}
+          />
+        </View>
         <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
-        <TextInput
-          ref={passwordRef}
-          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
-          placeholder="At least 8 characters"
-          placeholderTextColor={colors.foreground_muted}
-          value={password}
-          onChangeText={onPasswordChange}
-          secureTextEntry
-          autoCapitalize="none"
-          returnKeyType="go"
-          onSubmitEditing={onSubmit}
-          editable={!loading && !success}
-        />
+        <View className="p-1">
+          <TextInput
+            ref={passwordRef}
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+            placeholder="At least 8 characters"
+            placeholderTextColor={colors.foreground_muted}
+            value={password}
+            onChangeText={onPasswordChange}
+            secureTextEntry
+            autoCapitalize="none"
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
+            editable={!loading && !success}
+          />
+        </View>
       </Animated.View>
 
       {success && (
@@ -285,17 +289,19 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
       <Text className="text-foreground/80 text-sm font-medium mb-2">
         Anthropic API Key
       </Text>
-      <TextInput
-        className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
-        placeholder="sk-ant-..."
-        placeholderTextColor={colors.foreground_muted}
-        value={apiKey}
-        onChangeText={onApiKeyChange}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!loading}
-      />
+      <View className="p-1">
+        <TextInput
+          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
+          placeholder="sk-ant-..."
+          placeholderTextColor={colors.foreground_muted}
+          value={apiKey}
+          onChangeText={onApiKeyChange}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+        />
+      </View>
       {error && (
         <Text className="text-error text-xs mt-2">{error}</Text>
       )}

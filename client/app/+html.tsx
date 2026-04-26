@@ -7,9 +7,19 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        <meta name="theme-color" content="#FDF0E0" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#141517" media="(prefers-color-scheme: dark)" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
+          html, body {
+            background-color: #FDF0E0;
+          }
+          @media (prefers-color-scheme: dark) {
+            html, body {
+              background-color: #141517;
+            }
+          }
           #gc-loader {
             position: fixed; inset: 0; z-index: 9999;
             display: flex; flex-direction: column;
