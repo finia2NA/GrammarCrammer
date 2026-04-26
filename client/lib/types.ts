@@ -19,6 +19,7 @@ export interface DeckData {
   explanationStatus: ExplanationStatus;
   cardCount: number;
   lastStudiedAt: number | null;
+  dueAt?: number | null;
 }
 
 export interface TreeNode {

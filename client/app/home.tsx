@@ -11,6 +11,7 @@ import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
 import { DeckModal } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
+import { Icon } from '@/components/Icon';
 import {
   createDeckFromPath,
   updateDeck,
@@ -147,7 +148,7 @@ export default function Home() {
         <View className="flex-row items-center justify-between mb-6">
           <Text className="text-foreground text-xl font-bold">GrammarCrammer</Text>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
-            <Text className="text-foreground-secondary text-xl">⚙</Text>
+            <Icon name="settings" size={22} color={colors.foreground_secondary} />
           </TouchableOpacity>
         </View>
 

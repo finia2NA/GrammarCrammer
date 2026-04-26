@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import type { TreeNode } from '@/lib/types';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { getCollapsedNodes, setCollapsedNodes } from '@/lib/storage';
+import { Icon } from '@/components/Icon';
+import { DueIndicator } from '@/components/home/DueIndicator';
+import { useColors } from '@/constants/theme';
 
 interface DeckTreeProps {
   tree: TreeNode[];
@@ -77,6 +80,7 @@ interface TreeRowProps {
 function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeRowProps) {
   const isCollection = node.deck === null;
   const expanded = !collapsedIds.has(node.id);
+  const colors = useColors();
 
   return (
     <View>
@@ -84,11 +88,15 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
         {/* Chevron / bullet */}
         {isCollection ? (
           <TouchableOpacity onPress={() => onToggle(node.id)} className="w-8 h-10 items-center justify-center">
-            <Text className="text-foreground-secondary text-xs">{expanded ? '▼' : '▶'}</Text>
+            <Icon
+              name={expanded ? 'chevron-down' : 'chevron-right'}
+              size={14}
+              color={colors.foreground_secondary}
+            />
           </TouchableOpacity>
         ) : (
           <View className="w-8 h-10 items-center justify-center">
-            <Text className="text-foreground-secondary text-[8px]">●</Text>
+            <Icon name="bullet" size={9} color={colors.foreground_secondary} />
           </View>
         )}
 
@@ -98,16 +106,17 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
           onPress={() => onStudy(node)}
           activeOpacity={0.6}
         >
-          <View className="flex-row items-center gap-2">
-            <Text
-              className={`text-foreground text-base ${isCollection ? 'font-semibold' : ''}`}
-              numberOfLines={1}
-            >
-              {node.name}
-            </Text>
-            {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
-          </View>
+          <Text
+            className={`text-foreground text-base ${isCollection ? 'font-semibold' : ''}`}
+            numberOfLines={1}
+          >
+            {node.name}
+          </Text>
         </TouchableOpacity>
+
+        {/* Status badge + due indicator (deck rows only) */}
+        {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
+        {!isCollection && node.deck?.dueAt != null && <DueIndicator dueAt={node.deck.dueAt} />}
 
         {/* Edit button */}
         <TouchableOpacity
@@ -115,7 +124,7 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
           onPress={() => onEdit(node)}
           activeOpacity={0.6}
         >
-          <Text className="text-foreground-secondary text-sm">✎</Text>
+          <Icon name="pencil" size={16} color={colors.foreground_secondary} />
         </TouchableOpacity>
       </View>
 
@@ -144,13 +153,14 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
+  const colors = useColors();
   switch (status) {
     case 'ready':
-      return <Text className="text-success text-xs">✓</Text>;
+      return <Icon name="check" size={12} color={colors.success} />;
     case 'generating':
-      return <Text className="text-warning text-xs">⏳</Text>;
+      return <Icon name="hourglass" size={12} color={colors.warning} />;
     case 'error':
-      return <Text className="text-error text-xs">⚠</Text>;
+      return <Icon name="warning" size={12} color={colors.error} />;
     case 'pending':
       return <Text className="text-foreground-secondary text-xs">…</Text>;
     default:
