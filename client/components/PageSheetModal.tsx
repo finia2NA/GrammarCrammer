@@ -48,7 +48,7 @@ export function PageSheetModal({
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (visible && !isSmallScreen) {
+    if (visible) {
       setShown(true);
       slideY.setValue(height);
       backdropOpacity.setValue(0);
@@ -56,29 +56,29 @@ export function PageSheetModal({
         Animated.spring(slideY, {
           toValue: 0,
           useNativeDriver: true,
-          damping: 25,
-          stiffness: 200,
+          damping: 30,
+          stiffness: 300,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 250,
+          duration: 150,
           useNativeDriver: true,
         }),
       ]).start();
     }
     if (!visible) setShown(false);
-  }, [visible, isSmallScreen, height, slideY, backdropOpacity]);
+  }, [visible, height, slideY, backdropOpacity]);
 
   const animateOut = useCallback((then: () => void) => {
     Animated.parallel([
       Animated.timing(slideY, {
         toValue: height,
-        duration: 250,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -88,21 +88,13 @@ export function PageSheetModal({
   }, [height, slideY, backdropOpacity]);
 
   const handleCancel = useCallback(() => {
-    if (isSmallScreen) {
-      onCancel();
-      return;
-    }
     animateOut(onCancel);
-  }, [isSmallScreen, onCancel, animateOut]);
+  }, [onCancel, animateOut]);
 
   const handleConfirm = useCallback(() => {
     if (!onConfirm || confirmDisabled) return;
-    if (isSmallScreen) {
-      onConfirm();
-      return;
-    }
     animateOut(onConfirm);
-  }, [onConfirm, confirmDisabled, isSmallScreen, animateOut]);
+  }, [onConfirm, confirmDisabled, animateOut]);
 
   const header = (
     <View
@@ -137,7 +129,7 @@ export function PageSheetModal({
     </View>
   );
 
-  const modalVisible = isSmallScreen ? visible : shown;
+  const modalVisible = shown;
   const bodyPaddingBottom = isSmallScreen ? insets.bottom + 24 : 24;
 
   return (
@@ -156,12 +148,9 @@ export function PageSheetModal({
 
         <Animated.View
           style={[
-            isSmallScreen
-              ? styles.sheet
-              : styles.card,
-            isSmallScreen
-              ? undefined
-              : { maxHeight: height * 0.9, transform: [{ translateY: slideY }] },
+            isSmallScreen ? styles.sheet : styles.card,
+            { transform: [{ translateY: slideY }] },
+            isSmallScreen ? undefined : { maxHeight: height * 0.9 },
           ]}
         >
           <KeyboardAvoidingView
