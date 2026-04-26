@@ -5,8 +5,10 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 import type { LoadPhase } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { TruncationWarning } from './ExplanationPanel';
@@ -25,13 +27,15 @@ interface ExplanationOverlayProps {
   loading: boolean;
   loadPhase: LoadPhase;
   onStart: () => void;
+  onBack: () => void;
   insets: { top: number; bottom: number };
   allDecks?: OverlayDeck[];
 }
 
 export function ExplanationOverlay({
-  topic, explanation, wasTruncated, loading, loadPhase, onStart, insets, allDecks,
+  topic, explanation, wasTruncated, loading, loadPhase, onStart, onBack, insets, allDecks,
 }: ExplanationOverlayProps) {
+  const colors = useColors();
   const [deckIndex, setDeckIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const hasMultiple = allDecks && allDecks.length > 1;
@@ -58,12 +62,21 @@ export function ExplanationOverlay({
           paddingBottom: insets.bottom + 32,
         }}
       >
-        <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest mb-2">
-          Grammar Explanation
-          {hasMultiple && (
-            <Text className="text-foreground-muted"> — {deckIndex + 1}/{allDecks.length}</Text>
-          )}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <TouchableOpacity
+            onPress={onBack}
+            activeOpacity={0.7}
+            style={styles.backButton}
+          >
+            <Text style={{ color: colors['foreground'] as string, opacity: 0.7, fontSize: 14, fontWeight: '600' }}>←</Text>
+          </TouchableOpacity>
+          <Text className="text-foreground-secondary text-xs font-semibold uppercase tracking-widest">
+            Grammar Explanation
+            {hasMultiple && (
+              <Text className="text-foreground-muted"> — {deckIndex + 1}/{allDecks.length}</Text>
+            )}
+          </Text>
+        </View>
         {displayName && displayName !== displayTopic && (
           <Text className="text-foreground-secondary text-sm mb-1">{displayName}</Text>
         )}
@@ -124,3 +137,16 @@ export function ExplanationOverlay({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  backButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: 'rgba(128,128,128,0.15)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(128,128,128,0.25)',
+  },
+});

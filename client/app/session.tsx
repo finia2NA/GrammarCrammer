@@ -34,6 +34,11 @@ import { useScreenSize } from '@/hooks/useScreenSize';
 const SIDEBAR_INITIAL_WIDTH = 320;
 const TOPBAR_HEIGHT = 56;
 
+function fmtCost(usd: number): string {
+  if (usd < 1) return `${(usd * 100).toPrecision(2)}¢`;
+  return `$${usd.toFixed(2)}`;
+}
+
 // ─── Fixed top bar ───────────────────────────────────────────────────────────
 
 function SessionTopBar({
@@ -63,7 +68,7 @@ function SessionTopBar({
         </Text>
       </View>
       <Text style={{ color: colors['foreground_subtle'] as string, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-        ${totalCost.toFixed(4)}{totalSpend !== null ? ` ($${totalSpend.toFixed(4)} total)` : ''}
+        {fmtCost(totalCost)}{totalSpend !== null ? ` (${fmtCost(totalSpend)})` : ''}
       </Text>
     </View>
   );
@@ -481,7 +486,7 @@ function SessionUI({
           <ExplanationOverlay
             topic={topic} explanation={explanation} wasTruncated={wasTruncated}
             loading={loading} loadPhase={loadPhase}
-            onStart={() => setShowOverlay(false)} insets={insets}
+            onStart={() => setShowOverlay(false)} onBack={handleBack} insets={insets}
             allDecks={overlayDecks}
           />
         ) : (
@@ -526,7 +531,7 @@ function SessionUI({
                 <ExplanationOverlay
                   topic={topic} explanation={explanation} wasTruncated={wasTruncated}
                   loading={loading} loadPhase={loadPhase}
-                  onStart={handleStartPractising} insets={insets}
+                  onStart={handleStartPractising} onBack={handleBack} insets={insets}
                   allDecks={overlayDecks}
                 />
               </View>

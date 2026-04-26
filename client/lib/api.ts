@@ -265,6 +265,35 @@ export async function judgeAnswer(card: Card, userAnswer: string, language: stri
 
 // ─── AI (streaming via SSE) ──────────────────────────────────────────────────
 
+function parseSSEBuffer(
+  buffer: string,
+  onChunk: (text: string) => void,
+  onCost: ((usd: number) => void) | undefined,
+  wasTruncated: { value: boolean },
+): string {
+  const lines = buffer.split('\n');
+  const remaining = lines.pop() ?? '';
+  for (const line of lines) {
+    if (!line.startsWith('data: ')) continue;
+    const jsonStr = line.slice(6).trim();
+    if (!jsonStr) continue;
+    try {
+      const ev = JSON.parse(jsonStr);
+      if (ev.type === 'text') {
+        onChunk(ev.text);
+      } else if (ev.type === 'done') {
+        if (ev.cost) onCost?.(ev.cost);
+        if (ev.wasTruncated) wasTruncated.value = true;
+      } else if (ev.type === 'error') {
+        throw new Error(ev.message);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message !== 'Unknown error') throw e;
+    }
+  }
+  return remaining;
+}
+
 async function streamSSE(
   path: string,
   body: object,
@@ -272,57 +301,68 @@ async function streamSSE(
   onCost?: (usd: number) => void,
 ): Promise<{ wasTruncated?: boolean }> {
   const headers = await getHeaders();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const url = `${BASE_URL}${path}`;
+  const wasTruncated = { value: false };
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      await clearAuthToken();
-      router.replace('/onboarding');
-      throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
-    }
-    const err = await res.json().catch(() => ({})) as any;
-    const message = err?.error?.message ?? `HTTP ${res.status}`;
-    const code = err?.error?.code;
-    throw new ApiError(message, res.status, code);
-  }
-
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let wasTruncated = false;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const jsonStr = line.slice(6).trim();
-      if (!jsonStr) continue;
-      try {
-        const ev = JSON.parse(jsonStr);
-        if (ev.type === 'text') {
-          onChunk(ev.text);
-        } else if (ev.type === 'done') {
-          if (ev.cost) onCost?.(ev.cost);
-          if (ev.wasTruncated) wasTruncated = true;
-        } else if (ev.type === 'error') {
-          throw new Error(ev.message);
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message !== 'Unknown error') throw e;
+  // Web supports ReadableStream; native (iOS/Android) does not expose res.body reliably.
+  if (Platform.OS === 'web') {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      if (res.status === 401) {
+        await clearAuthToken();
+        router.replace('/onboarding');
+        throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
       }
+      const err = await res.json().catch(() => ({})) as any;
+      throw new ApiError(err?.error?.message ?? `HTTP ${res.status}`, res.status, err?.error?.code);
     }
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      buffer = parseSSEBuffer(buffer, onChunk, onCost, wasTruncated);
+    }
+  } else {
+    // XHR onprogress gives us incremental responseText on native.
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+      let cursor = 0;
+      let buffer = '';
+      xhr.onprogress = () => {
+        const newText = xhr.responseText.slice(cursor);
+        cursor = xhr.responseText.length;
+        buffer += newText;
+        try {
+          buffer = parseSSEBuffer(buffer, onChunk, onCost, wasTruncated);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status === 401) {
+          clearAuthToken().then(() => router.replace('/onboarding'));
+          reject(new ApiError('Session expired', 401, 'INVALID_TOKEN'));
+          return;
+        }
+        if (xhr.status >= 400) {
+          let err: any = {};
+          try { err = JSON.parse(xhr.responseText); } catch {}
+          reject(new ApiError(err?.error?.message ?? `HTTP ${xhr.status}`, xhr.status, err?.error?.code));
+          return;
+        }
+        resolve();
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(JSON.stringify(body));
+    });
   }
 
-  return { wasTruncated };
+  return { wasTruncated: wasTruncated.value };
 }
 
 export async function generateExplanation(
