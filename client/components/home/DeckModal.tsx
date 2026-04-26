@@ -70,8 +70,15 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const [tabSwitcherWidth, setTabSwitcherWidth] = useState(0);
   const tabContentOpacity = useRef(new Animated.Value(1)).current;
   const tabContentTranslateX = useRef(new Animated.Value(0)).current;
+  const tabContentHeight = useRef(new Animated.Value(0)).current;
   const tabIndicatorX = useRef(new Animated.Value(4)).current;
   const tabTransition = useRef<Animated.CompositeAnimation | null>(null);
+  const tabHeightTransition = useRef<Animated.CompositeAnimation | null>(null);
+  const contentHeightRef = useRef(0);
+  const hasMeasuredContentRef = useRef(false);
+  const pendingFadeInRef = useRef(false);
+  const [hasMeasuredHeight, setHasMeasuredHeight] = useState(false);
+  const [heightAnimating, setHeightAnimating] = useState(false);
   const tabWidth = tabSwitcherWidth > 0 ? (tabSwitcherWidth - 12) / 2 : 0;
 
   useEffect(() => {
@@ -81,8 +88,15 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
       tabTransition.current?.stop();
+      tabHeightTransition.current?.stop();
       tabContentOpacity.setValue(1);
       tabContentTranslateX.setValue(0);
+      tabContentHeight.setValue(0);
+      hasMeasuredContentRef.current = false;
+      contentHeightRef.current = 0;
+      pendingFadeInRef.current = false;
+      setHasMeasuredHeight(false);
+      setHeightAnimating(false);
       tabIndicatorX.setValue(4);
       if (isEdit && editNode) {
         setName(editNodePath ?? editNode.name);
@@ -98,7 +112,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
         setCardCount(10);
       }
     }
-  }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabIndicatorX]);
+  }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);
 
   useEffect(() => {
     if (!canUseCsvTab || tabWidth <= 0) return;
@@ -113,6 +127,25 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
     }).start();
   }, [activeTab, canUseCsvTab, tabWidth, tabIndicatorX]);
 
+  const startFadeIn = useCallback(() => {
+    tabTransition.current?.stop();
+    tabTransition.current = Animated.parallel([
+      Animated.timing(tabContentOpacity, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(tabContentTranslateX, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
+    tabTransition.current.start();
+  }, [tabContentOpacity, tabContentTranslateX]);
+
   useEffect(() => {
     if (!visible || activeTab === contentTab) return;
 
@@ -124,13 +157,13 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
     tabTransition.current = Animated.parallel([
       Animated.timing(tabContentOpacity, {
         toValue: 0,
-        duration: 110,
+        duration: 80,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(tabContentTranslateX, {
         toValue: exitOffset,
-        duration: 110,
+        duration: 80,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
@@ -138,32 +171,57 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
 
     tabTransition.current.start(({ finished }) => {
       if (!finished) return;
-
       setContentTab(activeTab);
       tabContentOpacity.setValue(0);
       tabContentTranslateX.setValue(enterOffset);
-
-      tabTransition.current = Animated.parallel([
-        Animated.timing(tabContentOpacity, {
-          toValue: 1,
-          duration: 190,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(tabContentTranslateX, {
-          toValue: 0,
-          duration: 190,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]);
-      tabTransition.current.start();
+      // Defer fade-in until height settles (handled in handleContentLayout).
+      // Keep a fallback in case the new content's measured height matches the
+      // current one within 1px and onLayout doesn't trigger an animation.
+      pendingFadeInRef.current = true;
     });
   }, [activeTab, contentTab, visible, tabContentOpacity, tabContentTranslateX]);
 
   useEffect(() => () => {
     tabTransition.current?.stop();
+    tabHeightTransition.current?.stop();
   }, []);
+
+  const handleContentLayout = useCallback((nextHeight: number) => {
+    if (nextHeight <= 0) return;
+    if (!hasMeasuredContentRef.current) {
+      hasMeasuredContentRef.current = true;
+      contentHeightRef.current = nextHeight;
+      tabContentHeight.setValue(nextHeight);
+      setHasMeasuredHeight(true);
+      return;
+    }
+
+    if (Math.abs(contentHeightRef.current - nextHeight) < 1) {
+      if (pendingFadeInRef.current) {
+        pendingFadeInRef.current = false;
+        startFadeIn();
+      }
+      return;
+    }
+
+    contentHeightRef.current = nextHeight;
+    tabHeightTransition.current?.stop();
+    setHeightAnimating(true);
+    tabHeightTransition.current = Animated.timing(tabContentHeight, {
+      toValue: nextHeight,
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    });
+    tabHeightTransition.current.start(({ finished }) => {
+      setHeightAnimating(false);
+      if (!finished) return;
+      if (pendingFadeInRef.current) {
+        pendingFadeInRef.current = false;
+        startFadeIn();
+      }
+    });
+  }, [tabContentHeight, startFadeIn]);
 
   function handleSubmit() {
     const trimmedName = name.trim();
@@ -292,33 +350,42 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
           transform: [{ translateX: tabContentTranslateX }],
         }}
       >
-        {contentTab === 'csv' ? (
-          <DeckModalCsvTab
-            collectionPath={name}
-            onCollectionPathChange={setName}
-            language={language}
-            onLanguageChange={setLanguage}
-            cardCount={cardCount}
-            onCardCountChange={setCardCount}
-            onFileSelected={handleFileSelected}
-            importStatus={importStatus}
-          />
-        ) : (
-          <DeckModalCreateTab
-            isCollection={isCollection}
-            isEdit={isEdit}
-            onDelete={onDelete}
-            onExport={isEdit ? handleExport : undefined}
-            name={name}
-            onNameChange={setName}
-            topic={topic}
-            onTopicChange={setTopic}
-            language={language}
-            onLanguageChange={setLanguage}
-            cardCount={cardCount}
-            onCardCountChange={setCardCount}
-          />
-        )}
+        <Animated.View
+          style={[
+            { overflow: heightAnimating ? 'hidden' : 'visible' },
+            hasMeasuredHeight ? { height: tabContentHeight } : null,
+          ]}
+        >
+          <View onLayout={(event) => handleContentLayout(event.nativeEvent.layout.height)}>
+            {contentTab === 'csv' ? (
+              <DeckModalCsvTab
+                collectionPath={name}
+                onCollectionPathChange={setName}
+                language={language}
+                onLanguageChange={setLanguage}
+                cardCount={cardCount}
+                onCardCountChange={setCardCount}
+                onFileSelected={handleFileSelected}
+                importStatus={importStatus}
+              />
+            ) : (
+              <DeckModalCreateTab
+                isCollection={isCollection}
+                isEdit={isEdit}
+                onDelete={onDelete}
+                onExport={isEdit ? handleExport : undefined}
+                name={name}
+                onNameChange={setName}
+                topic={topic}
+                onTopicChange={setTopic}
+                language={language}
+                onLanguageChange={setLanguage}
+                cardCount={cardCount}
+                onCardCountChange={setCardCount}
+              />
+            )}
+          </View>
+        </Animated.View>
       </Animated.View>
     </PageSheetModal>
   );
