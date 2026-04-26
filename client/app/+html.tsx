@@ -19,11 +19,6 @@ export default function Root({ children }: PropsWithChildren) {
             animation: gc-loader-in 0.2s ease-in 0.5s forwards;
           }
           @keyframes gc-loader-in { to { opacity: 1; } }
-          @media (prefers-color-scheme: dark) {
-            #gc-loader { background: #141517; }
-            #gc-loader-wordmark { color: rgba(243, 235, 221, 0.9); }
-            #gc-spinner { border-color: rgba(240, 120, 24, 0.2); border-top-color: #F07818; }
-          }
           #gc-loader-wordmark {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 22px; font-weight: 700; letter-spacing: 0.3px;
@@ -36,6 +31,11 @@ export default function Root({ children }: PropsWithChildren) {
             animation: gc-spin 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           }
           @keyframes gc-spin { to { transform: rotate(360deg); } }
+          @media (prefers-color-scheme: dark) {
+            #gc-loader { background: #141517; }
+            #gc-loader-wordmark { color: rgba(243, 235, 221, 0.9); }
+            #gc-spinner { border-color: rgba(240, 120, 24, 0.2); border-top-color: #F07818; }
+          }
         ` }} />
       </head>
       <body>
