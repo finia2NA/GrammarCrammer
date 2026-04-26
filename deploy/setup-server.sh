@@ -32,7 +32,22 @@ ssh ${SERVER} << 'EOF'
   fi
 EOF
 
-echo "=== Installing nginx config ==="
+echo "=== Installing nginx + brotli ==="
+ssh ${SERVER} "apt-get install -y nginx libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static"
+
+echo "=== Enabling gzip in nginx.conf ==="
+ssh ${SERVER} << 'EOF'
+  sed -i \
+    's/^\t# gzip_vary on;/\tgzip_vary on;/;
+     s/^\t# gzip_proxied any;/\tgzip_proxied any;/;
+     s/^\t# gzip_comp_level 6;/\tgzip_comp_level 6;/;
+     s/^\t# gzip_buffers 16 8k;/\tgzip_buffers 16 8k;/;
+     s/^\t# gzip_http_version 1.1;/\tgzip_http_version 1.1;/;
+     s|^\t# gzip_types.*|\tgzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;|' \
+    /etc/nginx/nginx.conf
+EOF
+
+echo "=== Installing nginx site config ==="
 scp deploy/grammarcrammer.nginx.conf ${SERVER}:/etc/nginx/sites-available/grammarcrammer
 ssh ${SERVER} << 'EOF'
   ln -sf /etc/nginx/sites-available/grammarcrammer /etc/nginx/sites-enabled/grammarcrammer
