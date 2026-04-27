@@ -25,7 +25,7 @@ export interface DeckData {
 
 export interface CardAttempt {
   card: Card;
-  wrongAnswers: string[];
+  answers: string[];  // all attempts in order; last entry is always the correct one
   deckId?: string;
 }
 

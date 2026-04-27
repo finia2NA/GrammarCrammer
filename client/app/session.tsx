@@ -253,7 +253,8 @@ function SessionUI({
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
   const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
-  const currentWrongAnswers = useRef<string[]>([]);
+  // Keyed by card.id so wrong answers are tracked per card, not per position in queue.
+  const cardWrongAnswers = useRef<Map<string, string[]>>(new Map());
 
   const inputRef = useRef<TextInput>(null);
 
@@ -350,12 +351,14 @@ function SessionUI({
 
   function handleConfirmCorrect() {
     const current = cards[0];
+    const prevAnswers = cardWrongAnswers.current.get(current.id) ?? [];
+    const answers = [...prevAnswers, submittedAnswer];  // append the final correct answer
+    cardWrongAnswers.current.delete(current.id);
     setCompletedCards(prev => [...prev, {
       card: current,
-      wrongAnswers: [...currentWrongAnswers.current],
+      answers,
       deckId: (current as DeckCard).deckId,
     }]);
-    currentWrongAnswers.current = [];
     setCards((prev: any[]) => prev.slice(1));
     setAnswer('');
     setFeedback('');
@@ -366,7 +369,9 @@ function SessionUI({
   }
 
   function handleConfirmWrong() {
-    currentWrongAnswers.current = [...currentWrongAnswers.current, submittedAnswer];
+    const current = cards[0];
+    const prev = cardWrongAnswers.current.get(current.id) ?? [];
+    cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
     setCards((prev: any[]) => [...prev.slice(1), prev[0]]);
     setAnswer('');
     setWrongExplanation('');

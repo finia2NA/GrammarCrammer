@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { DeckData } from '../types/index.js';
-import { calculateNextReview } from './srs.service.js';
+import { calculateNextReview, resolveDueAt } from './srs.service.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ function mapDeckRow(deck: {
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
-    dueAt: deck.dueAt?.getTime() ?? null,
+    dueAt: resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays),
     intervalDays: deck.intervalDays,
   };
 }

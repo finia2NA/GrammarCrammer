@@ -1,21 +1,30 @@
 import { prisma } from '../lib/prisma.js';
 import type { TreeNode, DeckData } from '../types/index.js';
+import { resolveDueAt } from './srs.service.js';
 
-function mapDeck(deck: {
+// Deck select used by tree queries — omits explanation to keep responses small.
+const DECK_TREE_SELECT = {
+  nodeId: true, topic: true, language: true,
+  explanationStatus: true, cardCount: true,
+  lastStudiedAt: true, dueAt: true, intervalDays: true,
+} as const;
+
+type DeckTreeRow = {
   nodeId: string; topic: string; language: string;
-  explanation: string | null; explanationStatus: string;
-  cardCount: number; lastStudiedAt: Date | null;
-  dueAt: Date | null; intervalDays: number;
-}): DeckData {
+  explanationStatus: string; cardCount: number;
+  lastStudiedAt: Date | null; dueAt: Date | null; intervalDays: number;
+};
+
+function mapDeck(deck: DeckTreeRow): DeckData {
   return {
     nodeId: deck.nodeId,
     topic: deck.topic,
     language: deck.language,
-    explanation: deck.explanation,
+    explanation: null,
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
-    dueAt: deck.dueAt?.getTime() ?? null,
+    dueAt: resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays),
     intervalDays: deck.intervalDays,
   };
 }
@@ -39,7 +48,7 @@ function mapNode(node: {
 export async function getTree(userId: string): Promise<TreeNode[]> {
   const nodes = await prisma.node.findMany({
     where: { userId },
-    include: { deck: true },
+    include: { deck: { select: DECK_TREE_SELECT } },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   });
 
@@ -64,9 +73,9 @@ export async function getNode(userId: string, nodeId: string): Promise<TreeNode 
   const node = await prisma.node.findFirst({
     where: { id: nodeId, userId },
     include: {
-      deck: true,
+      deck: { select: DECK_TREE_SELECT },
       children: {
-        include: { deck: true },
+        include: { deck: { select: DECK_TREE_SELECT } },
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       },
     },

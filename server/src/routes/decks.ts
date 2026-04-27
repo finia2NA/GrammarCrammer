@@ -213,7 +213,7 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
 decksRouter.post('/:nodeId/review', async (req, res, next) => {
   try {
     const { userStars, aiStars, aiRecap } = req.body;
-    if (!userStars || aiStars === undefined || !aiRecap) {
+    if (!userStars || aiStars === undefined || aiRecap === undefined || aiRecap === null) {
       throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
     }
     const stars = Math.max(1, Math.min(5, Math.round(Number(userStars)))) as 1 | 2 | 3 | 4 | 5;

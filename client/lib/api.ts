@@ -267,7 +267,7 @@ export async function rateSession(topic: string, language: string, cards: CardAt
   const payload = cards.map(a => ({
     english: a.card.english,
     targetLanguage: a.card.targetLanguage,
-    wrongAnswers: a.wrongAnswers,
+    answers: a.answers,
   }));
   return request<{ stars: number; recap: string; cost: number }>('/ai/rate-session', {
     method: 'POST',

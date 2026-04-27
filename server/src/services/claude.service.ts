@@ -391,7 +391,7 @@ export async function streamChat(
 export interface CardAttemptData {
   english: string;
   targetLanguage: string;
-  wrongAnswers: string[];
+  answers: string[];  // all attempts in order; last is always the correct one
 }
 
 export async function rateSession(
@@ -403,13 +403,15 @@ export async function rateSession(
   const { apiKey, source } = await resolveApiKey(userId);
 
   const cardSummary = cards.map((c, i) => {
-    const attempts = c.wrongAnswers.length;
-    const wrongLines = c.wrongAnswers.map(a => `    ✗ "${a}"`).join('\n');
+    const answers = Array.isArray(c.answers) ? c.answers : [];
+    const wrongAnswers = answers.slice(0, -1);
+    const correctAnswer = answers[answers.length - 1] ?? c.targetLanguage;
+    const attemptLines = wrongAnswers.map(a => `    ✗ "${a}"`).join('\n');
     return [
       `Card ${i + 1}: "${c.english}" → correct: "${c.targetLanguage}"`,
-      attempts > 0
-        ? `  Wrong attempts (${attempts}):\n${wrongLines}`
-        : '  Answered correctly on first try.',
+      wrongAnswers.length > 0
+        ? `  Wrong attempts (${wrongAnswers.length}):\n${attemptLines}\n  ✓ "${correctAnswer}"`
+        : `  ✓ "${correctAnswer}" (first try)`,
     ].join('\n');
   }).join('\n\n');
 

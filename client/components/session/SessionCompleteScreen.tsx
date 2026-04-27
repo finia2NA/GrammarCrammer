@@ -12,19 +12,15 @@ interface SessionCompleteScreenProps {
 }
 
 function AttemptRow({ attempt }: { attempt: CardAttempt }) {
-  const hasWrong = attempt.wrongAnswers.length > 0;
+  const wrongAnswers = attempt.answers.slice(0, -1);
+  const correctAnswer = attempt.answers[attempt.answers.length - 1];
   return (
     <View className="gap-1 py-3 border-b border-foreground/10">
       <Text className="text-foreground text-sm font-medium">{attempt.card.english}</Text>
-      {hasWrong && attempt.wrongAnswers.map((wrong, i) => (
+      {wrongAnswers.map((wrong, i) => (
         <Text key={i} className="text-error text-xs ml-2">✗ {wrong}</Text>
       ))}
-      <Text className="text-success text-xs ml-2">✓ {attempt.card.targetLanguage}</Text>
-      {hasWrong && (
-        <Text className="text-foreground-subtle text-xs ml-2">
-          {attempt.wrongAnswers.length} wrong attempt{attempt.wrongAnswers.length !== 1 ? 's' : ''}
-        </Text>
-      )}
+      <Text className="text-success text-xs ml-2">✓ {correctAnswer}</Text>
     </View>
   );
 }
@@ -53,7 +49,7 @@ export function SessionCompleteScreen({ completedCards, decks, onDone }: Session
   }
 
   const totalCards = completedCards.length;
-  const firstTryCorrect = completedCards.filter(a => a.wrongAnswers.length === 0).length;
+  const firstTryCorrect = completedCards.filter(a => a.answers.length === 1).length;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>

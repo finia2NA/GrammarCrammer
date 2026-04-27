@@ -13,6 +13,23 @@ const MULTIPLIERS: Record<number, number | null> = {
 };
 
 /**
+ * Return the effective dueAt timestamp (Unix ms) for a deck.
+ * If dueAt is already stored, use it. If a deck was studied before SRS was
+ * introduced (dueAt=null, lastStudiedAt set), compute it as
+ * lastStudiedAt + intervalDays so the deck appears in the schedule immediately.
+ * Falls back to now() for decks that have never been studied — always due immediately, like Anki new cards.
+ */
+export function resolveDueAt(
+  dueAt: Date | null,
+  lastStudiedAt: Date | null,
+  intervalDays: number,
+): number | null {
+  if (dueAt !== null) return dueAt.getTime();
+  if (lastStudiedAt !== null) return lastStudiedAt.getTime() + intervalDays * 86_400_000;
+  return Date.now(); // never studied → due immediately
+}
+
+/**
  * Calculate the next review date based on star rating and current interval.
  * Swap this function to adopt a more sophisticated algorithm (SM-2, FSRS, etc.)
  * without changing any callers.
