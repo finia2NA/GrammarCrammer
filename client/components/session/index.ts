@@ -1,4 +1,6 @@
 export { GrammarMarkdown } from './GrammarMarkdown';
+export { FuriganaText } from './FuriganaText';
+export { ClickableEnglishSentence } from './ClickableEnglishSentence';
 export { SidePanel, BottomSheet, TruncationWarning, PEEK_HEIGHT } from './ExplanationPanel';
 export { ExplanationOverlay } from './ExplanationOverlay';
 export type { OverlayDeck } from './ExplanationOverlay';

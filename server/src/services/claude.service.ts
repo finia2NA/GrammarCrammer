@@ -13,6 +13,7 @@ import {
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
   SESSION_RATING_PROMPT,
+  WORD_HINT_PROMPT,
 } from '../constants/prompts.js';
 import type { Card } from '../types/index.js';
 import { DEBUG_AI } from '../routes/claude-proxy.js';
@@ -434,6 +435,37 @@ export async function rateSession(
 
   await recordUsage(userId, source, 'rate-session', HAIKU, cost);
   return { stars: result.stars, recap: result.recap, cost };
+}
+
+export async function generateWordHint(
+  userId: string,
+  word: string,
+  english: string,
+  targetLanguage: string,
+  language: string,
+): Promise<{ infinitive: string; with_annotation: string; word_type: string; cost: number }> {
+  const { apiKey, source } = await resolveApiKey(userId);
+
+  const { result, cost } = await callTool<{ infinitive: string; with_annotation: string; word_type: string }>(
+    apiKey, HAIKU,
+    WORD_HINT_PROMPT(language),
+    `The learner is translating this English sentence into ${language}:\n"${english}"\n\nThe correct ${language} translation is:\n"${targetLanguage}"\n\nThe learner does not know the ${language} word for the English word: "${word}"\n\nIdentify the corresponding ${language} vocabulary item and return its dictionary form with annotation and word type.`,
+    'provide_word_hint',
+    'Provide the dictionary form, furigana annotation, and grammatical category for the requested word.',
+    {
+      type: 'object',
+      properties: {
+        infinitive: { type: 'string', description: 'The dictionary/plain form of the word (not the conjugated form from the translation).' },
+        with_annotation: { type: 'string', description: 'The infinitive in Anki-style furigana notation. For Latin-script languages equals infinitive.' },
+        word_type: { type: 'string', description: 'Grammatical category using language-appropriate terminology.' },
+      },
+      required: ['infinitive', 'with_annotation', 'word_type'],
+    },
+    150,
+  );
+
+  await recordUsage(userId, source, 'word-hint', HAIKU, cost);
+  return { ...result, cost };
 }
 
 export async function streamExplanationGeneric(

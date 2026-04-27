@@ -16,7 +16,7 @@ import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, useColors } from '@/constants/theme';
 import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
-import type { Card, CardPhase, DeckCard, ChatMessage, CardAttempt } from '@/lib/types';
+import type { Card, CardPhase, DeckCard, ChatMessage, CardAttempt, WordHint } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
@@ -118,7 +118,7 @@ export default function Session() {
     <QuickSession
       topic={params.topic!}
       language={params.language!}
-      cardCount={parseInt(params.count ?? '10', 10)}
+      cardCount={parseInt(params.count ?? '0', 10)}
     />
   );
 }
@@ -255,6 +255,7 @@ function SessionUI({
   const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
   // Keyed by card.id so wrong answers are tracked per card, not per position in queue.
   const cardWrongAnswers = useRef<Map<string, string[]>>(new Map());
+  const hintCache = useRef<Map<string, WordHint>>(new Map());
 
   const inputRef = useRef<TextInput>(null);
 
@@ -490,6 +491,8 @@ function SessionUI({
     chatStreaming,
     onChatSend: handleChatSend,
     deckName,
+    hintCache,
+    addCost,
   };
 
   // ── Render: session ────────────────────────────────────────────────────────

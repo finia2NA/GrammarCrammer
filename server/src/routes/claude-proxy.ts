@@ -7,9 +7,13 @@ import {
   streamChat,
   streamExplanationGeneric,
   rateSession,
+  generateWordHint,
 } from '../services/claude.service.js';
 import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { getSetting } from '../services/settings.service.js';
+
+const DEFAULT_CARD_COUNT = 10;
 
 export const claudeProxyRouter = Router();
 export const DEBUG_AI = true;
@@ -24,11 +28,16 @@ function logAI(email: string, type: string, model: string) {
 claudeProxyRouter.post('/cards', async (req, res, next) => {
   try {
     const { topic, language, count, explanation } = req.body;
-    if (!topic || !language || !count || !explanation) {
+    if (!topic || !language || count === undefined || count === null || !explanation) {
       throw new AppError(400, 'MISSING_FIELDS', 'topic, language, count, and explanation are required.');
     }
+    let resolvedCount = Number(count);
+    if (resolvedCount === 0) {
+      const setting = await getSetting(req.userId!, 'default_card_count');
+      resolvedCount = setting ? parseInt(setting, 10) : DEFAULT_CARD_COUNT;
+    }
     logAI(req.userEmail!, 'cards', 'haiku');
-    const result = await generateCards(req.userId!, topic, language, count, explanation);
+    const result = await generateCards(req.userId!, topic, language, resolvedCount, explanation);
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -82,6 +91,19 @@ claudeProxyRouter.post('/rate-session', async (req, res, next) => {
     }
     logAI(req.userEmail!, 'rate-session', 'haiku');
     const result = await rateSession(req.userId!, topic, language, cards);
+    res.json(result);
+  } catch (e) { next(e); }
+});
+
+// Non-streaming: word hint
+claudeProxyRouter.post('/word-hint', async (req, res, next) => {
+  try {
+    const { word, english, targetLanguage, language } = req.body;
+    if (!word || !english || !targetLanguage || !language) {
+      throw new AppError(400, 'MISSING_FIELDS', 'word, english, targetLanguage, and language are required.');
+    }
+    logAI(req.userEmail!, 'word-hint', 'haiku');
+    const result = await generateWordHint(req.userId!, word, english, targetLanguage, language);
     res.json(result);
   } catch (e) { next(e); }
 });

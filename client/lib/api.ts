@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { getAuthToken, clearAuthToken } from './storage';
-import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt } from './types';
+import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint } from './types';
 
 function getBaseUrl(): string {
   if (Platform.OS === 'web' && !__DEV__) {
@@ -398,6 +398,18 @@ export async function explainRejection(card: Card, userAnswer: string, language:
   return request<{ explanation: string; overrideToCorrect: boolean; cost: number }>('/ai/rejection', {
     method: 'POST',
     body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
+  });
+}
+
+export async function wordHint(
+  word: string,
+  english: string,
+  targetLanguage: string,
+  language: string,
+): Promise<WordHint & { cost: number }> {
+  return request('/ai/word-hint', {
+    method: 'POST',
+    body: JSON.stringify({ word, english, targetLanguage, language }),
   });
 }
 

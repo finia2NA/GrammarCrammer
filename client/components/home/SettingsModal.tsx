@@ -14,6 +14,8 @@ import { clearAuthToken } from '@/lib/storage';
 import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { PillDropdown } from '@/components/PillDropdown';
+import { CARD_COUNTS } from '@/constants/session';
+import type { CardCount } from '@/constants/session';
 import { PageSheetModal } from '@/components/PageSheetModal';
 
 type CardOrder = 'sequential' | 'shuffled';
@@ -140,6 +142,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [cardOrder, setCardOrder] = useState<CardOrder>('shuffled');
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
+  const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
 
@@ -153,6 +156,10 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       });
       getSetting('feedback_brevity').then(v => {
         if (v === 'brief' || v === 'normal') setFeedbackBrevity(v);
+      });
+      getSetting('default_card_count').then(v => {
+        const n = v ? parseInt(v, 10) : 10;
+        if (CARD_COUNTS.includes(n as CardCount) && n !== 0) setDefaultCardCount(n as CardCount);
       });
       getUsageStatus().then(setUsageStatus).catch(() => {});
       setShowAddKey(false);
@@ -172,6 +179,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeFeedbackBrevity(next: 'brief' | 'normal') {
     setFeedbackBrevity(next);
     setSetting('feedback_brevity', next);
+  }
+
+  function handleChangeDefaultCardCount(next: CardCount) {
+    setDefaultCardCount(next);
+    setSetting('default_card_count', String(next));
   }
 
   function handleChangePreference(next: KeyPreference) {
@@ -251,6 +263,19 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           options={['normal', 'brief'] as const}
           onChange={handleChangeFeedbackBrevity}
           formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? 'Brief' : 'Normal'}
+        />
+      </SettingsRow>
+
+      {/* Default Card Count */}
+      <SettingsRow
+        label="Default Cards per Topic"
+        description="How many cards to generate per deck by default"
+      >
+        <PillDropdown
+          value={defaultCardCount}
+          options={[5, 10, 15, 20] as const}
+          onChange={handleChangeDefaultCardCount}
+          formatLabel={(v: number) => `${v} cards`}
         />
       </SettingsRow>
 

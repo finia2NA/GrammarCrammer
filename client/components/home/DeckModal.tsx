@@ -62,7 +62,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
-  const [cardCount, setCardCount] = useState<CardCount>(10);
+  const [cardCount, setCardCount] = useState<CardCount>(0);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
   const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
         setName('');
         setTopic('');
         setLanguage('Japanese');
-        setCardCount(10);
+        setCardCount(0);
       }
     }
   }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);

@@ -45,7 +45,7 @@ export async function createDeckFromPath(
   path: string,
   topic: string,
   language: string,
-  cardCount = 10,
+  cardCount = 0,
 ): Promise<string> {
   const segments = path.split('::').map(s => s.trim()).filter(Boolean);
   if (segments.length === 0) throw new AppError(400, 'INVALID_PATH', 'Path cannot be empty.');

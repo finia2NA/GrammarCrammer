@@ -4,7 +4,7 @@ import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { PillDropdown } from '@/components/PillDropdown';
-import { LANGUAGES, CARD_COUNTS } from '@/constants/session';
+import { LANGUAGES, CARD_COUNTS, formatCardCount } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
@@ -36,7 +36,7 @@ export default function Home() {
   // Quick study state
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
-  const [cardCount, setCardCount] = useState<CardCount>(10);
+  const [cardCount, setCardCount] = useState<CardCount>(0);
   const [inputFocused, setInputFocused] = useState(false);
   const canStart = topic.trim().length > 0;
 
@@ -216,7 +216,7 @@ export default function Home() {
                 value={cardCount}
                 options={CARD_COUNTS}
                 onChange={setCardCount}
-                formatLabel={(v: number) => `${v} cards`}
+                formatLabel={formatCardCount}
               />
             </View>
             <TextInput

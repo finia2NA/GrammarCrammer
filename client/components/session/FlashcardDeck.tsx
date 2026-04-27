@@ -7,9 +7,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useColors } from '@/constants/theme';
-import type { Card, CardPhase, ChatMessage } from '@/lib/types';
+import type { Card, CardPhase, ChatMessage, WordHint } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { CardChat } from './CardChat';
+import { ClickableEnglishSentence } from './ClickableEnglishSentence';
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -52,6 +53,8 @@ interface FlashcardDeckProps {
   chatStreaming: boolean;
   onChatSend: (text: string) => void;
   deckName?: string;
+  hintCache: React.MutableRefObject<Map<string, WordHint>>;
+  addCost: (usd: number) => void;
 }
 
 export function FlashcardDeck({
@@ -61,6 +64,7 @@ export function FlashcardDeck({
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
   inputRef, chatMessages, chatStreaming, onChatSend, deckName,
+  hintCache, addCost,
 }: FlashcardDeckProps) {
   const colors = useColors();
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
@@ -73,9 +77,14 @@ export function FlashcardDeck({
           <Text className="text-foreground-secondary text-xs uppercase tracking-widest">Translate to {language}</Text>
           {deckName ? <Text className="text-foreground-secondary text-xs">{deckName}</Text> : null}
         </View>
-        <Text className="text-foreground text-xl font-semibold leading-8 mb-2">
-          {currentCard.english}
-        </Text>
+        <View className="mb-2">
+          <ClickableEnglishSentence
+            card={currentCard}
+            language={language}
+            hintCache={hintCache}
+            addCost={addCost}
+          />
+        </View>
         {currentCard.sentenceContext && (
           <View className="self-end bg-background-muted border border-border rounded-md px-2 py-0.5 mb-4">
             <Text className="text-primary/70 text-xs font-medium">{currentCard.sentenceContext}</Text>

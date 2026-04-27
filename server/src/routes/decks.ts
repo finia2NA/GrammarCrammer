@@ -127,7 +127,7 @@ decksRouter.post('/import-csv', upload.single('file'), async (req, res, next) =>
     const { language, cardCount: cardCountStr, collectionPath } = req.body;
     if (!language) throw new AppError(400, 'MISSING_FIELDS', 'language is required.');
 
-    const cardCount = cardCountStr ? parseInt(cardCountStr, 10) : 10;
+    const cardCount = cardCountStr ? parseInt(cardCountStr, 10) : 0;
     const csvText = file.buffer.toString('utf-8');
     const { rows, skipped, dataRowCount } = parseCsv(csvText);
 

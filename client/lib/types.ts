@@ -48,3 +48,9 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
+
+export interface WordHint {
+  infinitive: string;
+  with_annotation: string;
+  word_type: string;
+}

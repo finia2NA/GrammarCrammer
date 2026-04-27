@@ -119,6 +119,20 @@ Rate the student's overall performance from 1 to 5 stars:
 Write a brief 1–2 sentence recap explaining the rating, highlighting what went well or what to review.
 Be direct and encouraging. Speak in second person ("you").`;
 
+export const WORD_HINT_PROMPT = (language: string) => `\
+You are a vocabulary assistant for language learners practising ${language} translation.
+
+Given an English sentence, its correct ${language} translation, and one English word the learner does not know, identify the corresponding ${language} vocabulary item and return:
+
+- infinitive: the dictionary/plain form of the word. Do NOT use the conjugated or inflected form from the translation — return the base form the learner would look up in a dictionary.
+- with_annotation: the infinitive written in Anki-style furigana notation. Rules:
+  • Kanji are followed immediately by their reading in square brackets: 食[た]べる, 大丈夫[だいじょうぶ]
+  • Multiple kanji sharing one reading are grouped before the bracket: 元気[げんき]
+  • Kana that follow a kanji reading continue as plain text in the same group: 食[た]べる (べる is plain kana, not annotated)
+  • Insert a space before a kanji group when the preceding kana should NOT be included in that ruby span. This scopes the furigana correctly — わたし 全然[ぜんぜん] 大丈夫[だいじょうぶ] renders furigana only above 全然 and 大丈夫, not above わたし. Without the space the preceding kana would wrongly be pulled into the ruby span.
+  • For Latin-script languages (Spanish, French, German, etc.) with_annotation equals infinitive exactly, with no brackets.
+- word_type: the grammatical category in language-appropriate terminology. Examples for Japanese: "noun", "い-adjective", "な-adjective", "一段 verb", "五段 verb", "する verb", "adverb", "particle". For European languages: "noun", "verb", "adjective", "adverb", "preposition".`;
+
 export const CARD_CHAT_PROMPT = (
   language: string,
   english: string,
