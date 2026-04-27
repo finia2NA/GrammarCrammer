@@ -103,20 +103,31 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
           return;
         }
 
-        deckMetaRef.current = metaList;
         setDecks(infoMap);
 
-        const cardOrder = await getSetting('card_order') ?? 'shuffled';
-        cardOrderRef.current = cardOrder as 'shuffled' | 'sequential';
+        const [cardOrder, defaultCountSetting] = await Promise.all([
+          getSetting('card_order'),
+          getSetting('default_card_count'),
+        ]);
+        cardOrderRef.current = (cardOrder ?? 'shuffled') as 'shuffled' | 'sequential';
+
+        const defaultCardCount = defaultCountSetting ? parseInt(defaultCountSetting, 10) : 10;
+
+        // Backfill zero cardCounts with the user's default before generating
+        const resolvedMetaList = metaList.map(m => ({
+          ...m,
+          cardCount: m.cardCount > 0 ? m.cardCount : defaultCardCount,
+        }));
+        deckMetaRef.current = resolvedMetaList;
 
         if (cardOrder === 'sequential') {
-          const initial = metaList.slice(0, 2);
+          const initial = resolvedMetaList.slice(0, 2);
           const cardArrays = await Promise.all(initial.map(m => generateForDeck(m)));
           let allCards = cardArrays.flat();
           allCards = allCards.map((c, i) => ({ ...c, id: String(i) }));
           setCards(allCards);
         } else {
-          const cardArrays = await Promise.all(metaList.map(m => generateForDeck(m)));
+          const cardArrays = await Promise.all(resolvedMetaList.map(m => generateForDeck(m)));
           let allCards = cardArrays.flat();
           for (let i = allCards.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
