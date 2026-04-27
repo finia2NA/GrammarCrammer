@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { PillDropdown } from '@/components/PillDropdown';
@@ -30,7 +30,8 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { isSmallScreen } = useScreenSize();
-  const { tree, loading, refreshing, refresh } = useDeckTree();
+  const isFocused = useIsFocused();
+  const { tree, loading, refreshing, refresh } = useDeckTree(isFocused);
 
   // Quick study state
   const [topic, setTopic] = useState('');

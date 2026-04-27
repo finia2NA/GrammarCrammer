@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import type { TreeNode } from '@/lib/types';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { getCollapsedNodes, setCollapsedNodes } from '@/lib/storage';
@@ -114,11 +114,11 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
           </Text>
         </TouchableOpacity>
 
-        {/* Status badge + due indicator (deck rows only) */}
-        {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
+        {/* Due indicator (deck rows only) */}
         {!isCollection && node.deck?.dueAt != null && <DueIndicator dueAt={node.deck.dueAt} />}
 
-        {/* Edit button */}
+        {/* Explanation generating spinner + edit button */}
+        {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
         <TouchableOpacity
           className="w-10 h-10 items-center justify-center"
           onPress={() => onEdit(node)}
@@ -152,17 +152,44 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
+function PendingDot({ color }: { color: string }) {
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.2, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View style={{ opacity, width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const colors = useColors();
   switch (status) {
-    case 'ready':
-      return <Icon name="check" size={12} color={colors.success} />;
     case 'generating':
-      return <Icon name="hourglass" size={12} color={colors.warning} />;
+      return (
+        // @ts-ignore — title is valid on web View for hover tooltip
+        <View style={{ paddingHorizontal: 6 }} title="Explanation generating">
+          <ActivityIndicator size={10} color={colors.primary} />
+        </View>
+      );
+    case 'pending':
+      return (
+        // @ts-ignore — title is valid on web View for hover tooltip
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title="Explanation generation queued">
+          <PendingDot color={colors.primary} />
+        </View>
+      );
     case 'error':
       return <Icon name="warning" size={12} color={colors.error} />;
-    case 'pending':
-      return <Text className="text-foreground-secondary text-xs">…</Text>;
     default:
       return null;
   }

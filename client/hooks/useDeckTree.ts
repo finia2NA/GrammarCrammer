@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getTree } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 
-export function useDeckTree(): {
+export function useDeckTree(active: boolean): {
   tree: TreeNode[];
   loading: boolean;
   refreshing: boolean;
@@ -38,14 +38,24 @@ export function useDeckTree(): {
   }, [doFetch]);
 
   useEffect(() => {
+    if (!active) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
     const controller = new AbortController();
     doFetch(controller.signal);
     intervalRef.current = setInterval(() => doFetch(controller.signal), 5000);
     return () => {
       controller.abort();
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [doFetch]);
+  }, [active, doFetch]);
 
   return { tree, loading, refreshing, refresh };
 }

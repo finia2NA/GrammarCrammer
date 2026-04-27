@@ -51,36 +51,36 @@ export function DeckModalCsvTab({
           onPress={() => setDetailsExpanded(v => !v)}
           activeOpacity={0.85}
         >
-          <Text className="text-foreground text-sm font-semibold">How this works</Text>
+          <Text className="text-foreground text-base font-semibold">How this works</Text>
           <Text className="text-foreground-secondary text-sm">{detailsExpanded ? '▼' : '▶'}</Text>
         </TouchableOpacity>
         <AnimatedCollapsible expanded={detailsExpanded} keepMounted>
           <View className="px-4 pb-4">
           <Text className="text-foreground/80 text-sm font-medium mb-2">File Format</Text>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-2">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-2">
             Tab-separated (.tsv / .csv). Commas in text are fine — only tabs separate columns.
           </Text>
           <View className="bg-surface border border-border rounded-xl px-4 py-3 mb-3">
             <Text className="text-foreground text-sm font-mono">DeckName&#9;Topic&#9;Explanation</Text>
           </View>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-1">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-1">
             • Header row is optional. Without it, columns are: <Text className="text-foreground font-mono">DeckName</Text>, <Text className="text-foreground font-mono">Topic</Text>, <Text className="text-foreground font-mono">Explanation</Text>.
           </Text>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-1">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-1">
             • <Text className="text-foreground font-mono">DeckName</Text> and <Text className="text-foreground font-mono">Explanation</Text> columns can be omitted.
           </Text>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-4">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-4">
             • If <Text className="text-foreground font-mono">DeckName</Text> is blank, <Text className="text-foreground font-mono">Topic</Text> is used as the deck name.
           </Text>
 
           <Text className="text-foreground/80 text-sm font-medium mb-2">How This Works</Text>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-1">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-1">
             • Each row creates one subdeck inside the collection.
           </Text>
-          <Text className="text-foreground-secondary text-xs leading-5 mb-1">
+          <Text className="text-foreground-secondary text-sm leading-5 mb-1">
             • <Text className="text-foreground font-mono">Topic</Text> and <Text className="text-foreground font-mono">Explanation</Text> are concatenated into one prompt used for explanation and card generation.
           </Text>
-          <Text className="text-foreground-secondary text-xs leading-5">
+          <Text className="text-foreground-secondary text-sm leading-5">
             • Explanations generate in the background (up to 5 at a time). Check back as they finish.
           </Text>
           </View>
@@ -88,7 +88,7 @@ export function DeckModalCsvTab({
       </View>
 
       <Text className="text-foreground/80 text-sm font-medium mb-2">CSV File</Text>
-      <Text className="text-foreground-secondary text-xs leading-5 mb-3">
+      <Text className="text-foreground-secondary text-sm leading-5 mb-3">
         Drag and drop a `.csv` file here, or click/tap to browse. Max 5,000 rows.
       </Text>
       <CsvFileDropZone fileName={selectedFileName} onFileSelected={handleFileSelected} />

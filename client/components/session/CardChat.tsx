@@ -78,6 +78,12 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
           editable={!streaming}
           multiline
           style={{ maxHeight: 120 }}
+          onKeyPress={(e: any) => {
+            if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+              e.preventDefault?.();
+              handleSend();
+            }
+          }}
         />
         <TouchableOpacity
           className={`w-10 h-10 rounded-xl items-center justify-center ${
