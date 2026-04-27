@@ -1,0 +1,30 @@
+export interface ReviewSchedule {
+  nextIntervalDays: number;
+  dueAt: Date;
+}
+
+// Maps star rating to interval multiplier. null = fixed 1-day reset.
+const MULTIPLIERS: Record<number, number | null> = {
+  1: null,
+  2: 0.25,
+  3: 0.75,
+  4: 1.5,
+  5: 2.0,
+};
+
+/**
+ * Calculate the next review date based on star rating and current interval.
+ * Swap this function to adopt a more sophisticated algorithm (SM-2, FSRS, etc.)
+ * without changing any callers.
+ */
+export function calculateNextReview(
+  stars: 1 | 2 | 3 | 4 | 5,
+  currentIntervalDays: number,
+): ReviewSchedule {
+  const mult = MULTIPLIERS[stars];
+  const nextDays = mult === null ? 1 : Math.max(1, currentIntervalDays * mult);
+  return {
+    nextIntervalDays: nextDays,
+    dueAt: new Date(Date.now() + nextDays * 86_400_000),
+  };
+}

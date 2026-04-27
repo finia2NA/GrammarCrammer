@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
-import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied } from '../services/deck.service.js';
+import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview } from '../services/deck.service.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { enqueueExplanation } from '../services/scheduler.service.js';
 
@@ -207,6 +207,18 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
   try {
     await setLastStudied(req.params.nodeId);
     res.json({ success: true });
+  } catch (e) { next(e); }
+});
+
+decksRouter.post('/:nodeId/review', async (req, res, next) => {
+  try {
+    const { userStars, aiStars, aiRecap } = req.body;
+    if (!userStars || aiStars === undefined || !aiRecap) {
+      throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
+    }
+    const stars = Math.max(1, Math.min(5, Math.round(Number(userStars)))) as 1 | 2 | 3 | 4 | 5;
+    const result = await saveDeckReview(req.params.nodeId, stars, Number(aiStars), String(aiRecap));
+    res.json(result);
   } catch (e) { next(e); }
 });
 

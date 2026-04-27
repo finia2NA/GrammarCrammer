@@ -16,7 +16,7 @@ import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, useColors } from '@/constants/theme';
 import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
-import type { Card, CardPhase, DeckCard, ChatMessage } from '@/lib/types';
+import type { Card, CardPhase, DeckCard, ChatMessage, CardAttempt } from '@/lib/types';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
@@ -27,6 +27,7 @@ import {
   BottomSheet,
   ExplanationOverlay,
   FlashcardDeck,
+  SessionCompleteScreen,
   PEEK_HEIGHT,
 } from '@/components/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
@@ -198,6 +199,7 @@ function DeckSession({ nodeId }: { nodeId: string }) {
       markStudied={multi.markStudied}
       deckName={displayDeck?.deckName}
       overlayDecks={overlayDecks}
+      decks={multi.decks}
     />
   );
 }
@@ -221,13 +223,14 @@ interface SessionUIProps {
   markStudied: () => Promise<void>;
   deckName?: string;
   overlayDecks?: OverlayDeck[];
+  decks?: Map<string, DeckInfo>;
 }
 
 function SessionUI({
   loading, loadPhase, loadError, setLoadError,
   cards, setCards, totalCost, addCost,
   explanation, wasTruncated, topic, language,
-  showExplanationOverlay, markStudied, deckName, overlayDecks,
+  showExplanationOverlay, markStudied, deckName, overlayDecks, decks,
 }: SessionUIProps) {
   const router = useRouter();
   const { isSmallScreen } = useScreenSize();
@@ -249,6 +252,8 @@ function SessionUI({
   const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
+  const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
+  const currentWrongAnswers = useRef<string[]>([]);
 
   const inputRef = useRef<TextInput>(null);
 
@@ -344,6 +349,13 @@ function SessionUI({
   }
 
   function handleConfirmCorrect() {
+    const current = cards[0];
+    setCompletedCards(prev => [...prev, {
+      card: current,
+      wrongAnswers: [...currentWrongAnswers.current],
+      deckId: (current as DeckCard).deckId,
+    }]);
+    currentWrongAnswers.current = [];
     setCards((prev: any[]) => prev.slice(1));
     setAnswer('');
     setFeedback('');
@@ -354,6 +366,7 @@ function SessionUI({
   }
 
   function handleConfirmWrong() {
+    currentWrongAnswers.current = [...currentWrongAnswers.current, submittedAnswer];
     setCards((prev: any[]) => [...prev.slice(1), prev[0]]);
     setAnswer('');
     setWrongExplanation('');
@@ -439,20 +452,17 @@ function SessionUI({
   if (!loading && cards.length === 0) {
     if (!studiedRef.current) {
       studiedRef.current = true;
-      markStudied();
+      // For quick study sessions (no deck), still mark studied.
+      // For deck sessions, the review endpoint handles lastStudiedAt.
+      if (!decks || decks.size === 0) markStudied();
     }
 
     return (
-      <View className="flex-1 bg-background items-center justify-center px-8 gap-6" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-        <Text className="text-5xl">🎉</Text>
-        <Text className="text-foreground text-2xl font-bold">Session complete!</Text>
-        <Text className="text-foreground-secondary text-base text-center">
-          You cleared all the cards. Great work.
-        </Text>
-        <TouchableOpacity className="bg-primary rounded-2xl px-8 py-4" onPress={() => router.replace('/home')}>
-          <Text className="text-primary-foreground font-bold text-base">Back to home</Text>
-        </TouchableOpacity>
-      </View>
+      <SessionCompleteScreen
+        completedCards={completedCards}
+        decks={decks ?? new Map()}
+        onDone={() => router.replace('/home')}
+      />
     );
   }
 

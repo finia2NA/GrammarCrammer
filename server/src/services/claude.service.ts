@@ -12,6 +12,7 @@ import {
   CARD_GEN_PROMPT,
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
+  SESSION_RATING_PROMPT,
 } from '../constants/prompts.js';
 import type { Card } from '../types/index.js';
 import { DEBUG_AI } from '../routes/claude-proxy.js';
@@ -385,6 +386,52 @@ export async function streamChat(
       sendError(res, e instanceof Error ? e.message : 'Unknown error');
     }
   }
+}
+
+export interface CardAttemptData {
+  english: string;
+  targetLanguage: string;
+  wrongAnswers: string[];
+}
+
+export async function rateSession(
+  userId: string,
+  topic: string,
+  language: string,
+  cards: CardAttemptData[],
+): Promise<{ stars: number; recap: string; cost: number }> {
+  const { apiKey, source } = await resolveApiKey(userId);
+
+  const cardSummary = cards.map((c, i) => {
+    const attempts = c.wrongAnswers.length;
+    const wrongLines = c.wrongAnswers.map(a => `    ✗ "${a}"`).join('\n');
+    return [
+      `Card ${i + 1}: "${c.english}" → correct: "${c.targetLanguage}"`,
+      attempts > 0
+        ? `  Wrong attempts (${attempts}):\n${wrongLines}`
+        : '  Answered correctly on first try.',
+    ].join('\n');
+  }).join('\n\n');
+
+  const { result, cost } = await callTool<{ stars: number; recap: string }>(
+    apiKey, HAIKU,
+    SESSION_RATING_PROMPT(topic, language, cardSummary),
+    'Rate this study session.',
+    'rate_session',
+    'Submit a star rating and short recap for the student\'s session performance.',
+    {
+      type: 'object',
+      properties: {
+        stars: { type: 'integer', minimum: 1, maximum: 5, description: 'Performance rating from 1 (poor) to 5 (excellent).' },
+        recap: { type: 'string', description: '1–2 sentence recap of the student\'s performance.' },
+      },
+      required: ['stars', 'recap'],
+    },
+    200,
+  );
+
+  await recordUsage(userId, source, 'rate-session', HAIKU, cost);
+  return { stars: result.stars, recap: result.recap, cost };
 }
 
 export async function streamExplanationGeneric(

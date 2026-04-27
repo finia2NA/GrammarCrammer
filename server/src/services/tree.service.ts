@@ -5,6 +5,7 @@ function mapDeck(deck: {
   nodeId: string; topic: string; language: string;
   explanation: string | null; explanationStatus: string;
   cardCount: number; lastStudiedAt: Date | null;
+  dueAt: Date | null; intervalDays: number;
 }): DeckData {
   return {
     nodeId: deck.nodeId,
@@ -14,6 +15,8 @@ function mapDeck(deck: {
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
+    dueAt: deck.dueAt?.getTime() ?? null,
+    intervalDays: deck.intervalDays,
   };
 }
 

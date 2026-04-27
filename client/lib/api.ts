@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { getAuthToken, clearAuthToken } from './storage';
-import type { Card, TreeNode, DeckData, ChatMessage } from './types';
+import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt } from './types';
 
 function getBaseUrl(): string {
   if (Platform.OS === 'web' && !__DEV__) {
@@ -260,6 +260,25 @@ export async function judgeAnswer(card: Card, userAnswer: string, language: stri
   return request<{ correct: boolean; reason: string; cost: number }>('/ai/judge', {
     method: 'POST',
     body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
+  });
+}
+
+export async function rateSession(topic: string, language: string, cards: CardAttempt[]) {
+  const payload = cards.map(a => ({
+    english: a.card.english,
+    targetLanguage: a.card.targetLanguage,
+    wrongAnswers: a.wrongAnswers,
+  }));
+  return request<{ stars: number; recap: string; cost: number }>('/ai/rate-session', {
+    method: 'POST',
+    body: JSON.stringify({ topic, language, cards: payload }),
+  });
+}
+
+export async function submitDeckReview(nodeId: string, userStars: number, aiStars: number, aiRecap: string) {
+  return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ userStars, aiStars, aiRecap }),
   });
 }
 

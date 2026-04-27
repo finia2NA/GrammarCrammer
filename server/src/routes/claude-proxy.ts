@@ -6,6 +6,7 @@ import {
   reviewRejection,
   streamChat,
   streamExplanationGeneric,
+  rateSession,
 } from '../services/claude.service.js';
 import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -68,6 +69,19 @@ claudeProxyRouter.post('/rejection', async (req, res, next) => {
     const resolvedBrevity = brevity === 'brief' ? 'brief' : 'normal';
     logAI(req.userEmail!, `rejection:${resolvedBrevity}`, 'sonnet');
     const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation, resolvedBrevity);
+    res.json(result);
+  } catch (e) { next(e); }
+});
+
+// Non-streaming: rate session
+claudeProxyRouter.post('/rate-session', async (req, res, next) => {
+  try {
+    const { topic, language, cards } = req.body;
+    if (!topic || !language || !Array.isArray(cards)) {
+      throw new AppError(400, 'MISSING_FIELDS', 'topic, language, and cards are required.');
+    }
+    logAI(req.userEmail!, 'rate-session', 'haiku');
+    const result = await rateSession(req.userId!, topic, language, cards);
     res.json(result);
   } catch (e) { next(e); }
 });

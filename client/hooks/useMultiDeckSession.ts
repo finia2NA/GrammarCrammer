@@ -19,7 +19,9 @@ export interface DeckInfo {
   explanation: string;
   wasTruncated: boolean;
   topic: string;
+  language: string;
   deckName: string;
+  nodeId: string;
 }
 
 interface DeckMeta extends DeckData {
@@ -88,7 +90,9 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
               explanation: d.explanation!,
               wasTruncated: false,
               topic: d.topic,
+              language: d.language,
               deckName,
+              nodeId: id,
             });
           } catch { continue; }
         }
@@ -175,6 +179,7 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
     cards,
     setCards,
     decks,
+    deckIds,
     totalCost,
     addCost,
     markStudied,

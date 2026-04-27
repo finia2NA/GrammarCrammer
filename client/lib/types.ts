@@ -20,6 +20,13 @@ export interface DeckData {
   cardCount: number;
   lastStudiedAt: number | null;
   dueAt?: number | null;
+  intervalDays?: number;
+}
+
+export interface CardAttempt {
+  card: Card;
+  wrongAnswers: string[];
+  deckId?: string;
 }
 
 export interface TreeNode {

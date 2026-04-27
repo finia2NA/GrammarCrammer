@@ -49,8 +49,23 @@ model Deck {
   explanationStatus String @default("pending")
   cardCount         Int    @default(10)
   lastStudiedAt     DateTime?
+  dueAt             DateTime?
+  intervalDays      Float     @default(1)
 
-  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  node    Node        @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  reviews DeckReview[]
+}
+
+model DeckReview {
+  id              String   @id @default(uuid())
+  deckId          String
+  studiedAt       DateTime @default(now())
+  aiStars         Int
+  userStars       Int
+  aiRecap         String
+  intervalApplied Float
+
+  deck Deck @relation(fields: [deckId], references: [nodeId], onDelete: Cascade)
 }
 
 model Setting {

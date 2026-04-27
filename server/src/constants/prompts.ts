@@ -99,6 +99,26 @@ is wrong and what my example sentence demonstrates about the grammar.
 ${brevity === 'brief' ? 'Be brief — keep to a 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}
 You may use **bold** to highlight key grammar forms or example phrases.${explanationLanguageBlock(language)}`;
 
+export const SESSION_RATING_PROMPT = (
+  topic: string,
+  language: string,
+  cardSummary: string,
+) => `\
+You are evaluating a language-learning practice session for the topic "${topic}" in ${language}.
+
+Here is the student's performance card-by-card:
+${cardSummary}
+
+Rate the student's overall performance from 1 to 5 stars:
+- 1 star: Struggled significantly — many wrong attempts on most cards
+- 2 stars: Below average — frequent mistakes, needed multiple tries
+- 3 stars: Average — a mix of correct first attempts and retries
+- 4 stars: Good — mostly correct on first attempt with few mistakes
+- 5 stars: Excellent — correct first attempt on nearly all cards
+
+Write a brief 1–2 sentence recap explaining the rating, highlighting what went well or what to review.
+Be direct and encouraging. Speak in second person ("you").`;
+
 export const CARD_CHAT_PROMPT = (
   language: string,
   english: string,

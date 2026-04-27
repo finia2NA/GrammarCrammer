@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { DeckData } from '../types/index.js';
+import { calculateNextReview } from './srs.service.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ function mapDeckRow(deck: {
   nodeId: string; topic: string; language: string;
   explanation: string | null; explanationStatus: string;
   cardCount: number; lastStudiedAt: Date | null;
+  dueAt: Date | null; intervalDays: number;
 }): DeckData {
   return {
     nodeId: deck.nodeId,
@@ -31,6 +33,8 @@ function mapDeckRow(deck: {
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
+    dueAt: deck.dueAt?.getTime() ?? null,
+    intervalDays: deck.intervalDays,
   };
 }
 
@@ -252,4 +256,38 @@ export async function setLastStudied(nodeId: string): Promise<void> {
     where: { nodeId },
     data: { lastStudiedAt: new Date() },
   });
+}
+
+export async function saveDeckReview(
+  nodeId: string,
+  userStars: 1 | 2 | 3 | 4 | 5,
+  aiStars: number,
+  aiRecap: string,
+): Promise<{ dueAt: number; nextIntervalDays: number }> {
+  const deck = await prisma.deck.findUnique({
+    where: { nodeId },
+    select: { intervalDays: true },
+  });
+  if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
+
+  const { nextIntervalDays, dueAt } = calculateNextReview(userStars, deck.intervalDays);
+  const now = new Date();
+
+  await prisma.$transaction([
+    prisma.deck.update({
+      where: { nodeId },
+      data: { lastStudiedAt: now, dueAt, intervalDays: nextIntervalDays },
+    }),
+    prisma.deckReview.create({
+      data: {
+        deckId: nodeId,
+        aiStars,
+        userStars,
+        aiRecap,
+        intervalApplied: nextIntervalDays,
+      },
+    }),
+  ]);
+
+  return { dueAt: dueAt.getTime(), nextIntervalDays };
 }
