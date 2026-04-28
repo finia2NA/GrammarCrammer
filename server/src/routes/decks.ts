@@ -43,7 +43,7 @@ interface CsvSkip {
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[\s_\-]/g, '');
+  return s.toLowerCase().replace(/[\s_-]/g, '');
 }
 
 const HEADER_VARIANTS: Record<string, string[]> = {

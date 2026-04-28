@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Animated,
   ActivityIndicator,
 } from 'react-native';
 import { useColors } from '@/constants/theme';

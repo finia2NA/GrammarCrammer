@@ -153,7 +153,7 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
         GrammarCrammer is in early development. Future updates may reset your data, including saved decks and collections.
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
-        For now, use it to explore the concept and practise grammar freely — but don't invest time building elaborate collections just yet.
+        For now, use it to explore the concept and practise grammar freely — but don&apos;t invest time building elaborate collections just yet.
       </Text>
       <View className="mt-4 flex-row border-l-2 border-foreground-secondary pl-3 gap-2">
         <Text className="text-sm leading-6">💡</Text>
@@ -312,7 +312,7 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
       {canSkip && (
         <TouchableOpacity onPress={onSkip} className="mt-4">
           <Text className="text-primary text-sm">
-            Skip — use the server's key instead
+            Skip — use the server&apos;s key instead
           </Text>
         </TouchableOpacity>
       )}
@@ -489,12 +489,12 @@ export default function Onboarding() {
               {/* Show the correct card based on the step using a map */}
               <Animated.View style={{ flexDirection: 'row', width: `${TOTAL_STEPS * 100}%`, transform: [{ translateX: cardAnimX }] }}>
                 {([
-                  <WelcomeCard />,
-                  <HowItWorksCard />,
-                  <AlphaWarningCard />,
+                  <WelcomeCard key="welcome" />,
+                  <HowItWorksCard key="how-it-works" />,
+                  <AlphaWarningCard key="alpha-warning" />,
                   showApiKeyForm
-                    ? <ApiKeyCard apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
-                    : <AccountCard email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} success={accountSuccess} />,
+                    ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
+                    : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
                     {panel}

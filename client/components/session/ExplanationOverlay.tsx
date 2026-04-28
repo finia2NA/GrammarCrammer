@@ -7,8 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { useColors } from '@/constants/theme';
+import { Colors, useColors } from '@/constants/theme';
 import type { LoadPhase } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { TruncationWarning } from './ExplanationPanel';

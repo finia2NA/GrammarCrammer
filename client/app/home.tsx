@@ -9,7 +9,7 @@ import type { Language, CardCount } from '@/constants/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
-import { DeckModal } from '@/components/home/DeckModal';
+import { DeckModal, type DeckFormData, type CsvImportData } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
 import { Icon } from '@/components/Icon';
 import {
@@ -23,8 +23,6 @@ import {
   getEnabledLanguages,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
-import type { DeckFormData } from '@/components/home/DeckModal';
-import type { CsvImportData } from '@/components/home/DeckModal';
 
 export default function Home() {
   const router = useRouter();
@@ -34,7 +32,7 @@ export default function Home() {
   const isFocused = useIsFocused();
   const { tree, loading, refreshing, refresh } = useDeckTree(isFocused);
 
-  // Quick study state
+  // Quick-study state
   const [topic, setTopic] = useState('');
   const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [language, setLanguage] = useState<Language>('Japanese');

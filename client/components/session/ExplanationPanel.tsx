@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, useColors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
 import { GrammarMarkdown } from './GrammarMarkdown';
 
 export const PEEK_HEIGHT = 72;
