@@ -87,7 +87,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
     if (visible) {
       getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
         setEnabledLanguages(langs);
-        setLanguage(prev => langs.includes(prev) ? prev : langs[0]);
+        setLanguage((prev: string) => langs.includes(prev) ? prev : langs[0]);
       });
     }
   }, [visible]);

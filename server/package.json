@@ -13,6 +13,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@grammarcrammer/shared": "workspace:*",
     "@prisma/client": "^6.6.0",
     "apple-signin-auth": "^2.0.0",
     "bcryptjs": "^3.0.2",

@@ -21,13 +21,13 @@ export function LanguagePicker({ enabled, onChange }: LanguagePickerProps) {
 
   return (
     <View className="gap-4">
-      {ALL_LANGUAGES_BY_REGION.map(({ region, languages }) => (
+      {ALL_LANGUAGES_BY_REGION.map(({ region, languages }: { region: string; languages: string[] }) => (
         <View key={region}>
           <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2">
             {region}
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {languages.map(lang => {
+            {languages.map((lang: string) => {
               const selected = enabled.includes(lang);
               return (
                 <TouchableOpacity
