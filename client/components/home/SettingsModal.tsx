@@ -28,7 +28,8 @@ function SectionCard({ title, children }: { title: string; children: React.React
       <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2 px-1">
         {title}
       </Text>
-      <View className="rounded-xl border-2 border-border overflow-hidden px-4 pt-4">
+      <View className="h-px bg-border mb-4" />
+      <View className="px-1">
         {children}
       </View>
     </View>
@@ -303,19 +304,20 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2 px-1">
           Languages
         </Text>
-        <View className="rounded-xl border-2 border-border overflow-hidden">
+        <View className="h-px bg-border mb-4" />
+        <View className="px-1">
           <TouchableOpacity
             onPress={() => setLanguagesExpanded(e => !e)}
             activeOpacity={0.85}
-            className="px-4 py-3 flex-row items-center justify-between"
+            className="flex-row items-center justify-between mb-2"
           >
-            <Text className="text-foreground text-base font-semibold">
+            <Text className="text-foreground text-sm font-medium">
               {languagesExpanded ? 'Hide Languages' : 'Show languages'}
             </Text>
             <Text className="text-foreground-secondary text-sm">{languagesExpanded ? '▼' : '▶'}</Text>
           </TouchableOpacity>
           <AnimatedCollapsible expanded={languagesExpanded} keepMounted={false}>
-            <View className="px-4 pb-4">
+            <View className="pb-2">
               <Text className="text-foreground-secondary text-xs mb-4">
                 Choose which languages appear in the language picker when creating decks.
               </Text>
@@ -330,8 +332,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         <SectionCard title="API & Usage">
           {usageStatus.centralKeyAvailable && (
             <Text className="text-foreground-secondary text-xs leading-5 mb-4">
-              Some usage is included with your account using the server's API key.
-              You can also connect your own Anthropic key if you'd like unlimited usage.
+              Some usage is included with your account using the server&apos;s API key.
+              You can also connect your own Anthropic key if you&apos;d like unlimited usage.
             </Text>
           )}
           {usageStatus.centralKeyAvailable && (
