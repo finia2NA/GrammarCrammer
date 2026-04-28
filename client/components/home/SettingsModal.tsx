@@ -18,8 +18,22 @@ import { CARD_COUNTS, DEFAULT_LANGUAGES } from '@/constants/session';
 import type { CardCount } from '@/constants/session';
 import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
+import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 
 type CardOrder = 'sequential' | 'shuffled';
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mb-5">
+      <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2 px-1">
+        {title}
+      </Text>
+      <View className="rounded-xl border-2 border-border overflow-hidden px-4 pt-4">
+        {children}
+      </View>
+    </View>
+  );
+}
 
 function SettingsRow({
   label,
@@ -31,7 +45,7 @@ function SettingsRow({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ zIndex: 10 }} className="flex-row items-center justify-between mb-6">
+    <View style={{ zIndex: 10 }} className="flex-row items-center justify-between mb-4">
       <View className="flex-1 mr-4">
         <Text className="text-foreground/80 text-sm font-medium">{label}</Text>
         {description && (
@@ -147,6 +161,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [enabledLanguages, setEnabledLanguagesState] = useState<string[]>(DEFAULT_LANGUAGES);
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
+  const [languagesExpanded, setLanguagesExpanded] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -235,81 +250,90 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       confirmText="Done"
       onConfirm={onClose}
     >
-      {/* Card order */}
-      <SettingsRow
-        label="Collection Card Order"
-        description="Order of cards when studying a collection"
-      >
-        <PillDropdown
-          value={cardOrder}
-          options={['shuffled', 'sequential'] as const}
-          onChange={handleChangeOrder}
-          formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential'}
-        />
-      </SettingsRow>
-
-      {/* Context-Aware Judging */}
-      <SettingsRow
-        label="Context-Aware Judging"
-        description="Pass the grammar explanation to the judging AI for more topic-relevant feedback. Uses API limits faster."
-      >
-        <PillDropdown
-          value={judgeWithExplanation}
-          options={['on', 'off'] as const}
-          onChange={handleChangeJudgeExplanation}
-          formatLabel={(v: 'on' | 'off') => v === 'on' ? 'On' : 'Off'}
-        />
-      </SettingsRow>
-
-      {/* Feedback Brevity */}
-      <SettingsRow
-        label="Feedback Brevity"
-        description="Brief shows a few-word hint. Normal gives a fuller explanation."
-      >
-        <PillDropdown
-          value={feedbackBrevity}
-          options={['normal', 'brief'] as const}
-          onChange={handleChangeFeedbackBrevity}
-          formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? 'Brief' : 'Normal'}
-        />
-      </SettingsRow>
-
-      {/* Default Card Count */}
-      <SettingsRow
-        label="Default Cards per Topic"
-        description="How many cards to generate per deck by default"
-      >
-        <PillDropdown
-          value={defaultCardCount}
-          options={[5, 10, 15, 20] as const}
-          onChange={handleChangeDefaultCardCount}
-          formatLabel={(v: number) => `${v} cards`}
-        />
-      </SettingsRow>
+      {/* Study Settings */}
+      <SectionCard title="Study Settings">
+        <SettingsRow
+          label="Collection Card Order"
+          description="Order of cards when studying a collection"
+        >
+          <PillDropdown
+            value={cardOrder}
+            options={['shuffled', 'sequential'] as const}
+            onChange={handleChangeOrder}
+            formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential'}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Context-Aware Judging"
+          description="Pass the grammar explanation to the judging AI for more topic-relevant feedback. Uses API limits faster."
+        >
+          <PillDropdown
+            value={judgeWithExplanation}
+            options={['on', 'off'] as const}
+            onChange={handleChangeJudgeExplanation}
+            formatLabel={(v: 'on' | 'off') => v === 'on' ? 'On' : 'Off'}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Feedback Brevity"
+          description="Brief shows a few-word hint. Normal gives a fuller explanation."
+        >
+          <PillDropdown
+            value={feedbackBrevity}
+            options={['normal', 'brief'] as const}
+            onChange={handleChangeFeedbackBrevity}
+            formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? 'Brief' : 'Normal'}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Default Cards per Topic"
+          description="How many cards to generate per deck by default"
+        >
+          <PillDropdown
+            value={defaultCardCount}
+            options={[5, 10, 15, 20] as const}
+            onChange={handleChangeDefaultCardCount}
+            formatLabel={(v: number) => `${v} cards`}
+          />
+        </SettingsRow>
+      </SectionCard>
 
       {/* Languages */}
-      <View className="mb-6">
-        <Text className="text-foreground/80 text-sm font-medium mb-1">Languages</Text>
-        <Text className="text-foreground-secondary text-xs mb-4">
-          Choose which languages appear in the language picker when creating decks.
+      <View className="mb-5">
+        <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2 px-1">
+          Languages
         </Text>
-        <LanguagePicker enabled={enabledLanguages} onChange={handleChangeEnabledLanguages} />
+        <View className="rounded-xl border-2 border-border overflow-hidden">
+          <TouchableOpacity
+            onPress={() => setLanguagesExpanded(e => !e)}
+            activeOpacity={0.85}
+            className="px-4 py-3 flex-row items-center justify-between"
+          >
+            <Text className="text-foreground text-base font-semibold">
+              {languagesExpanded ? 'Hide Languages' : 'Show languages'}
+            </Text>
+            <Text className="text-foreground-secondary text-sm">{languagesExpanded ? '▼' : '▶'}</Text>
+          </TouchableOpacity>
+          <AnimatedCollapsible expanded={languagesExpanded} keepMounted={false}>
+            <View className="px-4 pb-4">
+              <Text className="text-foreground-secondary text-xs mb-4">
+                Choose which languages appear in the language picker when creating decks.
+              </Text>
+              <LanguagePicker enabled={enabledLanguages} onChange={handleChangeEnabledLanguages} />
+            </View>
+          </AnimatedCollapsible>
+        </View>
       </View>
 
-      {/* API Key section */}
+      {/* API & Usage */}
       {usageStatus && (
-        <View className="mb-6">
-          <Text className="text-foreground/80 text-sm font-medium mb-1">API Key</Text>
-
-          {/* Explanation when central key is available */}
+        <SectionCard title="API & Usage">
           {usageStatus.centralKeyAvailable && (
             <Text className="text-foreground-secondary text-xs leading-5 mb-4">
               Some usage is included with your account using the server's API key.
               You can also connect your own Anthropic key if you'd like unlimited usage.
             </Text>
           )}
-
-          {/* Key source toggle */}
           {usageStatus.centralKeyAvailable && (
             <SettingsRow
               label="Key Source"
@@ -323,10 +347,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               />
             </SettingsRow>
           )}
-
-          {/* Server key view */}
           {usageStatus.centralKeyAvailable && usageStatus.preference === 'central' && (
-            <View className="mb-3">
+            <View className="mb-4">
               <Text className="text-foreground/60 text-xs font-medium mb-2 uppercase tracking-wide">This Month</Text>
               <UsageBar
                 used={usageStatus.usage.central}
@@ -340,10 +362,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               )}
             </View>
           )}
-
-          {/* Personal key view */}
           {(!usageStatus.centralKeyAvailable || usageStatus.preference === 'own') && (
-            <View className="mb-3">
+            <View className="mb-4">
               {usageStatus.hasOwnKey && (
                 <View className="mb-3">
                   <Text className="text-foreground/60 text-xs font-medium mb-2 uppercase tracking-wide">This Month</Text>
@@ -352,7 +372,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   </Text>
                 </View>
               )}
-
               {usageStatus.hasOwnKey ? (
                 <ConfirmButton
                   label="Delete Personal API Key"
@@ -374,19 +393,20 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               )}
             </View>
           )}
-        </View>
+        </SectionCard>
       )}
 
       {/* Account */}
-      <View className="mt-auto gap-3">
-        <Text className="text-foreground/80 text-sm font-medium mb-1">Account</Text>
-        <ConfirmButton
-          label="Log Out"
-          confirmLabel="Tap again to log out"
-          onConfirm={handleLogout}
-          destructive
-        />
-      </View>
+      <SectionCard title="Account">
+        <View className="mb-4">
+          <ConfirmButton
+            label="Log Out"
+            confirmLabel="Tap again to log out"
+            onConfirm={handleLogout}
+            destructive
+          />
+        </View>
+      </SectionCard>
     </PageSheetModal>
   );
 }

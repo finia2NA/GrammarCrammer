@@ -23,7 +23,7 @@ export function LanguagePicker({ enabled, onChange }: LanguagePickerProps) {
     <View className="gap-4">
       {ALL_LANGUAGES_BY_REGION.map(({ region, languages }: { region: string; languages: string[] }) => (
         <View key={region}>
-          <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2">
+          <Text className="text-foreground/50 text-sm font-semibold uppercase tracking-widest mb-2">
             {region}
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -34,17 +34,20 @@ export function LanguagePicker({ enabled, onChange }: LanguagePickerProps) {
                   key={`${region}-${lang}`}
                   onPress={() => toggle(lang)}
                   activeOpacity={0.75}
-                  className="flex-row items-center rounded-full border px-3 py-1.5"
-                  style={{
-                    backgroundColor: selected ? colors.foreground : 'transparent',
-                    borderColor: selected ? colors.foreground : colors.border,
-                  }}
+                  className="flex-row items-center rounded-full border px-4 py-2 gap-2"
+                  style={{ borderColor: selected ? colors.foreground : colors.border }}
                 >
                   <Text
-                    className="text-xs font-medium"
-                    style={{ color: selected ? colors.background : colors.foreground_secondary }}
+                    className="text-sm font-semibold"
+                    style={{ color: selected ? colors.success : colors.foreground_subtle }}
                   >
-                    {selected ? '✓  ' : ''}{lang}
+                    ✓
+                  </Text>
+                  <Text
+                    className="text-sm font-medium"
+                    style={{ color: selected ? colors.foreground : colors.foreground_secondary }}
+                  >
+                    {lang}
                   </Text>
                 </TouchableOpacity>
               );

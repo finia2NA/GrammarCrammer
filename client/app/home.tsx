@@ -164,12 +164,8 @@ export default function Home() {
 
         {/* Deck tree */}
         <View
-          className="w-full max-w-2xl self-center mb-6"
+          className="w-full max-w-2xl self-center mb-6 bg-surface rounded-2xl border border-border"
           style={{
-            backgroundColor: colors.surface,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
             padding: 20,
             ...Platform.select({ web: { boxShadow: '0 2px 12px rgba(0,0,0,0.08)' } }),
           }}
@@ -207,12 +203,10 @@ export default function Home() {
         {/* Quick study */}
         <View className="w-full max-w-2xl self-center mb-6">
           <View
-            className="bg-surface rounded-2xl mb-3"
+            className={`bg-surface rounded-2xl mb-3 border ${inputFocused ? 'border-primary' : 'border-border'}`}
             style={{
               minHeight: 100,
               zIndex: 10,
-              borderWidth: 1,
-              borderColor: inputFocused ? colors.primary : colors.border,
               ...Platform.select({ web: inputFocused ? { boxShadow: `0 0 0 3px ${colors.primary}40` } : {} }),
             }}
           >

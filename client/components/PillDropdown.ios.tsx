@@ -9,7 +9,8 @@
  * <Menu> component. The PillDropdownProps interface in PillDropdown.tsx
  * stays the same either way.
  */
-import { Keyboard } from 'react-native';
+import { useState, useEffect } from 'react';
+import { Keyboard, Appearance } from 'react-native';
 import { PillDropdownNativeView } from 'pill-dropdown';
 import type { PillDropdownProps } from './PillDropdown';
 import { useColors } from '@/constants/theme';
@@ -17,6 +18,13 @@ import { useColors } from '@/constants/theme';
 export function PillDropdown<T extends string | number>({
   value, options, onChange, formatLabel,
 }: PillDropdownProps<T>) {
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(() => forceUpdate(n => n + 1));
+    return () => sub.remove();
+  }, []);
+
   const colors = useColors();
   const label = formatLabel ? formatLabel(value) : String(value);
   const optionLabels = options.map(o => formatLabel ? formatLabel(o) : String(o));

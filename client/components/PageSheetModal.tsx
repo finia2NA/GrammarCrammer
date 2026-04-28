@@ -10,7 +10,7 @@ import {
   Platform,
   Animated,
   StyleSheet,
-  useColorScheme,
+  Appearance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
@@ -39,7 +39,15 @@ export function PageSheetModal({
 }: PageSheetModalProps) {
   const insets = useSafeAreaInsets();
   const { height, isSmallScreen } = useScreenSize();
-  const scheme = useColorScheme();
+  const [scheme, setScheme] = useState<'light' | 'dark'>(Appearance.getColorScheme() ?? 'dark');
+
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setScheme(colorScheme ?? 'dark');
+    });
+    return () => sub.remove();
+  }, []);
+
   const themeVars = scheme === 'dark' ? darkThemeVars : lightThemeVars;
 
   // Internal state keeps Modal mounted while the exit animation plays on large screens.
