@@ -38,7 +38,7 @@ client/
 │
 ├── constants/
 │   ├── theme.ts                ← Dark / light colour palettes
-│   ├── session.ts              ← Supported languages, card count options
+│   ├── session.ts              ← Re-exports from @grammarcrammer/shared (languages, card count options)
 │   ├── prompts.ts              ← AI system prompts (kept in client for reference; sent via server)
 │   └── languageInstructions.ts ← Per-language instructions injected into prompts
 │
@@ -48,6 +48,12 @@ client/
 └── assets/
     └── images/                 ← App icon, splash screen, etc.
 ```
+
+## Shared package (`@grammarcrammer/shared`)
+
+Constants and types shared between client and server live in `shared/` at the repo root and are imported as `@grammarcrammer/shared`. The client re-exports everything through `constants/session.ts` so existing import paths don't change.
+
+`metro.config.js` has a custom `resolveRequest` hook that remaps `.js` imports to `.ts` — this is needed because TypeScript's NodeNext module resolution requires `.js` extensions in source files, but Metro takes them literally and can't find the `.ts` files otherwise. The alternative would be using `"moduleResolution": "bundler"` in shared's tsconfig (no extensions required), but that would need a separate build step for production.
 
 ## Key files to know
 
