@@ -11,11 +11,12 @@ import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { useRouter } from 'expo-router';
 import { clearAuthToken } from '@/lib/storage';
-import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus } from '@/lib/api';
+import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus, getEnabledLanguages, setEnabledLanguages } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { PillDropdown } from '@/components/PillDropdown';
-import { CARD_COUNTS } from '@/constants/session';
+import { CARD_COUNTS, DEFAULT_LANGUAGES } from '@/constants/session';
 import type { CardCount } from '@/constants/session';
+import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
 
 type CardOrder = 'sequential' | 'shuffled';
@@ -143,6 +144,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
+  const [enabledLanguages, setEnabledLanguagesState] = useState<string[]>(DEFAULT_LANGUAGES);
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
 
@@ -161,6 +163,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         const n = v ? parseInt(v, 10) : 10;
         if (CARD_COUNTS.includes(n as CardCount) && n !== 0) setDefaultCardCount(n as CardCount);
       });
+      getEnabledLanguages(DEFAULT_LANGUAGES).then(setEnabledLanguagesState);
       getUsageStatus().then(setUsageStatus).catch(() => {});
       setShowAddKey(false);
     }
@@ -184,6 +187,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeDefaultCardCount(next: CardCount) {
     setDefaultCardCount(next);
     setSetting('default_card_count', String(next));
+  }
+
+  function handleChangeEnabledLanguages(next: string[]) {
+    setEnabledLanguagesState(next);
+    setEnabledLanguages(next);
   }
 
   function handleChangePreference(next: KeyPreference) {
@@ -278,6 +286,15 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           formatLabel={(v: number) => `${v} cards`}
         />
       </SettingsRow>
+
+      {/* Languages */}
+      <View className="mb-6">
+        <Text className="text-foreground/80 text-sm font-medium mb-1">Languages</Text>
+        <Text className="text-foreground-secondary text-xs mb-4">
+          Choose which languages appear in the language picker when creating decks.
+        </Text>
+        <LanguagePicker enabled={enabledLanguages} onChange={handleChangeEnabledLanguages} />
+      </View>
 
       {/* API Key section */}
       {usageStatus && (

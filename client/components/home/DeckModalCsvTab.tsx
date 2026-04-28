@@ -15,6 +15,7 @@ interface DeckModalCsvTabProps {
   onCardCountChange: (value: CardCount) => void;
   onFileSelected: (fileName: string, content: string) => void;
   importStatus: CsvImportStatus;
+  enabledLanguages: string[];
 }
 
 export function DeckModalCsvTab({
@@ -26,6 +27,7 @@ export function DeckModalCsvTab({
   onCardCountChange,
   onFileSelected,
   importStatus,
+  enabledLanguages,
 }: DeckModalCsvTabProps) {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -99,6 +101,7 @@ export function DeckModalCsvTab({
           onLanguageChange={onLanguageChange}
           cardCount={cardCount}
           onCardCountChange={onCardCountChange}
+          enabledLanguages={enabledLanguages}
         />
       </View>
 

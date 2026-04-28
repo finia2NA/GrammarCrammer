@@ -233,6 +233,20 @@ export async function setSetting(key: string, value: string) {
   });
 }
 
+export async function getEnabledLanguages(defaultLanguages: string[]): Promise<string[]> {
+  const raw = await getSetting('enabled_languages');
+  if (!raw) return defaultLanguages;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[];
+  } catch {}
+  return defaultLanguages;
+}
+
+export async function setEnabledLanguages(langs: string[]): Promise<void> {
+  await setSetting('enabled_languages', JSON.stringify(langs));
+}
+
 export interface UsageStatus {
   centralKeyAvailable: boolean;
   preference: 'central' | 'own';

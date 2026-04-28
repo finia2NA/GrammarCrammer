@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated, Easing, Alert, Platform } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import type { Language, CardCount } from '@/constants/session';
+import { DEFAULT_LANGUAGES } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
 import type { CsvImportResult } from '@/lib/api';
-import { exportNodeCsv } from '@/lib/api';
+import { exportNodeCsv, getEnabledLanguages } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
 
@@ -63,6 +64,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
+  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
   const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
@@ -80,6 +82,15 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
   const [hasMeasuredHeight, setHasMeasuredHeight] = useState(false);
   const [heightAnimating, setHeightAnimating] = useState(false);
   const tabWidth = tabSwitcherWidth > 0 ? (tabSwitcherWidth - 12) / 2 : 0;
+
+  useEffect(() => {
+    if (visible) {
+      getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
+        setEnabledLanguages(langs);
+        setLanguage(prev => langs.includes(prev) ? prev : langs[0]);
+      });
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -367,6 +378,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
                 onCardCountChange={setCardCount}
                 onFileSelected={handleFileSelected}
                 importStatus={importStatus}
+                enabledLanguages={enabledLanguages}
               />
             ) : (
               <DeckModalCreateTab
@@ -382,6 +394,7 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
                 onLanguageChange={setLanguage}
                 cardCount={cardCount}
                 onCardCountChange={setCardCount}
+                enabledLanguages={enabledLanguages}
               />
             )}
           </View>

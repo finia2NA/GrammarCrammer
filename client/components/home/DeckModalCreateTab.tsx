@@ -17,6 +17,7 @@ interface DeckModalCreateTabProps {
   onLanguageChange: (value: Language) => void;
   cardCount: CardCount;
   onCardCountChange: (value: CardCount) => void;
+  enabledLanguages: string[];
 }
 
 export function DeckModalCreateTab({
@@ -32,6 +33,7 @@ export function DeckModalCreateTab({
   onLanguageChange,
   cardCount,
   onCardCountChange,
+  enabledLanguages,
 }: DeckModalCreateTabProps) {
   const colors = useColors();
 
@@ -69,6 +71,7 @@ export function DeckModalCreateTab({
             onLanguageChange={onLanguageChange}
             cardCount={cardCount}
             onCardCountChange={onCardCountChange}
+            enabledLanguages={enabledLanguages}
           />
         </>
       )}

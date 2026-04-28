@@ -1,6 +1,6 @@
 import { Text, TextInput, View } from 'react-native';
 import { PillDropdown } from '@/components/PillDropdown';
-import { LANGUAGES, CARD_COUNTS, formatCardCount } from '@/constants/session';
+import { CARD_COUNTS, formatCardCount } from '@/constants/session';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 
@@ -44,6 +44,7 @@ interface SharedCreationOptionsSectionProps {
   onLanguageChange: (value: Language) => void;
   cardCount: CardCount;
   onCardCountChange: (value: CardCount) => void;
+  enabledLanguages: string[];
 }
 
 export function SharedCreationOptionsSection({
@@ -51,12 +52,13 @@ export function SharedCreationOptionsSection({
   onLanguageChange,
   cardCount,
   onCardCountChange,
+  enabledLanguages,
 }: SharedCreationOptionsSectionProps) {
   return (
     <>
       <Text className="text-foreground/80 text-sm font-medium mb-3">Options</Text>
       <View className="flex-row gap-3 mb-6">
-        <PillDropdown value={language} options={LANGUAGES} onChange={onLanguageChange} />
+        <PillDropdown value={language} options={enabledLanguages} onChange={onLanguageChange} />
         <PillDropdown
           value={cardCount}
           options={CARD_COUNTS}

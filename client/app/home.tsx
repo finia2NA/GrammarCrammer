@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { PillDropdown } from '@/components/PillDropdown';
-import { LANGUAGES, CARD_COUNTS, formatCardCount } from '@/constants/session';
+import { DEFAULT_LANGUAGES, CARD_COUNTS, formatCardCount } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
@@ -20,6 +20,7 @@ import {
   getNodePath,
   moveNode,
   importDecksFromCsv,
+  getEnabledLanguages,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 import type { DeckFormData } from '@/components/home/DeckModal';
@@ -35,6 +36,7 @@ export default function Home() {
 
   // Quick study state
   const [topic, setTopic] = useState('');
+  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
   const [inputFocused, setInputFocused] = useState(false);
@@ -45,6 +47,13 @@ export default function Home() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [editNode, setEditNode] = useState<TreeNode | null>(null);
   const [editNodePathStr, setEditNodePathStr] = useState('');
+
+  useEffect(() => {
+    getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
+      setEnabledLanguages(langs);
+      if (!langs.includes(language)) setLanguage(langs[0]);
+    });
+  }, [isFocused]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
@@ -211,7 +220,7 @@ export default function Home() {
               className="absolute flex-row gap-2"
               style={{ top: 12, right: 12, zIndex: 20 }}
             >
-              <PillDropdown value={language} options={LANGUAGES} onChange={setLanguage} />
+              <PillDropdown value={language} options={enabledLanguages} onChange={setLanguage} />
               <PillDropdown
                 value={cardCount}
                 options={CARD_COUNTS}
