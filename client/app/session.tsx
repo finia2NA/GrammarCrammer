@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -279,7 +279,7 @@ function SessionUI({
     getUsageStatus().then(status => {
       const total = status.usage.central + status.usage.own;
       setBeginningTotalSpend(total);
-      beginningSessionCostRef.current = totalCost;
+      beginningSessionCostRef.current = total;
     }).catch(() => {});
   }, []);
 
@@ -289,23 +289,6 @@ function SessionUI({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [cardPhase, showOverlay]);
-
-  // Enter key advances past judgment screens
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    if (cardPhase !== 'correct' && cardPhase !== 'wrong_shown') return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        const tag = (document.activeElement as HTMLElement)?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-        e.preventDefault();
-        if (cardPhase === 'correct') handleConfirmCorrect();
-        else handleConfirmWrong();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [cardPhase]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -351,7 +334,7 @@ function SessionUI({
     }, 420);
   }
 
-  function handleConfirmCorrect() {
+  const handleConfirmCorrect = useCallback(() => {
     const current = cards[0];
     const prevAnswers = cardWrongAnswers.current.get(current.id) ?? [];
     const answers = [...prevAnswers, submittedAnswer];  // append the final correct answer
@@ -368,9 +351,9 @@ function SessionUI({
     setChatMessages([]);
     setChatStreaming(false);
     setCardPhase('input');
-  }
+  }, [cards, submittedAnswer, setCards]);
 
-  function handleConfirmWrong() {
+  const handleConfirmWrong = useCallback(() => {
     const current = cards[0];
     const prev = cardWrongAnswers.current.get(current.id) ?? [];
     cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
@@ -381,7 +364,24 @@ function SessionUI({
     setChatMessages([]);
     setChatStreaming(false);
     setCardPhase('input');
-  }
+  }, [cards, submittedAnswer, setCards]);
+
+  // Enter key advances past judgment screens
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (cardPhase !== 'correct' && cardPhase !== 'wrong_shown') return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Enter') {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        if (cardPhase === 'correct') handleConfirmCorrect();
+        else handleConfirmWrong();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cardPhase, handleConfirmCorrect, handleConfirmWrong]);
 
   async function handleChatSend(text: string) {
     const currentCard = cards[0];

@@ -49,7 +49,7 @@ export default function Home() {
   useEffect(() => {
     getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
       setEnabledLanguages(langs);
-      if (!langs.includes(language)) setLanguage(langs[0]);
+      setLanguage(prev => (langs.includes(prev) ? prev : langs[0]));
     });
   }, [isFocused]);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { rateSession, submitDeckReview } from '@/lib/api';
@@ -9,7 +9,7 @@ interface DeckRatingCardProps {
   topic: string;
   language: string;
   cards: CardAttempt[];
-  onComplete: () => void;
+  onComplete: (nodeId: string) => void;
 }
 
 export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: DeckRatingCardProps) {
@@ -20,9 +20,26 @@ export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: D
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingSubmit = useRef(false);
+  const submittingRef = useRef(false);
+
+  const handleSubmit = useCallback(async (finalUserStars: number, finalAiStars: number, finalRecap: string) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      await submitDeckReview(nodeId, finalUserStars, finalAiStars, finalRecap);
+    } catch {
+      setError('Could not save rating. Your progress is still recorded.');
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+      onComplete(nodeId);
+    }
+  }, [nodeId, onComplete]);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     rateSession(topic, language, cards)
       .then(result => {
         if (cancelled) return;
@@ -46,20 +63,7 @@ export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: D
         }
       });
     return () => { cancelled = true; };
-  }, []);
-
-  async function handleSubmit(finalUserStars: number, finalAiStars: number, finalRecap: string) {
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      await submitDeckReview(nodeId, finalUserStars, finalAiStars, finalRecap);
-    } catch {
-      setError('Could not save rating. Your progress is still recorded.');
-    } finally {
-      setSubmitting(false);
-      onComplete();
-    }
-  }
+  }, [topic, language, cards, handleSubmit]);
 
   function handleDone() {
     if (loading) {

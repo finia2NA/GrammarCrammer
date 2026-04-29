@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CardAttempt } from '@/lib/types';
@@ -44,9 +44,9 @@ export function SessionCompleteScreen({ completedCards, decks, onDone }: Session
   const [completedDeckIds, setCompletedDeckIds] = useState<Set<string>>(new Set());
   const allRatingsSubmitted = isQuickStudy || deckGroupEntries.every(([id]) => completedDeckIds.has(id));
 
-  function handleDeckComplete(nodeId: string) {
+  const handleDeckComplete = useCallback((nodeId: string) => {
     setCompletedDeckIds(prev => new Set(prev).add(nodeId));
-  }
+  }, []);
 
   const totalCards = completedCards.length;
   const firstTryCorrect = completedCards.filter(a => a.answers.length === 1).length;
@@ -95,7 +95,7 @@ export function SessionCompleteScreen({ completedCards, decks, onDone }: Session
                   topic={info.topic}
                   language={info.language}
                   cards={deckCards}
-                  onComplete={() => handleDeckComplete(deckId)}
+                  onComplete={handleDeckComplete}
                 />
               )}
               {completedDeckIds.has(deckId) && (

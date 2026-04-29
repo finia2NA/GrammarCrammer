@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
   View,
@@ -74,7 +74,7 @@ function RainbowButton({ onPress, label }: { onPress: () => void; label: string 
     }
 
     runSweep();
-  }, [btnWidth]);
+  }, [btnWidth, translateX]);
 
   return (
     <TouchableOpacity
@@ -191,7 +191,7 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
         Animated.timing(successOpacity, { toValue: 1, duration: 500, delay: 200, useNativeDriver: true }),
       ]).start();
     }
-  }, [success]);
+  }, [success, formDim, successOpacity]);
 
   return (
     <>
@@ -412,7 +412,7 @@ export default function Onboarding() {
   // and either go home or show the API key form in-place.
   const [centralKeyAvailable, setCentralKeyAvailable] = useState(false);
 
-  async function handlePostAccountNext() {
+  const handlePostAccountNext = useCallback(async () => {
     setLoading(true);
     try {
       const me = await getMe();
@@ -428,7 +428,7 @@ export default function Onboarding() {
     }
     setError(null);
     setShowApiKeyForm(true);
-  }
+  }, [router]);
 
   // Auto-redirect after login success: show rainbow for 1.5s then proceed
   useEffect(() => {
@@ -436,7 +436,7 @@ export default function Onboarding() {
       const timer = setTimeout(() => handlePostAccountNext(), 1500);
       return () => clearTimeout(timer);
     }
-  }, [accountSuccess, isLogin]);
+  }, [accountSuccess, isLogin, handlePostAccountNext]);
 
   const isAccountStep = step === 3 && !showApiKeyForm;
   const isApiKeyStep = step === 3 && showApiKeyForm;
