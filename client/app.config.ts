@@ -1,5 +1,9 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const devServerHost = process.env.DEV_SERVER_HOST || 'localhost';
+const devServerPort = process.env.DEV_SERVER_PORT || '3001';
+const allowUnsafeHttp = process.env.IOS_ALLOW_HTTP === '1';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'GrammarCrammer',
@@ -14,6 +18,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: 'com.finite.grammarcrammer',
     deploymentTarget: '26.0',
+    infoPlist: {
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: allowUnsafeHttp,
+        NSAllowsLocalNetworking: true,
+      },
+    },
   },
   android: {
     adaptiveIcon: {
@@ -48,7 +58,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     reactCompiler: true,
   },
   extra: {
-    devServerHost: process.env.DEV_SERVER_HOST || 'localhost',
-    devServerPort: process.env.DEV_SERVER_PORT || '3001',
+    devServerHost,
+    devServerPort,
   },
 });
