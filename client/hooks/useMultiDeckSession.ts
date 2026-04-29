@@ -13,6 +13,7 @@ import type { Card, DeckCard, DeckData } from '@/lib/types';
 
 interface UseMultiDeckSessionParams {
   nodeId: string;
+  selectedDeckIds?: string[];
 }
 
 export interface DeckInfo {
@@ -29,8 +30,9 @@ interface DeckMeta extends DeckData {
   deckName: string;
 }
 
-export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
+export function useMultiDeckSession({ nodeId, selectedDeckIds }: UseMultiDeckSessionParams) {
   const router = useRouter();
+  const selectedDeckIdsKey = selectedDeckIds?.join(',') ?? '';
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,7 +67,12 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
         const token = await getAuthToken();
         if (!token) { router.replace('/onboarding'); return; }
 
-        const ids = await getDescendantDeckIds(nodeId);
+        const explicitIds = selectedDeckIdsKey
+          ? selectedDeckIdsKey.split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+        const ids = explicitIds.length > 0
+          ? explicitIds
+          : await getDescendantDeckIds(nodeId);
         if (ids.length === 0) {
           setLoadError('No decks found for this item.');
           setLoading(false);
@@ -143,7 +150,7 @@ export function useMultiDeckSession({ nodeId }: UseMultiDeckSessionParams) {
       }
     }
     load();
-  }, [nodeId, router, generateForDeck]);
+  }, [nodeId, router, generateForDeck, selectedDeckIdsKey]);
 
   // In sequential mode, when the current deck's cards are exhausted,
   // pre-generate the next-not-yet-generated deck's cards.

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
-import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview } from '../services/deck.service.js';
+import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview, updateDeckSchedule } from '../services/deck.service.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { enqueueExplanation } from '../services/scheduler.service.js';
 
@@ -195,6 +195,28 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+decksRouter.patch('/:nodeId/schedule', async (req, res, next) => {
+  try {
+    const { action, dueDate, clientTimezone } = req.body;
+    if (action === 'reset_never_studied') {
+      await updateDeckSchedule(req.userId!, req.params.nodeId, { action: 'reset_never_studied' });
+      res.json({ success: true });
+      return;
+    }
+    if (action === 'set_due_date') {
+      if (!dueDate) throw new AppError(400, 'MISSING_FIELDS', 'dueDate is required for set_due_date.');
+      await updateDeckSchedule(req.userId!, req.params.nodeId, {
+        action: 'set_due_date',
+        dueDate: String(dueDate),
+        clientTimezone: clientTimezone ? String(clientTimezone) : undefined,
+      });
+      res.json({ success: true });
+      return;
+    }
+    throw new AppError(400, 'INVALID_ACTION', 'action must be reset_never_studied or set_due_date.');
+  } catch (e) { next(e); }
+});
+
 decksRouter.post('/:nodeId/generate-explanation', async (req, res, next) => {
   try {
     // Manual re-trigger — streams SSE back to client
@@ -212,12 +234,13 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
 
 decksRouter.post('/:nodeId/review', async (req, res, next) => {
   try {
-    const { userStars, aiStars, aiRecap } = req.body;
+    const { userStars, aiStars, aiRecap, studyMode } = req.body;
     if (!userStars || aiStars === undefined || aiRecap === undefined || aiRecap === null) {
       throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
     }
+    const resolvedStudyMode = studyMode === 'early' ? 'early' : 'scheduled';
     const stars = Math.max(1, Math.min(5, Math.round(Number(userStars)))) as 1 | 2 | 3 | 4 | 5;
-    const result = await saveDeckReview(req.params.nodeId, stars, Number(aiStars), String(aiRecap));
+    const result = await saveDeckReview(req.userId!, req.params.nodeId, stars, Number(aiStars), String(aiRecap), resolvedStudyMode);
     res.json(result);
   } catch (e) { next(e); }
 });

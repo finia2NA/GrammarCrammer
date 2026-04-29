@@ -20,6 +20,7 @@ export interface DeckData {
   cardCount: number;
   lastStudiedAt: number | null;
   dueAt?: number | null;
+  isDue?: boolean;
   intervalDays?: number;
 }
 

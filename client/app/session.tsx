@@ -107,11 +107,15 @@ function SessionTopBar({
 
 export default function Session() {
   const params = useLocalSearchParams<{
-    topic?: string; language?: string; count?: string; nodeId?: string;
+    topic?: string; language?: string; count?: string; nodeId?: string; studyMode?: 'scheduled' | 'early'; deckIds?: string;
   }>();
 
   if (params.nodeId) {
-    return <DeckSession nodeId={params.nodeId} />;
+    const selectedDeckIds = params.deckIds
+      ? String(params.deckIds).split(',').map(s => s.trim()).filter(Boolean)
+      : undefined;
+    const studyMode = params.studyMode === 'early' ? 'early' : 'scheduled';
+    return <DeckSession nodeId={params.nodeId} selectedDeckIds={selectedDeckIds} studyMode={studyMode} />;
   }
 
   return (
@@ -150,8 +154,16 @@ function QuickSession({ topic, language, cardCount }: { topic: string; language:
 
 // ─── Deck / collection study ────────────────────────────────────────────────
 
-function DeckSession({ nodeId }: { nodeId: string }) {
-  const multi = useMultiDeckSession({ nodeId });
+function DeckSession({
+  nodeId,
+  selectedDeckIds,
+  studyMode,
+}: {
+  nodeId: string;
+  selectedDeckIds?: string[];
+  studyMode: 'scheduled' | 'early';
+}) {
+  const multi = useMultiDeckSession({ nodeId, selectedDeckIds });
   const [language, setLanguage] = useState('');
 
   // Get language from first deck
@@ -200,6 +212,7 @@ function DeckSession({ nodeId }: { nodeId: string }) {
       deckName={displayDeck?.deckName}
       overlayDecks={overlayDecks}
       decks={multi.decks}
+      studyMode={studyMode}
     />
   );
 }
@@ -224,13 +237,14 @@ interface SessionUIProps {
   deckName?: string;
   overlayDecks?: OverlayDeck[];
   decks?: Map<string, DeckInfo>;
+  studyMode?: 'scheduled' | 'early';
 }
 
 function SessionUI({
   loading, loadPhase, loadError, setLoadError,
   cards, setCards, totalCost, addCost,
   explanation, wasTruncated, topic, language,
-  showExplanationOverlay, markStudied, deckName, overlayDecks, decks,
+  showExplanationOverlay, markStudied, deckName, overlayDecks, decks, studyMode = 'scheduled',
 }: SessionUIProps) {
   const router = useRouter();
   const { isSmallScreen } = useScreenSize();
@@ -468,6 +482,7 @@ function SessionUI({
       <SessionCompleteScreen
         completedCards={completedCards}
         decks={decks ?? new Map()}
+        studyMode={studyMode}
         onDone={() => router.replace('/home')}
       />
     );

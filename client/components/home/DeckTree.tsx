@@ -115,7 +115,7 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
         </TouchableOpacity>
 
         {/* Due indicator (deck rows only) */}
-        {!isCollection && node.deck?.dueAt != null && <DueIndicator dueAt={node.deck.dueAt} />}
+        {!isCollection && node.deck && <DueIndicator dueAt={node.deck.dueAt ?? null} isDue={node.deck.isDue ?? false} />}
 
         {/* Explanation generating spinner + edit button */}
         {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}

@@ -10,6 +10,7 @@ import { DeckRatingCard, type DeckReviewDraft } from './DeckRatingCard';
 interface SessionCompleteScreenProps {
   completedCards: CardAttempt[];
   decks: Map<string, DeckInfo>;
+  studyMode: 'scheduled' | 'early';
   onDone: () => void | Promise<void>;
 }
 
@@ -27,7 +28,7 @@ function AttemptRow({ attempt }: { attempt: CardAttempt }) {
   );
 }
 
-export function SessionCompleteScreen({ completedCards, decks, onDone }: SessionCompleteScreenProps) {
+export function SessionCompleteScreen({ completedCards, decks, studyMode, onDone }: SessionCompleteScreenProps) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
 
@@ -76,7 +77,7 @@ export function SessionCompleteScreen({ completedCards, decks, onDone }: Session
         await Promise.all(deckGroupEntries.map(async ([deckId]) => {
           const draft = deckReviewDrafts[deckId];
           if (!draft) throw new Error('Still generating deck ratings. Please wait a moment and try again.');
-          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap);
+          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode);
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not save your deck reviews. Please try again.';
@@ -88,7 +89,7 @@ export function SessionCompleteScreen({ completedCards, decks, onDone }: Session
       }
     }
     await onDone();
-  }, [doneDisabled, isQuickStudy, deckGroupEntries, deckReviewDrafts, onDone]);
+  }, [doneDisabled, isQuickStudy, deckGroupEntries, deckReviewDrafts, onDone, studyMode]);
 
   const totalCards = completedCards.length;
   const firstTryCorrect = completedCards.filter(a => a.answers.length === 1).length;

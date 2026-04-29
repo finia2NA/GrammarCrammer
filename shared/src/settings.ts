@@ -7,4 +7,6 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   default_card_count: '10',
   api_key_preference: 'central',
   enabled_languages: JSON.stringify(DEFAULT_LANGUAGES),
+  daily_due_time: '01:00',
+  review_timezone: 'UTC',
 };

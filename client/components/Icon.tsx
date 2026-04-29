@@ -11,6 +11,7 @@ const IONICONS_MAP: Record<SemanticIcon, string> = {
   'hourglass':      'hourglass-outline',
   'warning':        'warning-outline',
   'clock':          'time-outline',
+  'not-started':    'sparkles-outline',
 };
 
 export function Icon({ name, size = 18, color, style }: IconProps) {

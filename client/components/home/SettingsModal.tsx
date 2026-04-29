@@ -10,7 +10,7 @@ import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { useRouter } from 'expo-router';
 import { clearAuthToken } from '@/lib/storage';
-import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus, getEnabledLanguages, setEnabledLanguages } from '@/lib/api';
+import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus, getEnabledLanguages, setEnabledLanguages, syncReviewTimezone } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { PillDropdown } from '@/components/PillDropdown';
 import { CARD_COUNTS, DEFAULT_LANGUAGES } from '@/constants/session';
@@ -18,6 +18,8 @@ import type { CardCount } from '@/constants/session';
 import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
+import { TimePicker } from '@/components/pickers/TimePicker';
+import { normalizeTime } from '@/components/pickers/timeUtils';
 
 type CardOrder = 'sequential' | 'shuffled';
 
@@ -69,6 +71,10 @@ type KeyPreference = 'central' | 'own';
 function formatCost(usd: number): string {
   if (usd < 0.01) return `$${usd.toFixed(4)}`;
   return `$${usd.toFixed(2)}`;
+}
+
+function normalizeDailyDueTime(value: string | null | undefined): string {
+  return normalizeTime(value);
 }
 
 function UsageBar({ used, limit, colors }: { used: number; limit: number; colors: ReturnType<typeof useColors> }) {
@@ -158,6 +164,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
+  const [dailyDueTime, setDailyDueTime] = useState('01:00');
   const [enabledLanguages, setEnabledLanguagesState] = useState<string[]>(DEFAULT_LANGUAGES);
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
@@ -178,8 +185,13 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         const n = v ? parseInt(v, 10) : 10;
         if (CARD_COUNTS.includes(n as CardCount) && n !== 0) setDefaultCardCount(n as CardCount);
       });
+      getSetting('daily_due_time').then(v => {
+        const normalized = normalizeDailyDueTime(v);
+        setDailyDueTime(normalized);
+      });
       getEnabledLanguages(DEFAULT_LANGUAGES).then(setEnabledLanguagesState);
       getUsageStatus().then(setUsageStatus).catch(() => {});
+      syncReviewTimezone().catch(() => {});
       setShowAddKey(false);
     }
   }, [visible]);
@@ -202,6 +214,12 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleChangeDefaultCardCount(next: CardCount) {
     setDefaultCardCount(next);
     setSetting('default_card_count', String(next));
+  }
+
+  function handleChangeDailyDueTime(next: string) {
+    const normalized = normalizeDailyDueTime(next);
+    setDailyDueTime(normalized);
+    setSetting('daily_due_time', normalized);
   }
 
   function handleChangeEnabledLanguages(next: string[]) {
@@ -295,6 +313,12 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             onChange={handleChangeDefaultCardCount}
             formatLabel={(v: number) => `${v} cards`}
           />
+        </SettingsRow>
+        <SettingsRow
+          label="Daily Due Release Time"
+          description="When decks become due each day"
+        >
+          <TimePicker value={dailyDueTime} onChange={handleChangeDailyDueTime} />
         </SettingsRow>
       </SectionCard>
 

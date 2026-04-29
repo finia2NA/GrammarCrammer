@@ -159,6 +159,21 @@ export async function updateDeck(nodeId: string, updates: { name?: string; topic
   });
 }
 
+export async function resetDeckToNeverStudied(nodeId: string) {
+  return request<{ success: boolean }>(`/decks/${nodeId}/schedule`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action: 'reset_never_studied' }),
+  });
+}
+
+export async function setDeckDueDate(nodeId: string, dueDate: string) {
+  const clientTimezone = getDeviceTimezone();
+  return request<{ success: boolean }>(`/decks/${nodeId}/schedule`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action: 'set_due_date', dueDate, clientTimezone }),
+  });
+}
+
 export async function markStudied(nodeId: string) {
   return request<{ success: boolean }>(`/decks/${nodeId}/mark-studied`, { method: 'POST' });
 }
@@ -233,6 +248,20 @@ export async function setSetting(key: string, value: string) {
   });
 }
 
+function getDeviceTimezone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && tz.trim().length > 0) return tz;
+  } catch {}
+  return 'UTC';
+}
+
+export async function syncReviewTimezone() {
+  const tz = getDeviceTimezone();
+  await setSetting('review_timezone', tz);
+  return tz;
+}
+
 export async function getEnabledLanguages(defaultLanguages: string[]): Promise<string[]> {
   const raw = await getSetting('enabled_languages');
   if (!raw) return defaultLanguages;
@@ -289,10 +318,16 @@ export async function rateSession(topic: string, language: string, cards: CardAt
   });
 }
 
-export async function submitDeckReview(nodeId: string, userStars: number, aiStars: number, aiRecap: string) {
+export async function submitDeckReview(
+  nodeId: string,
+  userStars: number,
+  aiStars: number,
+  aiRecap: string,
+  studyMode: 'scheduled' | 'early' = 'scheduled',
+) {
   return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
     method: 'POST',
-    body: JSON.stringify({ userStars, aiStars, aiRecap }),
+    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode }),
   });
 }
 

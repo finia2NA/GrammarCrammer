@@ -31,6 +31,8 @@ interface DeckModalProps {
   onSubmit: (data: DeckFormData) => void;
   onCsvImport?: (data: CsvImportData) => Promise<CsvImportResult>;
   onDelete?: () => void;
+  onResetSchedule?: (nodeId: string) => Promise<void>;
+  onSetDueDate?: (nodeId: string, dueDate: string) => Promise<void>;
   editNode?: TreeNode | null;
   editNodePath?: string;
 }
@@ -55,7 +57,17 @@ export type CsvImportStatus =
   | { state: 'error'; message: string }
   | { state: 'done'; result: CsvImportResult };
 
-export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, editNode, editNodePath }: DeckModalProps) {
+export function DeckModal({
+  visible,
+  onClose,
+  onSubmit,
+  onCsvImport,
+  onDelete,
+  onResetSchedule,
+  onSetDueDate,
+  editNode,
+  editNodePath,
+}: DeckModalProps) {
   const isEdit = editNode !== null && editNode !== undefined;
   const isCollection = isEdit && editNode.deck === null;
   const canUseCsvTab = !isEdit;
@@ -386,6 +398,10 @@ export function DeckModal({ visible, onClose, onSubmit, onCsvImport, onDelete, e
                 isEdit={isEdit}
                 onDelete={onDelete}
                 onExport={isEdit ? handleExport : undefined}
+                onResetSchedule={onResetSchedule}
+                onSetDueDate={onSetDueDate}
+                editNodeId={editNode?.id}
+                initialDueAt={editNode?.deck?.dueAt ?? null}
                 name={name}
                 onNameChange={setName}
                 topic={topic}

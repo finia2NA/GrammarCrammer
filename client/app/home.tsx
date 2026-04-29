@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
@@ -16,11 +16,13 @@ import {
   createDeckFromPath,
   updateDeck,
   deleteNode,
-  getDescendantDeckIds,
   getNodePath,
   moveNode,
   importDecksFromCsv,
   getEnabledLanguages,
+  resetDeckToNeverStudied,
+  setDeckDueDate,
+  syncReviewTimezone,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 
@@ -51,6 +53,7 @@ export default function Home() {
       setEnabledLanguages(langs);
       setLanguage(prev => (langs.includes(prev) ? prev : langs[0]));
     });
+    syncReviewTimezone().catch(() => {});
   }, [isFocused]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
@@ -65,14 +68,81 @@ export default function Home() {
   }
 
   const handleStudy = useCallback(async (node: TreeNode) => {
+    const startStudy = (params: { nodeId: string; studyMode: 'scheduled' | 'early'; deckIds?: string[] }) => {
+      router.push({
+        pathname: '/session',
+        params: {
+          nodeId: params.nodeId,
+          studyMode: params.studyMode,
+          ...(params.deckIds ? { deckIds: params.deckIds.join(',') } : {}),
+        },
+      });
+    };
+
     if (node.deck) {
       if (node.deck.explanationStatus !== 'ready') return;
-      router.push({ pathname: '/session', params: { nodeId: node.id } });
-    } else {
-      const deckIds = await getDescendantDeckIds(node.id);
-      if (deckIds.length === 0) return;
-      router.push({ pathname: '/session', params: { nodeId: node.id } });
+      const isDue = node.deck.isDue ?? false;
+      if (isDue) {
+        startStudy({ nodeId: node.id, studyMode: 'scheduled' });
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        const confirmed = window.confirm('This deck is not due yet. Study it anyway?');
+        if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early' });
+        return;
+      }
+
+      Alert.alert(
+        'Deck not due',
+        'This deck is not due yet. You can still study it now.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Study Anyway', onPress: () => startStudy({ nodeId: node.id, studyMode: 'early' }) },
+        ],
+      );
+      return;
     }
+
+    const queue = [...node.children];
+    const dueDeckIds: string[] = [];
+    const notStartedDeckIds: string[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current.deck) {
+        if (current.deck.explanationStatus !== 'ready') continue;
+        if (current.deck.isDue) dueDeckIds.push(current.id);
+        else if (current.deck.dueAt == null) notStartedDeckIds.push(current.id);
+        continue;
+      }
+      queue.push(...current.children);
+    }
+
+    if (dueDeckIds.length > 0) {
+      startStudy({ nodeId: node.id, studyMode: 'scheduled', deckIds: dueDeckIds });
+      return;
+    }
+
+    if (notStartedDeckIds.length === 0) {
+      if (Platform.OS === 'web') window.alert('No due decks (or not-yet-started decks) are available in this collection right now.');
+      else Alert.alert('Nothing to study', 'No due decks (or not-yet-started decks) are available in this collection right now.');
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('No decks in this collection are due. Study not-yet-started decks anyway?');
+      if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds });
+      return;
+    }
+
+    Alert.alert(
+      'No decks due',
+      'No decks in this collection are due yet. You can still study not-yet-started decks now.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Study Anyway', onPress: () => startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds }) },
+      ],
+    );
   }, [router]);
 
   const handleEdit = useCallback(async (node: TreeNode) => {
@@ -276,6 +346,8 @@ export default function Home() {
         onSubmit={handleSubmit}
         onCsvImport={handleCsvImport}
         onDelete={editNode ? handleDelete : undefined}
+        onResetSchedule={editNode?.deck ? async (nodeId) => { await resetDeckToNeverStudied(nodeId); refresh(); } : undefined}
+        onSetDueDate={editNode?.deck ? async (nodeId, dueDate) => { await setDeckDueDate(nodeId, dueDate); refresh(); } : undefined}
         editNode={editNode}
         editNodePath={editNodePathStr}
       />

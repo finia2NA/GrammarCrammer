@@ -9,7 +9,8 @@ export type SemanticIcon =
   | 'check'
   | 'hourglass'
   | 'warning'
-  | 'clock';
+  | 'clock'
+  | 'not-started';
 
 export interface IconProps {
   name: SemanticIcon;

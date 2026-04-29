@@ -1,7 +1,16 @@
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { DeckData } from '../types/index.js';
-import { calculateNextReview, resolveDueAt } from './srs.service.js';
+import { getSetting } from './settings.service.js';
+import {
+  buildSrsConfig,
+  calculateNextReview,
+  computeIntervalDaysForDueDate,
+  dueDateStringToDueAt,
+  isDueNow,
+  resolveDueAt,
+  type StudyMode,
+} from './srs.service.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -24,7 +33,8 @@ function mapDeckRow(deck: {
   explanation: string | null; explanationStatus: string;
   cardCount: number; lastStudiedAt: Date | null;
   dueAt: Date | null; intervalDays: number;
-}): DeckData {
+}, srsConfig: { dailyDueTime: string; reviewTimezone: string }): DeckData {
+  const resolvedDueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
   return {
     nodeId: deck.nodeId,
     topic: deck.topic,
@@ -33,7 +43,8 @@ function mapDeckRow(deck: {
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
-    dueAt: resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays),
+    dueAt: resolvedDueAt,
+    isDue: isDueNow(resolvedDueAt, srsConfig),
     intervalDays: deck.intervalDays,
   };
 }
@@ -89,12 +100,16 @@ export async function createDeckFromPath(
 }
 
 export async function getDeck(userId: string, nodeId: string): Promise<DeckData | null> {
-  const node = await prisma.node.findFirst({
-    where: { id: nodeId, userId },
-    include: { deck: true },
-  });
+  const [node, dailyDueTime, reviewTimezone] = await Promise.all([
+    prisma.node.findFirst({
+      where: { id: nodeId, userId },
+      include: { deck: true },
+    }),
+    getSetting(userId, 'daily_due_time'),
+    getSetting(userId, 'review_timezone'),
+  ]);
   if (!node?.deck) return null;
-  return mapDeckRow(node.deck);
+  return mapDeckRow(node.deck, buildSrsConfig(dailyDueTime, reviewTimezone));
 }
 
 export async function updateDeck(
@@ -258,20 +273,86 @@ export async function setLastStudied(nodeId: string): Promise<void> {
   });
 }
 
+export async function updateDeckSchedule(
+  userId: string,
+  nodeId: string,
+  action:
+    | { action: 'reset_never_studied' }
+    | { action: 'set_due_date'; dueDate: string; clientTimezone?: string },
+): Promise<void> {
+  const node = await prisma.node.findFirst({
+    where: { id: nodeId, userId },
+    include: { deck: true },
+  });
+  if (!node?.deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
+
+  if (action.action === 'reset_never_studied') {
+    await prisma.deck.update({
+      where: { nodeId },
+      data: { lastStudiedAt: null, dueAt: null, intervalDays: 1 },
+    });
+    return;
+  }
+
+  const dueDate = action.dueDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    throw new AppError(400, 'INVALID_DUE_DATE', 'dueDate must be YYYY-MM-DD.');
+  }
+
+  const dailyDueTime = await getSetting(userId, 'daily_due_time');
+  const reviewTimezone = action.clientTimezone ?? await getSetting(userId, 'review_timezone');
+  const config = buildSrsConfig(dailyDueTime, reviewTimezone);
+  const dueAt = dueDateStringToDueAt(dueDate, config);
+  if (!dueAt) {
+    throw new AppError(400, 'INVALID_DUE_DATE', 'Unable to parse dueDate.');
+  }
+
+  const intervalDays = computeIntervalDaysForDueDate(dueDate, config);
+  await prisma.$transaction(async (tx) => {
+    if (action.clientTimezone && action.clientTimezone.trim().length > 0) {
+      await tx.setting.upsert({
+        where: { userId_key: { userId, key: 'review_timezone' } },
+        update: { value: config.reviewTimezone },
+        create: { userId, key: 'review_timezone', value: config.reviewTimezone },
+      });
+    }
+    await tx.deck.update({
+      where: { nodeId },
+      data: { dueAt, intervalDays },
+    });
+  });
+}
+
 export async function saveDeckReview(
+  userId: string,
   nodeId: string,
   userStars: 1 | 2 | 3 | 4 | 5,
   aiStars: number,
   aiRecap: string,
+  studyMode: StudyMode,
 ): Promise<{ dueAt: number; nextIntervalDays: number }> {
-  const deck = await prisma.deck.findUnique({
-    where: { nodeId },
-    select: { intervalDays: true },
+  const deck = await prisma.deck.findFirst({
+    where: { nodeId, node: { userId } },
+    select: { intervalDays: true, dueAt: true, lastStudiedAt: true },
   });
   if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
-  const { nextIntervalDays, dueAt } = calculateNextReview(userStars, deck.intervalDays);
   const now = new Date();
+  const [dailyDueTime, reviewTimezone] = await Promise.all([
+    getSetting(userId, 'daily_due_time'),
+    getSetting(userId, 'review_timezone'),
+  ]);
+  const config = buildSrsConfig(dailyDueTime, reviewTimezone);
+  const resolvedDueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
+  const currentlyDue = isDueNow(resolvedDueAt, config, now);
+
+  const { nextIntervalDays, dueAt } = calculateNextReview(userStars, deck.intervalDays, {
+    studyMode,
+    config,
+    now,
+    // Defensive cap: never allow early-study growth, even if caller sends scheduled.
+    forceEarlyMultipliers: !currentlyDue,
+  });
 
   await prisma.$transaction([
     prisma.deck.update({

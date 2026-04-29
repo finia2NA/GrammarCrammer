@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import type { TreeNode, DeckData } from '../types/index.js';
-import { resolveDueAt } from './srs.service.js';
+import { getSetting } from './settings.service.js';
+import { buildSrsConfig, isDueNow, resolveDueAt } from './srs.service.js';
 
 // Deck select used by tree queries — omits explanation to keep responses small.
 const DECK_TREE_SELECT = {
@@ -15,7 +16,8 @@ type DeckTreeRow = {
   lastStudiedAt: Date | null; dueAt: Date | null; intervalDays: number;
 };
 
-function mapDeck(deck: DeckTreeRow): DeckData {
+function mapDeckWithDue(deck: DeckTreeRow, srsConfig: { dailyDueTime: string; reviewTimezone: string }): DeckData {
+  const dueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
   return {
     nodeId: deck.nodeId,
     topic: deck.topic,
@@ -24,14 +26,15 @@ function mapDeck(deck: DeckTreeRow): DeckData {
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
-    dueAt: resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays),
+    dueAt,
+    isDue: isDueNow(dueAt, srsConfig),
     intervalDays: deck.intervalDays,
   };
 }
 
 function mapNode(node: {
   id: string; parentId: string | null; name: string; sortOrder: number;
-  createdAt: Date; updatedAt: Date; deck: any | null;
+  createdAt: Date; updatedAt: Date; deck: DeckData | null;
 }, children: TreeNode[] = []): TreeNode {
   return {
     id: node.id,
@@ -40,21 +43,26 @@ function mapNode(node: {
     sortOrder: node.sortOrder,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),
-    deck: node.deck ? mapDeck(node.deck) : null,
+    deck: node.deck,
     children,
   };
 }
 
 export async function getTree(userId: string): Promise<TreeNode[]> {
-  const nodes = await prisma.node.findMany({
-    where: { userId },
-    include: { deck: { select: DECK_TREE_SELECT } },
-    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-  });
+  const [nodes, dailyDueTime, reviewTimezone] = await Promise.all([
+    prisma.node.findMany({
+      where: { userId },
+      include: { deck: { select: DECK_TREE_SELECT } },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    }),
+    getSetting(userId, 'daily_due_time'),
+    getSetting(userId, 'review_timezone'),
+  ]);
+  const srsConfig = buildSrsConfig(dailyDueTime, reviewTimezone);
 
   const treeMap = new Map<string, TreeNode>();
   for (const n of nodes) {
-    treeMap.set(n.id, mapNode(n));
+    treeMap.set(n.id, mapNode({ ...n, deck: n.deck ? mapDeckWithDue(n.deck as DeckTreeRow, srsConfig) : null }));
   }
 
   const roots: TreeNode[] = [];
@@ -70,20 +78,28 @@ export async function getTree(userId: string): Promise<TreeNode[]> {
 }
 
 export async function getNode(userId: string, nodeId: string): Promise<TreeNode | null> {
-  const node = await prisma.node.findFirst({
-    where: { id: nodeId, userId },
-    include: {
-      deck: { select: DECK_TREE_SELECT },
-      children: {
-        include: { deck: { select: DECK_TREE_SELECT } },
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+  const [node, dailyDueTime, reviewTimezone] = await Promise.all([
+    prisma.node.findFirst({
+      where: { id: nodeId, userId },
+      include: {
+        deck: { select: DECK_TREE_SELECT },
+        children: {
+          include: { deck: { select: DECK_TREE_SELECT } },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        },
       },
-    },
-  });
+    }),
+    getSetting(userId, 'daily_due_time'),
+    getSetting(userId, 'review_timezone'),
+  ]);
 
   if (!node) return null;
+  const srsConfig = buildSrsConfig(dailyDueTime, reviewTimezone);
 
-  return mapNode(node, node.children.map(c => mapNode(c)));
+  return mapNode(
+    { ...node, deck: node.deck ? mapDeckWithDue(node.deck as DeckTreeRow, srsConfig) : null },
+    node.children.map(c => mapNode({ ...c, deck: c.deck ? mapDeckWithDue(c.deck as DeckTreeRow, srsConfig) : null })),
+  );
 }
 
 export async function getNodePath(userId: string, nodeId: string): Promise<string> {

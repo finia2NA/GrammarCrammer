@@ -11,6 +11,7 @@ const SF_MAP: Record<SemanticIcon, string> = {
   'hourglass':      'hourglass',
   'warning':        'exclamationmark.triangle',
   'clock':          'clock',
+  'not-started':    'sparkles',
 };
 
 export function Icon({ name, size = 18, color, style }: IconProps) {
