@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Keyboard, Modal, Platform, Pressable, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { Icon } from '@/components/Icon';
@@ -10,6 +10,9 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  popoverPlacement?: 'auto' | 'above' | 'below';
+  popoverTitle?: string;
+  popoverFooter?: ReactNode;
 }
 
 export function DatePicker({

@@ -103,22 +103,24 @@ export function DeckModalCreateTab({
         <View className="mb-6 gap-3">
           <Text className="text-foreground/80 text-sm font-medium">Review Schedule</Text>
           <Text className="text-foreground-secondary text-xs">
-            Set when this deck becomes due. Changes are saved with the modal Save button.
+            Set when this deck becomes due.
           </Text>
 
           <DatePicker
             value={dueDate}
             onChange={onDueDateChange}
             placeholder="Pick due date"
+            popoverPlacement="above"
+            popoverTitle="Due Date"
+            popoverFooter={onResetSchedule ? (
+              <NeedsConfirmationButton
+                label="Reset to Never Studied"
+                confirmLabel="Tap again to reset"
+                onConfirm={() => { void handleResetSchedule(); }}
+                destructive
+              />
+            ) : undefined}
           />
-
-          {onResetSchedule && (
-            <NeedsConfirmationButton
-              label="Reset to Never Studied"
-              confirmLabel="Tap again to reset"
-              onConfirm={() => { void handleResetSchedule(); }}
-            />
-          )}
         </View>
       )}
 
@@ -126,7 +128,7 @@ export function DeckModalCreateTab({
         <View className="mt-auto flex-row gap-3">
           {onExport && (
             <TouchableOpacity
-              className="flex-1 py-3.5 rounded-xl border-secondary-light items-center bg-secondary-light"
+              className="flex-1 py-3.5 rounded-xl border-secondary items-center bg-secondary"
               onPress={onExport}
             >
               <Text className="text-secondary-foreground font-semibold">
