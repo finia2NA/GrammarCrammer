@@ -6,6 +6,7 @@
     "start": "expo start",
     "web": "expo start --web",
     "ios": "expo run:ios",
+    "ios:phone": "expo run:ios --device --configuration Release",
     "android": "expo run:android",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",

@@ -12,6 +12,7 @@
     "dev:ios": "concurrently --raw \"pnpm ios\" \"pnpm backend\"",
     "dev:android": "concurrently --raw \"pnpm android\" \"pnpm backend\"",
     "ios": "pnpm --filter client ios",
+    "ios:phone": "pnpm --filter client ios:phone",
     "android": "pnpm --filter client android",
     "build:shared": "pnpm --filter @grammarcrammer/shared build",
     "build:server": "pnpm build:shared && pnpm --filter server build",
