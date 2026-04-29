@@ -55,6 +55,7 @@ interface FlashcardDeckProps {
   deckName?: string;
   hintCache: React.MutableRefObject<Map<string, WordHint>>;
   addCost: (usd: number) => void;
+  vocabHintDismissSignal?: number;
 }
 
 export function FlashcardDeck({
@@ -64,7 +65,7 @@ export function FlashcardDeck({
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
   inputRef, chatMessages, chatStreaming, onChatSend, deckName,
-  hintCache, addCost,
+  hintCache, addCost, vocabHintDismissSignal,
 }: FlashcardDeckProps) {
   const colors = useColors();
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
@@ -83,6 +84,7 @@ export function FlashcardDeck({
             language={language}
             hintCache={hintCache}
             addCost={addCost}
+            dismissSignal={vocabHintDismissSignal}
           />
         </View>
         {currentCard.sentenceContext && (

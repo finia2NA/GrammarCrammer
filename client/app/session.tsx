@@ -249,6 +249,7 @@ function SessionUI({
   const [showHint, setShowHint] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatStreaming, setChatStreaming] = useState(false);
+  const [vocabHintDismissSignal, setVocabHintDismissSignal] = useState(0);
   const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
@@ -493,6 +494,7 @@ function SessionUI({
     deckName,
     hintCache,
     addCost,
+    vocabHintDismissSignal,
   };
 
   // ── Render: session ────────────────────────────────────────────────────────
@@ -512,6 +514,7 @@ function SessionUI({
             className="flex-1"
             behavior="height"
             enabled={Platform.OS !== 'ios'}
+            onTouchStart={() => setVocabHintDismissSignal(prev => prev + 1)}
           >
             <SessionTopBar
               cardsRemaining={cards.length}

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ interface ClickableEnglishSentenceProps {
   language: string;
   hintCache: React.MutableRefObject<Map<string, WordHint>>;
   addCost: (usd: number) => void;
+  dismissSignal?: number;
 }
 
 function cleanWord(token: string): string {
@@ -29,7 +30,7 @@ function cleanWord(token: string): string {
 }
 
 export function ClickableEnglishSentence({
-  card, language, hintCache, addCost,
+  card, language, hintCache, addCost, dismissSignal,
 }: ClickableEnglishSentenceProps) {
   const colors = useColors();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -37,8 +38,52 @@ export function ClickableEnglishSentence({
   const [hint, setHint] = useState<WordHint | null>(null);
   const wordWidths = useRef<Map<number, number>>(new Map());
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ignoreNextDismiss = useRef(false);
+  const ignoreNextDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const tokens = card.english.split(' ').filter(t => t.length > 0);
+
+  const clearActiveHint = useCallback(() => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+    setActiveIndex(null);
+    setHint(null);
+    setLoading(false);
+  }, []);
+
+  // Ensure vocab popovers do not leak across cards.
+  useEffect(() => {
+    clearActiveHint();
+    ignoreNextDismiss.current = false;
+    if (ignoreNextDismissTimer.current) {
+      clearTimeout(ignoreNextDismissTimer.current);
+      ignoreNextDismissTimer.current = null;
+    }
+    wordWidths.current.clear();
+  }, [card.id, clearActiveHint]);
+
+  // Mobile tap-away support from parent container.
+  useEffect(() => {
+    if (dismissSignal === undefined) return;
+    if (ignoreNextDismiss.current) {
+      ignoreNextDismiss.current = false;
+      if (ignoreNextDismissTimer.current) {
+        clearTimeout(ignoreNextDismissTimer.current);
+        ignoreNextDismissTimer.current = null;
+      }
+      return;
+    }
+    clearActiveHint();
+  }, [dismissSignal, clearActiveHint]);
+
+  useEffect(() => () => {
+    if (ignoreNextDismissTimer.current) {
+      clearTimeout(ignoreNextDismissTimer.current);
+      ignoreNextDismissTimer.current = null;
+    }
+  }, []);
 
   const fetchHint = useCallback(async (index: number, token: string) => {
     const clean = cleanWord(token);
@@ -79,9 +124,7 @@ export function ClickableEnglishSentence({
 
   function hideWord() {
     hideTimer.current = setTimeout(() => {
-      setActiveIndex(null);
-      setHint(null);
-      setLoading(false);
+      clearActiveHint();
     }, Platform.OS === 'web' ? 150 : 0);
   }
 
@@ -107,6 +150,17 @@ export function ClickableEnglishSentence({
               onHoverOut: () => hideWord(),
             } as any
           : {
+              onPressIn: () => {
+                if (!isClickable) return;
+                ignoreNextDismiss.current = true;
+                if (ignoreNextDismissTimer.current) clearTimeout(ignoreNextDismissTimer.current);
+                // Safety valve: if a parent dismiss signal doesn't arrive for this touch,
+                // don't let the guard leak to the next outside tap.
+                ignoreNextDismissTimer.current = setTimeout(() => {
+                  ignoreNextDismiss.current = false;
+                  ignoreNextDismissTimer.current = null;
+                }, 300);
+              },
               onPress: () => isClickable && toggleWord(i, token),
             };
 
