@@ -1,45 +1,37 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { rateSession, submitDeckReview } from '@/lib/api';
+import { useColors } from '@/constants/theme';
+import { rateSession } from '@/lib/api';
 import type { CardAttempt } from '@/lib/types';
+
+export interface DeckReviewDraft {
+  userStars: number;
+  aiStars: number;
+  aiRecap: string;
+}
 
 interface DeckRatingCardProps {
   nodeId: string;
   topic: string;
   language: string;
   cards: CardAttempt[];
-  onComplete: (nodeId: string) => void;
+  disabled?: boolean;
+  onDraftChange: (nodeId: string, draft: DeckReviewDraft) => void;
 }
 
-export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: DeckRatingCardProps) {
+export function DeckRatingCard({ nodeId, topic, language, cards, disabled = false, onDraftChange }: DeckRatingCardProps) {
+  const colors = useColors();
   const [aiStars, setAiStars] = useState<number | null>(null);
   const [userStars, setUserStars] = useState<number | null>(null);
   const [recap, setRecap] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const pendingSubmit = useRef(false);
-  const submittingRef = useRef(false);
-
-  const handleSubmit = useCallback(async (finalUserStars: number, finalAiStars: number, finalRecap: string) => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setSubmitting(true);
-    try {
-      await submitDeckReview(nodeId, finalUserStars, finalAiStars, finalRecap);
-    } catch {
-      setError('Could not save rating. Your progress is still recorded.');
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-      onComplete(nodeId);
-    }
-  }, [nodeId, onComplete]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setAiStars(null);
+    setUserStars(null);
+    setRecap('');
     rateSession(topic, language, cards)
       .then(result => {
         if (cancelled) return;
@@ -47,9 +39,7 @@ export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: D
         setUserStars(result.stars);
         setRecap(result.recap);
         setLoading(false);
-        if (pendingSubmit.current) {
-          handleSubmit(result.stars, result.stars, result.recap);
-        }
+        onDraftChange(nodeId, { userStars: result.stars, aiStars: result.stars, aiRecap: result.recap });
       })
       .catch(() => {
         if (cancelled) return;
@@ -58,32 +48,20 @@ export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: D
         setUserStars(3);
         setRecap('');
         setLoading(false);
-        if (pendingSubmit.current) {
-          handleSubmit(3, 3, '');
-        }
+        onDraftChange(nodeId, { userStars: 3, aiStars: 3, aiRecap: '' });
       });
     return () => { cancelled = true; };
-  }, [topic, language, cards, handleSubmit]);
+  }, [nodeId, topic, language, cards, onDraftChange]);
 
-  function handleDone() {
-    if (loading) {
-      pendingSubmit.current = true;
-      return;
-    }
-    const finalStars = userStars ?? aiStars ?? 3;
-    const finalAiStars = aiStars ?? 3;
-    handleSubmit(finalStars, finalAiStars, recap);
-  }
-
-  const stars = userStars ?? aiStars ?? 3;
+  const stars = loading ? 0 : (userStars ?? aiStars ?? 3);
 
   return (
-    <View className="bg-card rounded-3xl p-6 gap-4">
-      <Text className="text-foreground font-semibold text-base">{topic}</Text>
+    <View className="rounded-2xl p-1 gap-3">
+      <Text className="text-foreground font-medium text-sm">How did this deck feel?</Text>
 
       {loading ? (
         <View className="flex-row items-center gap-3 py-2">
-          <ActivityIndicator size="small" color={Colors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text className="text-foreground-secondary text-sm">AI is rating your session…</Text>
         </View>
       ) : (
@@ -94,41 +72,32 @@ export function DeckRatingCard({ nodeId, topic, language, cards, onComplete }: D
         </>
       )}
 
-      {error && (
-        <Text className="text-error text-xs">{error}</Text>
-      )}
-
       {/* Star selector */}
       <View className="flex-row gap-2">
         {[1, 2, 3, 4, 5].map(n => (
           <TouchableOpacity
             key={n}
-            onPress={() => setUserStars(n)}
-            disabled={submitting}
+            onPress={() => {
+              if (loading || disabled) return;
+              setUserStars(n);
+              onDraftChange(nodeId, { userStars: n, aiStars: aiStars ?? 3, aiRecap: recap });
+            }}
+            disabled={loading || disabled}
             style={{ padding: 4 }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 28, opacity: submitting ? 0.5 : 1 }}>
+            <Text
+              style={{
+                fontSize: 28,
+                color: n <= stars ? (colors.foreground as string) : (colors.foreground_muted as string),
+                opacity: loading || disabled ? 0.5 : 1,
+              }}
+            >
               {n <= stars ? '★' : '☆'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
-
-      <TouchableOpacity
-        className="bg-primary rounded-2xl py-3 px-6 items-center"
-        onPress={handleDone}
-        disabled={submitting}
-        activeOpacity={0.8}
-      >
-        {submitting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text className="text-primary-foreground font-bold text-base">
-            {loading ? 'Done (loading…)' : 'Done'}
-          </Text>
-        )}
-      </TouchableOpacity>
     </View>
   );
 }
