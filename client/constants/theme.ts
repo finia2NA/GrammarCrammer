@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import { vars } from 'nativewind';
 import { Platform, useColorScheme } from 'react-native';
 
@@ -143,16 +144,19 @@ const lightExtras = {
   mdBright: '#1C1410',     // --fg
 };
 
-const dark: ThemePalette = { ...darkBase, ...darkExtras };
-const light: ThemePalette = { ...lightBase, ...lightExtras };
+export const dark: ThemePalette = { ...darkBase, ...darkExtras };
+export const light: ThemePalette = { ...lightBase, ...lightExtras };
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const Colors: ThemePalette = dark;
 
+// Context lets _layout.tsx push the authoritative colors down the tree.
+// Children call useColors() without needing their own useColorScheme() subscription.
+export const ColorsContext = createContext<ThemePalette>(dark);
+
 export function useColors(): ThemePalette {
-  const scheme = useColorScheme();
-  return scheme === 'light' ? light : dark;
+  return useContext(ColorsContext);
 }
 
 export const Fonts = Platform.select({

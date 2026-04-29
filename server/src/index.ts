@@ -8,7 +8,6 @@ import { decksRouter } from './routes/decks.js';
 import { collectionsRouter } from './routes/collections.js';
 import { settingsRouter } from './routes/settings.js';
 import { claudeProxyRouter } from './routes/claude-proxy.js';
-import { resetPageRouter } from './routes/reset-page.js';
 import { initScheduler } from './services/scheduler.service.js';
 
 const app = express();
@@ -24,9 +23,6 @@ app.use('/api/collections', collectionsRouter);
 app.use('/api/nodes', collectionsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/ai', claudeProxyRouter);
-
-// Password reset page (served as HTML, not JSON API)
-app.use(resetPageRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

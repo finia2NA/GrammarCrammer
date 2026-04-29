@@ -112,6 +112,20 @@ export async function forgotPassword(email: string) {
   });
 }
 
+export async function validateResetToken(token: string) {
+  return request<{ valid: boolean }>('/auth/validate-reset-token', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  return request<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
 export async function loginWithApple(identityToken: string) {
   return request<{ token: string; user: { id: string; email: string | null } }>('/auth/apple', {
     method: 'POST',

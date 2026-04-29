@@ -85,7 +85,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
   const rawToken = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   await prisma.passwordResetToken.upsert({
     where: { userId: user.id },
@@ -95,6 +95,17 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
   const resetUrl = `${config.appUrl}/reset-password?token=${rawToken}`;
   await sendPasswordResetEmail(email, resetUrl);
+}
+
+export async function validateResetToken(rawToken: string): Promise<boolean> {
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const record = await prisma.passwordResetToken.findFirst({ where: { tokenHash } });
+  if (!record) return false;
+  if (record.expiresAt < new Date()) {
+    await prisma.passwordResetToken.delete({ where: { id: record.id } });
+    return false;
+  }
+  return true;
 }
 
 export async function resetPassword(rawToken: string, newPassword: string): Promise<void> {

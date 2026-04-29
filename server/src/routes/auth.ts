@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe, requestPasswordReset, resetPassword } from '../services/auth.service.js';
+import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe, requestPasswordReset, validateResetToken, resetPassword } from '../services/auth.service.js';
 import { requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { config } from '../config.js';
@@ -88,6 +88,15 @@ authRouter.post('/forgot-password', async (req, res, next) => {
 
     await requestPasswordReset(email.trim());
     res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
+  } catch (e) { next(e); }
+});
+
+authRouter.post('/validate-reset-token', async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    if (!token) throw new AppError(400, 'MISSING_FIELDS', 'Token is required.');
+    const valid = await validateResetToken(token);
+    res.json({ valid });
   } catch (e) { next(e); }
 });
 
