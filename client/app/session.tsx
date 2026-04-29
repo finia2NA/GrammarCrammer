@@ -508,7 +508,11 @@ function SessionUI({
             allDecks={overlayDecks}
           />
         ) : (
-          <View className="flex-1">
+          <KeyboardAvoidingView
+            className="flex-1"
+            behavior="height"
+            enabled={Platform.OS !== 'ios'}
+          >
             <SessionTopBar
               cardsRemaining={cards.length}
               totalCost={totalCost}
@@ -520,6 +524,8 @@ function SessionUI({
             <ScrollView
               className="flex-1"
               scrollEventThrottle={16}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
               onScroll={e => {
                 const y = e.nativeEvent.contentOffset.y;
                 const next = y > 4;
@@ -529,7 +535,7 @@ function SessionUI({
             >
               <FlashcardDeck {...deckProps} />
             </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         )
       ) : (
         <KeyboardAvoidingView

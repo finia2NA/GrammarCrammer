@@ -74,6 +74,7 @@ export function CardChat({ messages, streaming, onSend }: CardChatProps) {
           value={inputText}
           onChangeText={setInputText}
           onSubmitEditing={handleSend}
+          returnKeyType="send"
           blurOnSubmit={false}
           editable={!streaming}
           multiline

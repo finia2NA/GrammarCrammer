@@ -102,6 +102,7 @@ export function FlashcardDeck({
               value={answer}
               onChangeText={onChangeAnswer}
               onSubmitEditing={onSubmitAnswer}
+              returnKeyType="go"
               editable={cardPhase === 'input'}
               autoFocus
             />
