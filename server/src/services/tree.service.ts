@@ -17,7 +17,7 @@ type DeckTreeRow = {
 };
 
 function mapDeckWithDue(deck: DeckTreeRow, srsConfig: { dailyDueTime: string; reviewTimezone: string }): DeckData {
-  const dueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
+  const dueAt = resolveDueAt(deck.dueAt);
   return {
     nodeId: deck.nodeId,
     topic: deck.topic,

@@ -196,20 +196,8 @@ export function computeIntervalDaysForDueDate(dueDate: string, config: SrsConfig
   return Math.max(1, targetEpoch - todayEpoch);
 }
 
-/**
- * Return the effective dueAt timestamp (Unix ms) for a deck.
- * If dueAt is already stored, use it. If a deck was studied before SRS was
- * introduced (dueAt=null, lastStudiedAt set), compute it as
- * lastStudiedAt + intervalDays so the deck appears in the schedule immediately.
- */
-export function resolveDueAt(
-  dueAt: Date | null,
-  lastStudiedAt: Date | null,
-  intervalDays: number,
-): number | null {
-  if (dueAt !== null) return dueAt.getTime();
-  if (lastStudiedAt !== null) return lastStudiedAt.getTime() + intervalDays * MS_PER_DAY;
-  return null;
+export function resolveDueAt(dueAt: Date | null): number | null {
+  return dueAt !== null ? dueAt.getTime() : null;
 }
 
 export function isDueNow(

@@ -34,7 +34,7 @@ function mapDeckRow(deck: {
   cardCount: number; lastStudiedAt: Date | null;
   dueAt: Date | null; intervalDays: number;
 }, srsConfig: { dailyDueTime: string; reviewTimezone: string }): DeckData {
-  const resolvedDueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
+  const resolvedDueAt = resolveDueAt(deck.dueAt);
   return {
     nodeId: deck.nodeId,
     topic: deck.topic,
@@ -289,7 +289,7 @@ export async function updateDeckSchedule(
   if (action.action === 'reset_never_studied') {
     await prisma.deck.update({
       where: { nodeId },
-      data: { lastStudiedAt: null, dueAt: null, intervalDays: 1 },
+      data: { dueAt: null, intervalDays: 1 },
     });
     return;
   }
@@ -333,7 +333,7 @@ export async function saveDeckReview(
 ): Promise<{ dueAt: number; nextIntervalDays: number }> {
   const deck = await prisma.deck.findFirst({
     where: { nodeId, node: { userId } },
-    select: { intervalDays: true, dueAt: true, lastStudiedAt: true },
+    select: { intervalDays: true, dueAt: true },
   });
   if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
@@ -343,7 +343,7 @@ export async function saveDeckReview(
     getSetting(userId, 'review_timezone'),
   ]);
   const config = buildSrsConfig(dailyDueTime, reviewTimezone);
-  const resolvedDueAt = resolveDueAt(deck.dueAt, deck.lastStudiedAt, deck.intervalDays);
+  const resolvedDueAt = resolveDueAt(deck.dueAt);
   const currentlyDue = isDueNow(resolvedDueAt, config, now);
 
   const { nextIntervalDays, dueAt } = calculateNextReview(userStars, deck.intervalDays, {
