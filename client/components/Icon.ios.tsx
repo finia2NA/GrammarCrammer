@@ -3,6 +3,7 @@ import type { IconProps, SemanticIcon } from './Icon.types';
 
 const SF_MAP: Record<SemanticIcon, string> = {
   'settings':       'gear',
+  'close':          'xmark',
   'chevron-down':   'chevron.down',
   'chevron-right':  'chevron.right',
   'bullet':         'circle.fill',

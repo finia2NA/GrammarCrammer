@@ -131,9 +131,7 @@ export function DeckModalCreateTab({
               className="flex-1 py-3.5 rounded-xl border-secondary items-center bg-secondary"
               onPress={onExport}
             >
-              <Text className="text-secondary-foreground font-semibold">
-                Export as CSV
-              </Text>
+              <Text className="text-secondary-foreground font-semibold">Export as CSV</Text>
             </TouchableOpacity>
           )}
           {onDelete && (
