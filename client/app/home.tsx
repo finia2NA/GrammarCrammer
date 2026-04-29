@@ -17,15 +17,17 @@ import {
   updateDeck,
   deleteNode,
   getNodePath,
+  getDeck,
   moveNode,
   importDecksFromCsv,
-  getEnabledLanguages,
+  hydrateSettings,
   resetDeckToNeverStudied,
   setDeckDueDate,
   syncReviewTimezone,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
+import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
 
 export default function Home() {
   const router = useRouter();
@@ -34,10 +36,10 @@ export default function Home() {
   const { isSmallScreen } = useScreenSize();
   const isFocused = useIsFocused();
   const { tree, loading, refreshing, refresh } = useDeckTree(isFocused);
+  const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
 
   // Quick-study state
   const [topic, setTopic] = useState('');
-  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
   const [inputFocused, setInputFocused] = useState(false);
@@ -50,12 +52,13 @@ export default function Home() {
   const [editNodePathStr, setEditNodePathStr] = useState('');
 
   useEffect(() => {
-    getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
-      setEnabledLanguages(langs);
-      setLanguage(prev => (langs.includes(prev) ? prev : langs[0]));
-    });
+    hydrateSettings().catch(() => {});
     syncReviewTimezone().catch(() => {});
   }, [isFocused]);
+
+  useEffect(() => {
+    setLanguage(prev => (enabledLanguages.includes(prev) ? prev : enabledLanguages[0] ?? DEFAULT_LANGUAGES[0]));
+  }, [enabledLanguages]);
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
@@ -148,8 +151,13 @@ export default function Home() {
 
   const handleEdit = useCallback(async (node: TreeNode) => {
     const path = await getNodePath(node.id);
+    let nodeForEdit = node;
+    if (node.deck) {
+      const deck = await getDeck(node.id);
+      nodeForEdit = { ...node, deck };
+    }
     setEditNodePathStr(path);
-    setEditNode(node);
+    setEditNode(nodeForEdit);
     setDeckModalVisible(true);
   }, []);
 
@@ -174,6 +182,7 @@ export default function Home() {
             topic: data.topic,
             language: data.language,
             cardCount: data.cardCount,
+            explanation: data.explanation,
           });
 
           if (data.dueDate.length > 0) {
@@ -189,7 +198,7 @@ export default function Home() {
           }
         }
       } else {
-        await createDeckFromPath(data.path, data.topic, data.language, data.cardCount);
+        await createDeckFromPath(data.path, data.topic, data.language, data.cardCount, data.explanation);
       }
       setDeckModalVisible(false);
       setEditNode(null);
@@ -295,7 +304,12 @@ export default function Home() {
               className="absolute flex-row gap-2"
               style={{ top: 12, right: 12, zIndex: 20 }}
             >
-              <PillDropdown value={language} options={enabledLanguages} onChange={setLanguage} />
+              <PillDropdown
+                key={enabledLanguages.join('|')}
+                value={language}
+                options={enabledLanguages}
+                onChange={setLanguage}
+              />
               <PillDropdown
                 value={cardCount}
                 options={CARD_COUNTS}

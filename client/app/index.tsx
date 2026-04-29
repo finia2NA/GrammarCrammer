@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getAuthToken } from '@/lib/storage';
-import { getMe } from '@/lib/api';
+import { getMe, hydrateSettings } from '@/lib/api';
 import { Colors } from '@/constants/theme';
 
 export default function Index() {
@@ -17,6 +17,7 @@ export default function Index() {
       }
       try {
         await getMe();
+        await hydrateSettings();
         router.replace('/home');
       } catch {
         router.replace('/onboarding');

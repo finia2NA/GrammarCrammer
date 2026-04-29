@@ -57,6 +57,7 @@ export async function createDeckFromPath(
   topic: string,
   language: string,
   cardCount = 0,
+  explanation?: string,
 ): Promise<string> {
   const segments = path.split('::').map(s => s.trim()).filter(Boolean);
   if (segments.length === 0) throw new AppError(400, 'INVALID_PATH', 'Path cannot be empty.');
@@ -91,7 +92,14 @@ export async function createDeckFromPath(
   const created: { id: string } = await prisma.node.create({
     data: {
       userId, parentId, name: deckName, sortOrder: nextOrder,
-      deck: { create: { topic, language, cardCount } },
+      deck: {
+        create: {
+          topic,
+          language,
+          cardCount,
+          ...(explanation !== undefined ? { explanation, explanationStatus: 'ready' } : {}),
+        },
+      },
     },
     include: { deck: true },
   });
@@ -115,7 +123,7 @@ export async function getDeck(userId: string, nodeId: string): Promise<DeckData 
 export async function updateDeck(
   userId: string,
   nodeId: string,
-  updates: { name?: string; topic?: string; language?: string; cardCount?: number },
+  updates: { name?: string; topic?: string; language?: string; cardCount?: number; explanation?: string },
 ): Promise<{ regenerateExplanation: boolean }> {
   const node = await prisma.node.findFirst({
     where: { id: nodeId, userId },
@@ -141,8 +149,17 @@ export async function updateDeck(
         topic: newTopic,
         language: newLang,
         cardCount: newCount,
-        ...(regenerate ? { explanationStatus: 'pending', explanation: null } : {}),
+        ...(regenerate
+          ? { explanationStatus: 'pending', explanation: null }
+          : updates.explanation !== undefined
+            ? { explanation: updates.explanation, explanationStatus: 'ready' }
+            : {}),
       },
+    });
+  } else if (updates.explanation !== undefined) {
+    await prisma.deck.update({
+      where: { nodeId },
+      data: { explanation: updates.explanation, explanationStatus: 'ready' },
     });
   }
 

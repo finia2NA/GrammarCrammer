@@ -18,6 +18,9 @@ interface DeckModalCreateTabProps {
   onNameChange: (value: string) => void;
   topic: string;
   onTopicChange: (value: string) => void;
+  explanation: string;
+  onExplanationChange: (value: string) => void;
+  showExplanationField: boolean;
   language: Language;
   onLanguageChange: (value: Language) => void;
   cardCount: CardCount;
@@ -38,6 +41,9 @@ export function DeckModalCreateTab({
   onNameChange,
   topic,
   onTopicChange,
+  explanation,
+  onExplanationChange,
+  showExplanationField,
   language,
   onLanguageChange,
   cardCount,
@@ -96,6 +102,24 @@ export function DeckModalCreateTab({
             onCardCountChange={onCardCountChange}
             enabledLanguages={enabledLanguages}
           />
+
+          {showExplanationField && (
+            <>
+              <Text className="text-foreground/80 text-sm font-medium mb-2">Explanation</Text>
+              <Text className="text-foreground-secondary text-xs mb-2">
+                Markdown saved with this deck.
+              </Text>
+              <TextInput
+                className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm mb-6"
+                placeholder="Generated explanation"
+                placeholderTextColor={colors.foreground_muted}
+                value={explanation}
+                onChangeText={onExplanationChange}
+                multiline
+                style={{ minHeight: 160, textAlignVertical: 'top' }}
+              />
+            </>
+          )}
         </>
       )}
 

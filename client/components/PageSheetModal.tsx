@@ -11,6 +11,7 @@ import {
   Animated,
   StyleSheet,
   Appearance,
+  type ColorSchemeName,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
@@ -24,7 +25,12 @@ interface PageSheetModalProps {
   confirmText?: string;
   onConfirm?: () => void;
   confirmDisabled?: boolean;
+  confirmCloses?: boolean;
   children: ReactNode;
+}
+
+function resolveColorScheme(scheme: ColorSchemeName | null | undefined): 'light' | 'dark' {
+  return scheme === 'light' ? 'light' : 'dark';
 }
 
 export function PageSheetModal({
@@ -35,15 +41,16 @@ export function PageSheetModal({
   confirmText,
   onConfirm,
   confirmDisabled = false,
+  confirmCloses = true,
   children,
 }: PageSheetModalProps) {
   const insets = useSafeAreaInsets();
   const { height, isSmallScreen } = useScreenSize();
-  const [scheme, setScheme] = useState<'light' | 'dark'>(Appearance.getColorScheme() ?? 'dark');
+  const [scheme, setScheme] = useState<'light' | 'dark'>(resolveColorScheme(Appearance.getColorScheme()));
 
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
-      setScheme(colorScheme ?? 'dark');
+      setScheme(resolveColorScheme(colorScheme));
     });
     return () => sub.remove();
   }, []);
@@ -101,8 +108,9 @@ export function PageSheetModal({
 
   const handleConfirm = useCallback(() => {
     if (!onConfirm || confirmDisabled) return;
-    animateOut(onConfirm);
-  }, [onConfirm, confirmDisabled, animateOut]);
+    if (confirmCloses) animateOut(onConfirm);
+    else onConfirm();
+  }, [onConfirm, confirmDisabled, confirmCloses, animateOut]);
 
   const header = (
     <View

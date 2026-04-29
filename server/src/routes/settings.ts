@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getSetting, setSetting } from '../services/settings.service.js';
+import { getAllSettings, getSetting, setSetting, setSettings } from '../services/settings.service.js';
 import { getUserMonthlyUsage, getGlobalCentralUsage } from '../services/usage.service.js';
 import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
@@ -92,6 +92,30 @@ settingsRouter.get('/usage-status', async (req, res, next) => {
 });
 
 // Generic settings
+settingsRouter.get('/', async (req, res, next) => {
+  try {
+    const settings = await getAllSettings(req.userId!);
+    res.json({ settings });
+  } catch (e) { next(e); }
+});
+
+settingsRouter.put('/', async (req, res, next) => {
+  try {
+    const { settings } = req.body;
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      throw new AppError(400, 'MISSING_FIELDS', 'settings object is required.');
+    }
+
+    const entries = Object.entries(settings);
+    if (entries.some(([key, value]) => typeof key !== 'string' || typeof value !== 'string')) {
+      throw new AppError(400, 'INVALID_SETTINGS', 'All setting values must be strings.');
+    }
+
+    await setSettings(req.userId!, settings as Record<string, string>);
+    res.json({ success: true });
+  } catch (e) { next(e); }
+});
+
 settingsRouter.get('/:key', async (req, res, next) => {
   try {
     const value = await getSetting(req.userId!, req.params.key);

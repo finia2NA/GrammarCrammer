@@ -5,15 +5,18 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { useRouter } from 'expo-router';
 import { clearAuthToken } from '@/lib/storage';
-import { getSetting, setSetting, deleteApiKey, setApiKey, validateApiKey, getUsageStatus, getEnabledLanguages, setEnabledLanguages, syncReviewTimezone } from '@/lib/api';
+import { deleteApiKey, setApiKey, validateApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, saveSettings } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
+import { getSettingsSnapshot, resetLocalSettings } from '@/hooks/state/persistent/settingsStore';
 import { PillDropdown } from '@/components/PillDropdown';
-import { CARD_COUNTS, DEFAULT_LANGUAGES } from '@/constants/session';
+import { CARD_COUNTS, DEFAULT_LANGUAGES, formatCardCount } from '@/constants/session';
 import type { CardCount } from '@/constants/session';
 import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
@@ -67,6 +70,7 @@ interface SettingsModalProps {
 const ConfirmButton = NeedsConfirmationButton;
 
 type KeyPreference = 'central' | 'own';
+const DEFAULT_CARD_COUNT_OPTIONS = CARD_COUNTS.filter((count) => count !== 0);
 
 function formatCost(usd: number): string {
   if (usd < 0.01) return `$${usd.toFixed(4)}`;
@@ -169,72 +173,99 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
   const [languagesExpanded, setLanguagesExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (visible) {
-      getSetting('card_order').then(v => {
-        if (v === 'sequential' || v === 'shuffled') setCardOrder(v);
-      });
-      getSetting('judge_with_explanation').then(v => {
-        if (v === 'on' || v === 'off') setJudgeWithExplanation(v);
-      });
-      getSetting('feedback_brevity').then(v => {
-        if (v === 'brief' || v === 'normal') setFeedbackBrevity(v);
-      });
-      getSetting('default_card_count').then(v => {
-        const n = v ? parseInt(v, 10) : 10;
-        if (CARD_COUNTS.includes(n as CardCount) && n !== 0) setDefaultCardCount(n as CardCount);
-      });
-      getSetting('daily_due_time').then(v => {
-        const normalized = normalizeDailyDueTime(v);
-        setDailyDueTime(normalized);
-      });
-      getEnabledLanguages(DEFAULT_LANGUAGES).then(setEnabledLanguagesState);
-      getUsageStatus().then(setUsageStatus).catch(() => {});
-      syncReviewTimezone().catch(() => {});
-      setShowAddKey(false);
-    }
+    if (!visible) return;
+    let mounted = true;
+
+    hydrateSettings().catch(() => {}).finally(() => {
+      if (!mounted) return;
+      const settings = getSettingsSnapshot();
+
+      if (settings.card_order === 'sequential' || settings.card_order === 'shuffled') {
+        setCardOrder(settings.card_order);
+      }
+      if (settings.judge_with_explanation === 'on' || settings.judge_with_explanation === 'off') {
+        setJudgeWithExplanation(settings.judge_with_explanation);
+      }
+      if (settings.feedback_brevity === 'brief' || settings.feedback_brevity === 'normal') {
+        setFeedbackBrevity(settings.feedback_brevity);
+      }
+
+      const n = settings.default_card_count ? parseInt(settings.default_card_count, 10) : 10;
+      setDefaultCardCount(CARD_COUNTS.includes(n as CardCount) && n !== 0 ? n as CardCount : 10);
+      setDailyDueTime(normalizeDailyDueTime(settings.daily_due_time));
+      setEnabledLanguagesState(parseEnabledLanguages(settings.enabled_languages ?? null, DEFAULT_LANGUAGES));
+    });
+
+    getUsageStatus().then(status => {
+      if (mounted) setUsageStatus(status);
+    }).catch(() => {});
+    setShowAddKey(false);
+    setSaving(false);
+
+    return () => { mounted = false; };
   }, [visible]);
 
   function handleChangeOrder(next: CardOrder) {
     setCardOrder(next);
-    setSetting('card_order', next);
   }
 
   function handleChangeJudgeExplanation(next: 'on' | 'off') {
     setJudgeWithExplanation(next);
-    setSetting('judge_with_explanation', next);
   }
 
   function handleChangeFeedbackBrevity(next: 'brief' | 'normal') {
     setFeedbackBrevity(next);
-    setSetting('feedback_brevity', next);
   }
 
   function handleChangeDefaultCardCount(next: CardCount) {
     setDefaultCardCount(next);
-    setSetting('default_card_count', String(next));
   }
 
   function handleChangeDailyDueTime(next: string) {
     const normalized = normalizeDailyDueTime(next);
     setDailyDueTime(normalized);
-    setSetting('daily_due_time', normalized);
   }
 
   function handleChangeEnabledLanguages(next: string[]) {
     setEnabledLanguagesState(next);
-    setEnabledLanguages(next);
   }
 
   function handleChangePreference(next: KeyPreference) {
     if (!usageStatus) return;
     setUsageStatus({ ...usageStatus, preference: next });
-    setSetting('api_key_preference', next);
+  }
+
+  async function handleDone() {
+    const nextSettings = {
+      ...getSettingsSnapshot(),
+      card_order: cardOrder,
+      judge_with_explanation: judgeWithExplanation,
+      feedback_brevity: feedbackBrevity,
+      default_card_count: String(defaultCardCount),
+      daily_due_time: normalizeDailyDueTime(dailyDueTime),
+      api_key_preference: usageStatus?.preference ?? getSettingsSnapshot().api_key_preference ?? 'central',
+      enabled_languages: JSON.stringify(enabledLanguages),
+    };
+
+    setSaving(true);
+    try {
+      await saveSettings(nextSettings);
+      onClose();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to save settings.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Save failed', message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleLogout() {
     await clearAuthToken();
+    resetLocalSettings();
     onClose();
     router.replace('/onboarding');
   }
@@ -265,8 +296,10 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       title="Settings"
       cancelText="Cancel"
       onCancel={onClose}
-      confirmText="Done"
-      onConfirm={onClose}
+      confirmText={saving ? 'Saving…' : 'Done'}
+      onConfirm={handleDone}
+      confirmDisabled={saving}
+      confirmCloses={false}
     >
       {/* Study Settings */}
       <SectionCard title="Study Settings">
@@ -309,9 +342,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         >
           <PillDropdown
             value={defaultCardCount}
-            options={[5, 10, 15, 20] as const}
+            options={DEFAULT_CARD_COUNT_OPTIONS}
             onChange={handleChangeDefaultCardCount}
-            formatLabel={(v: number) => `${v} cards`}
+            formatLabel={formatCardCount}
           />
         </SettingsRow>
         <SettingsRow

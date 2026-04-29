@@ -5,10 +5,11 @@ import type { Language, CardCount } from '@/constants/session';
 import { DEFAULT_LANGUAGES } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
 import type { CsvImportResult } from '@/lib/api';
-import { exportNodeCsv, getEnabledLanguages } from '@/lib/api';
+import { exportNodeCsv } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
 import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
+import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
 
 function triggerCsvDownload(filename: string, csv: string) {
   if (Platform.OS !== 'web') {
@@ -29,12 +30,13 @@ function triggerCsvDownload(filename: string, csv: string) {
 interface DeckModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (data: DeckFormData) => void;
+  onSubmit: (data: DeckFormData) => void | Promise<void>;
   onCsvImport?: (data: CsvImportData) => Promise<CsvImportResult>;
   onDelete?: () => void;
   onResetSchedule?: (nodeId: string) => Promise<void>;
   editNode?: TreeNode | null;
   editNodePath?: string;
+  initialData?: Partial<DeckFormData>;
 }
 
 export interface DeckFormData {
@@ -43,6 +45,7 @@ export interface DeckFormData {
   language: Language;
   cardCount: CardCount;
   dueDate: string;
+  explanation?: string;
 }
 
 export interface CsvImportData {
@@ -67,17 +70,19 @@ export function DeckModal({
   onResetSchedule,
   editNode,
   editNodePath,
+  initialData,
 }: DeckModalProps) {
   const isEdit = editNode !== null && editNode !== undefined;
   const isCollection = isEdit && editNode.deck === null;
   const canUseCsvTab = !isEdit;
+  const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
 
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
   const [dueDate, setDueDate] = useState('');
-  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
+  const [explanation, setExplanation] = useState('');
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
   const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
@@ -94,16 +99,8 @@ export function DeckModal({
   const pendingFadeInRef = useRef(false);
   const [hasMeasuredHeight, setHasMeasuredHeight] = useState(false);
   const [heightAnimating, setHeightAnimating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const tabWidth = tabSwitcherWidth > 0 ? (tabSwitcherWidth - 12) / 2 : 0;
-
-  useEffect(() => {
-    if (visible) {
-      getEnabledLanguages(DEFAULT_LANGUAGES).then(langs => {
-        setEnabledLanguages(langs);
-        setLanguage((prev: string) => langs.includes(prev) ? prev : langs[0]);
-      });
-    }
-  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -129,19 +126,27 @@ export function DeckModal({
           setLanguage(editNode.deck.language as Language);
           setCardCount(editNode.deck.cardCount as CardCount);
           setDueDate(editNode.deck.dueAt ? formatLocalDateToYmd(new Date(editNode.deck.dueAt)) : '');
+          setExplanation(editNode.deck.explanation ?? '');
         } else {
           setTopic('');
           setDueDate('');
+          setExplanation('');
         }
       } else {
-        setName('');
-        setTopic('');
-        setLanguage('Japanese');
-        setCardCount(0);
-        setDueDate('');
+        setName(initialData?.path ?? '');
+        setTopic(initialData?.topic ?? '');
+        setLanguage(initialData?.language ?? 'Japanese');
+        setCardCount(initialData?.cardCount ?? 0);
+        setDueDate(initialData?.dueDate ?? '');
+        setExplanation(initialData?.explanation ?? '');
       }
     }
-  }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);
+  }, [visible, editNode, editNodePath, initialData, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setLanguage((prev: string) => enabledLanguages.includes(prev) ? prev : enabledLanguages[0] ?? DEFAULT_LANGUAGES[0]);
+  }, [visible, enabledLanguages]);
 
   useEffect(() => {
     if (!canUseCsvTab || tabWidth <= 0) return;
@@ -252,19 +257,49 @@ export function DeckModal({
     });
   }, [tabContentHeight, startFadeIn]);
 
-  function handleSubmit() {
+  async function submitDeckForm() {
     const trimmedName = name.trim();
     const trimmedTopic = topic.trim();
     if (!trimmedName) return;
     if (!isCollection && !trimmedTopic) return;
 
-    onSubmit({
-      path: trimmedName,
-      topic: trimmedTopic,
-      language,
-      cardCount,
-      dueDate: dueDate.trim(),
-    });
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        path: trimmedName,
+        topic: trimmedTopic,
+        language,
+        cardCount,
+        dueDate: dueDate.trim(),
+        explanation,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'An error occurred.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Save failed', message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleSubmit() {
+    const promptChanged = isEdit && !isCollection && editNode?.deck && topic.trim() !== editNode.deck.topic;
+    if (!promptChanged) {
+      void submitDeckForm();
+      return;
+    }
+
+    const title = 'Regenerate explanation?';
+    const message = 'Editing the prompt will regenerate the explanation for this deck.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) void submitDeckForm();
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Confirm', onPress: () => { void submitDeckForm(); } },
+    ]);
   }
 
   function handleFileSelected(fileName: string, content: string) {
@@ -317,8 +352,8 @@ export function DeckModal({
     ? 'Import CSV'
     : isCollection ? 'Edit Collection' : isEdit ? 'Edit Deck' : 'New Deck';
 
-  const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : isEdit ? 'Save' : 'Create';
-  const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit;
+  const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : submitting ? 'Saving…' : isEdit ? 'Save' : 'Create';
+  const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
   const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
 
   return (
@@ -330,6 +365,7 @@ export function DeckModal({
       confirmText={confirmText}
       onConfirm={handleConfirm}
       confirmDisabled={confirmDisabled}
+      confirmCloses={false}
     >
       {canUseCsvTab && (
         <View
@@ -413,6 +449,9 @@ export function DeckModal({
                 onNameChange={setName}
                 topic={topic}
                 onTopicChange={setTopic}
+                explanation={explanation}
+                onExplanationChange={setExplanation}
+                showExplanationField={isEdit || explanation.length > 0}
                 language={language}
                 onLanguageChange={setLanguage}
                 cardCount={cardCount}

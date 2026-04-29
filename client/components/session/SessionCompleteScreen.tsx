@@ -12,6 +12,8 @@ interface SessionCompleteScreenProps {
   decks: Map<string, DeckInfo>;
   studyMode: 'scheduled' | 'early';
   onDone: () => void | Promise<void>;
+  onMakeDeck?: () => void;
+  quickDeckCreated?: boolean;
 }
 
 function AttemptRow({ attempt }: { attempt: CardAttempt }) {
@@ -28,7 +30,14 @@ function AttemptRow({ attempt }: { attempt: CardAttempt }) {
   );
 }
 
-export function SessionCompleteScreen({ completedCards, decks, studyMode, onDone }: SessionCompleteScreenProps) {
+export function SessionCompleteScreen({
+  completedCards,
+  decks,
+  studyMode,
+  onDone,
+  onMakeDeck,
+  quickDeckCreated = false,
+}: SessionCompleteScreenProps) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
 
@@ -113,7 +122,21 @@ export function SessionCompleteScreen({ completedCards, decks, studyMode, onDone
         {/* Quick study cards (no deck) */}
         {quickCards.length > 0 && (
           <View className="bg-surface border border-border rounded-3xl p-6 gap-1">
-            <Text className="text-foreground font-semibold text-base mb-2">Cards reviewed</Text>
+            <View className="flex-row items-center justify-between gap-3 mb-2">
+              <Text className="text-foreground font-semibold text-base">Cards reviewed</Text>
+              {onMakeDeck && (
+                <TouchableOpacity
+                  className={`px-3 py-2 rounded-xl ${quickDeckCreated ? 'bg-background-muted' : 'bg-primary'}`}
+                  onPress={onMakeDeck}
+                  disabled={quickDeckCreated}
+                  activeOpacity={0.85}
+                >
+                  <Text className={`text-xs font-semibold ${quickDeckCreated ? 'text-foreground-muted' : 'text-primary-foreground'}`}>
+                    {quickDeckCreated ? 'Deck Created' : 'Make this a deck'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
             {quickCards.map((a, i) => <AttemptRow key={i} attempt={a} />)}
           </View>
         )}

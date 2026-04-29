@@ -58,7 +58,12 @@ export function SharedCreationOptionsSection({
     <>
       <Text className="text-foreground/80 text-sm font-medium mb-3">Options</Text>
       <View className="flex-row gap-3 mb-6">
-        <PillDropdown value={language} options={enabledLanguages} onChange={onLanguageChange} />
+        <PillDropdown
+          key={enabledLanguages.join('|')}
+          value={language}
+          options={enabledLanguages}
+          onChange={onLanguageChange}
+        />
         <PillDropdown
           value={cardCount}
           options={CARD_COUNTS}

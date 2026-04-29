@@ -6,12 +6,15 @@ import { StatusBar } from 'expo-status-bar';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { darkThemeVars, lightThemeVars, useColors } from '@/constants/theme';
+import { hydrateSettings } from '@/lib/api';
 
 export default function RootLayout() {
   const scheme = useColorScheme();
   const colors = useColors();
 
   useEffect(() => {
+    hydrateSettings().catch(() => {});
+
     if (Platform.OS === 'web') {
       const loader = document.getElementById('gc-loader');
       if (loader) {

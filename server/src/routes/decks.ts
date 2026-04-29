@@ -14,13 +14,18 @@ decksRouter.use(requireAuth);
 
 decksRouter.post('/', async (req, res, next) => {
   try {
-    const { path, topic, language, cardCount } = req.body;
+    const { path, topic, language, cardCount, explanation } = req.body;
     if (!path || !topic || !language) {
       throw new AppError(400, 'MISSING_FIELDS', 'path, topic, and language are required.');
     }
-    const nodeId = await createDeckFromPath(req.userId!, path, topic, language, cardCount);
+    const existingExplanation = typeof explanation === 'string' && explanation.trim().length > 0
+      ? explanation
+      : undefined;
+    const nodeId = await createDeckFromPath(req.userId!, path, topic, language, cardCount, existingExplanation);
 
-    enqueueExplanation(req.userId!, nodeId);
+    if (existingExplanation === undefined) {
+      enqueueExplanation(req.userId!, nodeId);
+    }
 
     res.status(201).json({ nodeId });
   } catch (e) { next(e); }
@@ -184,8 +189,8 @@ decksRouter.get('/:nodeId', async (req, res, next) => {
 
 decksRouter.patch('/:nodeId', async (req, res, next) => {
   try {
-    const { name, topic, language, cardCount } = req.body;
-    const result = await updateDeck(req.userId!, req.params.nodeId, { name, topic, language, cardCount });
+    const { name, topic, language, cardCount, explanation } = req.body;
+    const result = await updateDeck(req.userId!, req.params.nodeId, { name, topic, language, cardCount, explanation });
 
     if (result.regenerateExplanation) {
       enqueueExplanation(req.userId!, req.params.nodeId);

@@ -3,6 +3,15 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { getAuthToken, clearAuthToken, getBackendBaseUrl } from './storage';
 import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint } from './types';
+import {
+  areSettingsHydrated,
+  getLocalSetting,
+  getSettingsSnapshot,
+  replaceLocalSettings,
+  resetLocalSettings,
+  setLocalSetting,
+  type SettingsMap,
+} from '@/hooks/state/persistent/settingsStore';
 
 function getConfiguredBaseUrl(): string {
   if (Platform.OS === 'web' && !__DEV__) {
@@ -47,6 +56,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     if (res.status === 401) {
       await clearAuthToken();
+      resetLocalSettings();
       if (!options.signal?.aborted) router.replace('/onboarding');
       throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
     }
@@ -57,6 +67,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return res.json() as Promise<T>;
+}
+
+let settingsHydrationPromise: Promise<SettingsMap> | null = null;
+
+export async function hydrateSettings(): Promise<SettingsMap> {
+  const token = await getAuthToken();
+  if (!token) return getSettingsSnapshot();
+  if (areSettingsHydrated()) return getSettingsSnapshot();
+  if (settingsHydrationPromise) return settingsHydrationPromise;
+
+  settingsHydrationPromise = request<{ settings: SettingsMap }>('/settings')
+    .then(({ settings }) => {
+      replaceLocalSettings(settings, true);
+      return getSettingsSnapshot();
+    })
+    .finally(() => {
+      settingsHydrationPromise = null;
+    });
+
+  return settingsHydrationPromise;
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -145,10 +175,10 @@ export async function deleteNode(nodeId: string) {
 
 // ─── Decks ────────────────────────────────────────────────────────────────────
 
-export async function createDeckFromPath(path: string, topic: string, language: string, cardCount = 10) {
+export async function createDeckFromPath(path: string, topic: string, language: string, cardCount = 10, explanation?: string) {
   return request<{ nodeId: string }>('/decks', {
     method: 'POST',
-    body: JSON.stringify({ path, topic, language, cardCount }),
+    body: JSON.stringify({ path, topic, language, cardCount, explanation }),
   }).then(r => r.nodeId);
 }
 
@@ -156,7 +186,7 @@ export async function getDeck(nodeId: string) {
   return request<DeckData>(`/decks/${nodeId}`);
 }
 
-export async function updateDeck(nodeId: string, updates: { name?: string; topic?: string; language?: string; cardCount?: number }) {
+export async function updateDeck(nodeId: string, updates: { name?: string; topic?: string; language?: string; cardCount?: number; explanation?: string }) {
   return request<{ regenerateExplanation: boolean }>(`/decks/${nodeId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
@@ -243,14 +273,27 @@ export async function moveNode(nodeId: string, newPath: string) {
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export async function getSetting(key: string) {
-  return request<{ value: string | null }>(`/settings/${key}`).then(r => r.value);
+  if (!areSettingsHydrated()) {
+    await hydrateSettings().catch(() => {});
+  }
+  return getLocalSetting(key);
 }
 
 export async function setSetting(key: string, value: string) {
+  setLocalSetting(key, value);
   return request<{ success: boolean }>(`/settings/${key}`, {
     method: 'PUT',
     body: JSON.stringify({ value }),
   });
+}
+
+export async function saveSettings(settings: SettingsMap) {
+  const result = await request<{ success: boolean }>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ settings }),
+  });
+  replaceLocalSettings(settings, true);
+  return result;
 }
 
 function getDeviceTimezone(): string {
@@ -268,17 +311,23 @@ export async function syncReviewTimezone() {
 }
 
 export async function getEnabledLanguages(defaultLanguages: string[]): Promise<string[]> {
-  const raw = await getSetting('enabled_languages');
-  if (!raw) return defaultLanguages;
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[];
-  } catch {}
-  return defaultLanguages;
+  if (!areSettingsHydrated()) {
+    await hydrateSettings().catch(() => {});
+  }
+  return parseEnabledLanguages(getLocalSetting('enabled_languages'), defaultLanguages);
 }
 
 export async function setEnabledLanguages(langs: string[]): Promise<void> {
   await setSetting('enabled_languages', JSON.stringify(langs));
+}
+
+export function parseEnabledLanguages(raw: string | null, defaultLanguages: string[]): string[] {
+  if (!raw) return defaultLanguages;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(lang => typeof lang === 'string');
+  } catch {}
+  return defaultLanguages;
 }
 
 export interface UsageStatus {

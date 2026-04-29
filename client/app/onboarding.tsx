@@ -21,7 +21,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl } from '@/lib/storage';
-import { register, login, setApiKey, validateApiKey, getMe } from '@/lib/api';
+import { register, login, setApiKey, validateApiKey, getMe, hydrateSettings } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
@@ -529,6 +529,7 @@ export default function Onboarding() {
         return;
       }
       await setApiKey(trimmed);
+      await hydrateSettings();
       router.replace('/home');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An error occurred.');
@@ -545,6 +546,7 @@ export default function Onboarding() {
     setLoading(true);
     try {
       const me = await getMe();
+      await hydrateSettings();
       setCentralKeyAvailable(me.centralKeyAvailable);
       if (me.hasApiKey || me.centralKeyAvailable) {
         router.replace('/home');

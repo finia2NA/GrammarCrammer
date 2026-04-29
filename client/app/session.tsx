@@ -15,12 +15,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, useColors } from '@/constants/theme';
-import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
+import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus, createDeckFromPath } from '@/lib/api';
 import type { Card, CardPhase, DeckCard, ChatMessage, CardAttempt, WordHint } from '@/lib/types';
+import type { CardCount } from '@/constants/session';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
 import type { OverlayDeck } from '@/components/session';
+import { DeckModal, type DeckFormData } from '@/components/home/DeckModal';
 
 import {
   SidePanel,
@@ -148,6 +150,7 @@ function QuickSession({ topic, language, cardCount }: { topic: string; language:
       language={language}
       showExplanationOverlay
       markStudied={async () => {}}
+      quickStudyCardCount={cardCount}
     />
   );
 }
@@ -238,6 +241,7 @@ interface SessionUIProps {
   overlayDecks?: OverlayDeck[];
   decks?: Map<string, DeckInfo>;
   studyMode?: 'scheduled' | 'early';
+  quickStudyCardCount?: number;
 }
 
 function SessionUI({
@@ -245,6 +249,7 @@ function SessionUI({
   cards, setCards, totalCost, addCost,
   explanation, wasTruncated, topic, language,
   showExplanationOverlay, markStudied, deckName, overlayDecks, decks, studyMode = 'scheduled',
+  quickStudyCardCount,
 }: SessionUIProps) {
   const router = useRouter();
   const { isSmallScreen } = useScreenSize();
@@ -268,6 +273,8 @@ function SessionUI({
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
   const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
+  const [quickDeckModalVisible, setQuickDeckModalVisible] = useState(false);
+  const [quickDeckCreated, setQuickDeckCreated] = useState(false);
   // Keyed by card.id so wrong answers are tracked per card, not per position in queue.
   const cardWrongAnswers = useRef<Map<string, string[]>>(new Map());
   const hintCache = useRef<Map<string, WordHint>>(new Map());
@@ -478,13 +485,39 @@ function SessionUI({
       if (!decks || decks.size === 0) markStudied();
     }
 
+    const isQuickSession = !decks || decks.size === 0;
+    const quickDeckInitialData = {
+      path: '',
+      topic,
+      language,
+      cardCount: (quickStudyCardCount ?? 0) as CardCount,
+      dueDate: '',
+      explanation,
+    };
+
     return (
-      <SessionCompleteScreen
-        completedCards={completedCards}
-        decks={decks ?? new Map()}
-        studyMode={studyMode}
-        onDone={() => router.replace('/home')}
-      />
+      <>
+        <SessionCompleteScreen
+          completedCards={completedCards}
+          decks={decks ?? new Map()}
+          studyMode={studyMode}
+          onDone={() => router.replace('/home')}
+          onMakeDeck={isQuickSession ? () => setQuickDeckModalVisible(true) : undefined}
+          quickDeckCreated={quickDeckCreated}
+        />
+        {isQuickSession && (
+          <DeckModal
+            visible={quickDeckModalVisible}
+            onClose={() => setQuickDeckModalVisible(false)}
+            onSubmit={async (data: DeckFormData) => {
+              await createDeckFromPath(data.path, data.topic, data.language, data.cardCount, data.explanation);
+              setQuickDeckCreated(true);
+              setQuickDeckModalVisible(false);
+            }}
+            initialData={quickDeckInitialData}
+          />
+        )}
+      </>
     );
   }
 
