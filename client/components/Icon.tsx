@@ -3,6 +3,7 @@ import type { IconProps, SemanticIcon } from './Icon.types';
 
 const IONICONS_MAP: Record<SemanticIcon, string> = {
   'settings':       'settings-outline',
+  'close':          'close',
   'chevron-down':   'chevron-down',
   'chevron-right':  'chevron-forward',
   'bullet':         'ellipse',

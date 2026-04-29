@@ -25,6 +25,7 @@ import {
   syncReviewTimezone,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
+import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
 
 export default function Home() {
   const router = useRouter();
@@ -174,6 +175,18 @@ export default function Home() {
             language: data.language,
             cardCount: data.cardCount,
           });
+
+          if (data.dueDate.length > 0) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate)) {
+              throw new Error('Use YYYY-MM-DD format for due date.');
+            }
+            const initialDueDate = editNode.deck.dueAt
+              ? formatLocalDateToYmd(new Date(editNode.deck.dueAt))
+              : '';
+            if (data.dueDate !== initialDueDate) {
+              await setDeckDueDate(editNode.id, data.dueDate);
+            }
+          }
         }
       } else {
         await createDeckFromPath(data.path, data.topic, data.language, data.cardCount);
@@ -347,7 +360,6 @@ export default function Home() {
         onCsvImport={handleCsvImport}
         onDelete={editNode ? handleDelete : undefined}
         onResetSchedule={editNode?.deck ? async (nodeId) => { await resetDeckToNeverStudied(nodeId); refresh(); } : undefined}
-        onSetDueDate={editNode?.deck ? async (nodeId, dueDate) => { await setDeckDueDate(nodeId, dueDate); refresh(); } : undefined}
         editNode={editNode}
         editNodePath={editNodePathStr}
       />

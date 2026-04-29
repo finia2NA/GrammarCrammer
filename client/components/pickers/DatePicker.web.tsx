@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/constants/theme';
@@ -21,6 +21,7 @@ export function DatePicker({
   const colors = useColors();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(true);
 
   const selectedDate = useMemo(() => parseYmd(value), [value]);
   const [month, setMonth] = useState<Date>(selectedDate ?? new Date());
@@ -39,8 +40,28 @@ export function DatePicker({
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !rootRef.current) return;
+    const pickerHeightEstimate = 360;
+    const rect = rootRef.current.getBoundingClientRect();
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setOpenUpward(spaceBelow < pickerHeightEstimate && spaceAbove > spaceBelow);
+  }, [open]);
+
+  const dayPickerVars = {
+    color: colors.foreground,
+    '--rdp-accent-color': colors.primary,
+    '--rdp-accent-background-color': `${colors.primary}22`,
+    '--rdp-day_button-border-radius': '8px',
+    '--rdp-day_button-border': '1px solid transparent',
+    '--rdp-selected-border': `1px solid ${colors.primary}`,
+    '--rdp-today-color': colors.primary,
+    '--rdp-weekday-opacity': '1',
+  } as CSSProperties;
+
   return (
-    <div ref={rootRef} style={{ position: 'relative' }}>
+    <div ref={rootRef} style={{ position: 'relative', zIndex: open ? 1200 : 1 }}>
       <button
         type="button"
         disabled={disabled}
@@ -69,8 +90,11 @@ export function DatePicker({
         <div
           style={{
             position: 'absolute',
-            zIndex: 60,
-            marginTop: 8,
+            zIndex: 1300,
+            left: 0,
+            ...(openUpward
+              ? { bottom: 'calc(100% + 8px)' }
+              : { top: 'calc(100% + 8px)' }),
             borderRadius: 14,
             border: `1px solid ${colors.border}`,
             background: colors.surface,
@@ -89,6 +113,7 @@ export function DatePicker({
               onChange(formatLocalDateToYmd(next));
               setOpen(false);
             }}
+            style={dayPickerVars}
             styles={{
               root: { color: colors.foreground },
               caption: { color: colors.foreground },

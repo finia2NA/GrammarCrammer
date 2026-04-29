@@ -8,6 +8,7 @@ import type { CsvImportResult } from '@/lib/api';
 import { exportNodeCsv, getEnabledLanguages } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
+import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
 
 function triggerCsvDownload(filename: string, csv: string) {
   if (Platform.OS !== 'web') {
@@ -32,7 +33,6 @@ interface DeckModalProps {
   onCsvImport?: (data: CsvImportData) => Promise<CsvImportResult>;
   onDelete?: () => void;
   onResetSchedule?: (nodeId: string) => Promise<void>;
-  onSetDueDate?: (nodeId: string, dueDate: string) => Promise<void>;
   editNode?: TreeNode | null;
   editNodePath?: string;
 }
@@ -42,6 +42,7 @@ export interface DeckFormData {
   topic: string;
   language: Language;
   cardCount: CardCount;
+  dueDate: string;
 }
 
 export interface CsvImportData {
@@ -64,7 +65,6 @@ export function DeckModal({
   onCsvImport,
   onDelete,
   onResetSchedule,
-  onSetDueDate,
   editNode,
   editNodePath,
 }: DeckModalProps) {
@@ -76,6 +76,7 @@ export function DeckModal({
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
+  const [dueDate, setDueDate] = useState('');
   const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
   const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
@@ -127,12 +128,17 @@ export function DeckModal({
           setTopic(editNode.deck.topic);
           setLanguage(editNode.deck.language as Language);
           setCardCount(editNode.deck.cardCount as CardCount);
+          setDueDate(editNode.deck.dueAt ? formatLocalDateToYmd(new Date(editNode.deck.dueAt)) : '');
+        } else {
+          setTopic('');
+          setDueDate('');
         }
       } else {
         setName('');
         setTopic('');
         setLanguage('Japanese');
         setCardCount(0);
+        setDueDate('');
       }
     }
   }, [visible, editNode, editNodePath, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight, tabIndicatorX]);
@@ -257,6 +263,7 @@ export function DeckModal({
       topic: trimmedTopic,
       language,
       cardCount,
+      dueDate: dueDate.trim(),
     });
   }
 
@@ -399,9 +406,9 @@ export function DeckModal({
                 onDelete={onDelete}
                 onExport={isEdit ? handleExport : undefined}
                 onResetSchedule={onResetSchedule}
-                onSetDueDate={onSetDueDate}
                 editNodeId={editNode?.id}
-                initialDueAt={editNode?.deck?.dueAt ?? null}
+                dueDate={dueDate}
+                onDueDateChange={setDueDate}
                 name={name}
                 onNameChange={setName}
                 topic={topic}
