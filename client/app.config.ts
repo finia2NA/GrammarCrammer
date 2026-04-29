@@ -2,7 +2,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 const devServerHost = process.env.DEV_SERVER_HOST || 'localhost';
 const devServerPort = process.env.DEV_SERVER_PORT || '3001';
-const allowUnsafeHttp = process.env.IOS_ALLOW_HTTP === '1';
+const backendDebugUiEnabled = process.env.BACKEND_DEBUG_UI !== '0';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -20,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     deploymentTarget: '26.0',
     infoPlist: {
       NSAppTransportSecurity: {
-        NSAllowsArbitraryLoads: allowUnsafeHttp,
+        NSAllowsArbitraryLoads: true,
         NSAllowsLocalNetworking: true,
       },
     },
@@ -60,5 +60,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     devServerHost,
     devServerPort,
+    backendDebugUiEnabled,
   },
 });

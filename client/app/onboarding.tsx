@@ -17,6 +17,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl } from '@/lib/storage';
@@ -106,6 +107,7 @@ function RainbowButton({ onPress, label }: { onPress: () => void; label: string 
 // ─── Card content ────────────────────────────────────────────────────────────
 
 const TOTAL_STEPS = 4;
+const BACKEND_DEBUG_UI_ENABLED = Constants.expoConfig?.extra?.backendDebugUiEnabled !== false;
 
 const WelcomeCard = memo(function WelcomeCard() {
   return (
@@ -330,10 +332,15 @@ function normalizeBackendInput(input: string): string | null {
   if (!trimmed) return null;
 
   try {
-    const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    const hasScheme = /^https?:\/\//i.test(trimmed);
+    const withScheme = hasScheme
+      ? trimmed
+      : /^[\d.]+(:\d+)?$/.test(trimmed) || trimmed.startsWith('localhost')
+        ? `http://${trimmed}`
+        : `https://${trimmed}`;
     const url = new URL(withScheme);
     if (!url.hostname) return null;
-    if (!url.port) url.port = '3001';
+    if (!hasScheme && !url.port && url.protocol === 'http:') url.port = '3001';
     url.pathname = '/api';
     url.search = '';
     url.hash = '';
@@ -376,6 +383,26 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
     setMessage('Cleared.');
   }
 
+  async function handleTest() {
+    const baseUrl = normalizeBackendInput(backendInput);
+    if (!baseUrl) {
+      setMessage('Enter a valid IP or URL.');
+      return;
+    }
+    setMessage('Testing...');
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setMessage(`HTTP ${res.status}`);
+        return;
+      }
+      setMessage(body?.status === 'ok' ? `OK: ${baseUrl}` : 'Connected, but unexpected response.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Network request failed.');
+    }
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
@@ -386,7 +413,7 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
         >
           <Text className="text-foreground text-lg font-bold mb-2">Backend IP</Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-4">
-            Enter your Mac&apos;s Meshnet or LAN IP. Port defaults to 3001.
+            Enter your Mac&apos;s Meshnet/LAN IP or a backend URL.
           </Text>
           <TextInput
             className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
@@ -404,6 +431,9 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
           <View className="flex-row gap-3 mt-5">
             <TouchableOpacity className="flex-1 py-3 rounded-xl border border-border items-center" onPress={handleClear}>
               <Text className="text-foreground/80 font-semibold">Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity className="flex-1 py-3 rounded-xl border border-border items-center" onPress={handleTest}>
+              <Text className="text-foreground/80 font-semibold">Test</Text>
             </TouchableOpacity>
             <TouchableOpacity className="flex-1 py-3 rounded-xl bg-primary items-center" onPress={handleSave}>
               <Text className="text-primary-foreground font-semibold">Save</Text>
@@ -541,6 +571,7 @@ export default function Onboarding() {
   const isApiKeyStep = step === 3 && showApiKeyForm;
 
   const registerBackgroundTap = useCallback(() => {
+    if (!BACKEND_DEBUG_UI_ENABLED) return;
     if (backgroundTapTimer.current) clearTimeout(backgroundTapTimer.current);
     backgroundTapCount.current += 1;
     if (backgroundTapCount.current >= 10) {
@@ -554,6 +585,7 @@ export default function Onboarding() {
   }, []);
 
   const handleRootTouchEnd = useCallback((event: any) => {
+    if (!BACKEND_DEBUG_UI_ENABLED) return;
     if (backendModalVisible) return;
     const { pageX, pageY } = event.nativeEvent;
     cardRef.current?.measureInWindow((x, y, width, height) => {
@@ -687,7 +719,9 @@ export default function Onboarding() {
           </View>
         </View>
       </ScrollView>
-      <BackendHostModal visible={backendModalVisible} onClose={() => setBackendModalVisible(false)} />
+      {BACKEND_DEBUG_UI_ENABLED && (
+        <BackendHostModal visible={backendModalVisible} onClose={() => setBackendModalVisible(false)} />
+      )}
     </KeyboardAvoidingView>
   );
 }
