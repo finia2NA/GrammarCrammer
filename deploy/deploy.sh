@@ -14,12 +14,16 @@ echo "=== Building frontend (Expo web) ==="
 pnpm --filter client exec expo export --platform web
 
 echo ""
+echo "=== Building shared package ==="
+pnpm --filter @grammarcrammer/shared build
+
+echo ""
 echo "=== Building backend (TypeScript) ==="
 pnpm --filter server build
 
 echo ""
 echo "=== Uploading to server ==="
-ssh ${SERVER} "mkdir -p ${TEMP_DIR}/{server,client,web}"
+ssh ${SERVER} "mkdir -p ${TEMP_DIR}/{server,client,shared,web}"
 
 # Upload server files (source + dist + prisma, excluding node_modules/.env/db)
 # Include root-level pnpm files so pnpm install --filter works on the VPS
@@ -36,6 +40,11 @@ rsync -az \
 
 # Send real client package.json so the lockfile matches
 rsync -az client/package.json ${SERVER}:${TEMP_DIR}/client/package.json
+
+# Upload shared workspace package required by the backend at runtime
+rsync -az --delete \
+  --exclude='node_modules' \
+  shared/ ${SERVER}:${TEMP_DIR}/shared/
 
 # Upload web static files
 rsync -az --delete \
@@ -65,6 +74,7 @@ ssh ${SERVER} << 'DEPLOY_EOF'
   cp -r ${TEMP_DIR}/package.json ${TEMP_DIR}/pnpm-workspace.yaml ${TEMP_DIR}/pnpm-lock.yaml ${REMOTE_APP}/
   cp -r ${TEMP_DIR}/server ${REMOTE_APP}/server
   cp -r ${TEMP_DIR}/client ${REMOTE_APP}/client
+  cp -r ${TEMP_DIR}/shared ${REMOTE_APP}/shared
 
   # Symlink .env files from persistent location
   [ -f ${ENV_DIR}/server.env ] && ln -sf ${ENV_DIR}/server.env ${REMOTE_APP}/server/.env
