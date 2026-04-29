@@ -5,6 +5,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
+  Modal,
   ActivityIndicator,
   KeyboardAvoidingView,
   Keyboard,
@@ -12,11 +14,12 @@ import {
   ScrollView,
   Animated,
   Easing,
+  StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { setAuthToken } from '@/lib/storage';
+import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl } from '@/lib/storage';
 import { register, login, setApiKey, validateApiKey, getMe } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
@@ -320,6 +323,98 @@ function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }:
   );
 }
 
+// ─── Hidden backend override ─────────────────────────────────────────────────
+
+function normalizeBackendInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  try {
+    const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    const url = new URL(withScheme);
+    if (!url.hostname) return null;
+    if (!url.port) url.port = '3001';
+    url.pathname = '/api';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+}
+
+function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const colors = useColors();
+  const [backendInput, setBackendInput] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let mounted = true;
+    getBackendBaseUrl().then(url => {
+      if (!mounted) return;
+      setBackendInput(url?.replace(/^https?:\/\//, '').replace(/\/api$/, '') ?? '');
+      setMessage(null);
+    });
+    return () => { mounted = false; };
+  }, [visible]);
+
+  async function handleSave() {
+    const baseUrl = normalizeBackendInput(backendInput);
+    if (!baseUrl) {
+      setMessage('Enter a valid IP or URL.');
+      return;
+    }
+    await setBackendBaseUrl(baseUrl);
+    setMessage(`Saved ${baseUrl}`);
+    onClose();
+  }
+
+  async function handleClear() {
+    await clearBackendBaseUrl();
+    setBackendInput('');
+    setMessage('Cleared.');
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable
+          className="bg-surface rounded-2xl p-5 border border-border"
+          style={styles.backendModalCard}
+          onPress={e => e.stopPropagation()}
+        >
+          <Text className="text-foreground text-lg font-bold mb-2">Backend IP</Text>
+          <Text className="text-foreground-secondary text-sm leading-5 mb-4">
+            Enter your Mac&apos;s Meshnet or LAN IP. Port defaults to 3001.
+          </Text>
+          <TextInput
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
+            placeholder="100.86.5.173"
+            placeholderTextColor={colors.foreground_muted}
+            value={backendInput}
+            onChangeText={setBackendInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+          {message && (
+            <Text className="text-foreground-secondary text-xs mt-2">{message}</Text>
+          )}
+          <View className="flex-row gap-3 mt-5">
+            <TouchableOpacity className="flex-1 py-3 rounded-xl border border-border items-center" onPress={handleClear}>
+              <Text className="text-foreground/80 font-semibold">Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity className="flex-1 py-3 rounded-xl bg-primary items-center" onPress={handleSave}>
+              <Text className="text-primary-foreground font-semibold">Save</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Onboarding() {
@@ -334,8 +429,12 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [accountSuccess, setAccountSuccess] = useState(false);
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
+  const [backendModalVisible, setBackendModalVisible] = useState(false);
 
   const stepRef = useRef(0);
+  const cardRef = useRef<View>(null);
+  const backgroundTapCount = useRef(0);
+  const backgroundTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerWidthRef = useRef(0);
   const heights = useRef<number[]>(Array(TOTAL_STEPS).fill(0));
   const cardAnimX = useRef(new Animated.Value(0)).current;
@@ -441,6 +540,32 @@ export default function Onboarding() {
   const isAccountStep = step === 3 && !showApiKeyForm;
   const isApiKeyStep = step === 3 && showApiKeyForm;
 
+  const registerBackgroundTap = useCallback(() => {
+    if (backgroundTapTimer.current) clearTimeout(backgroundTapTimer.current);
+    backgroundTapCount.current += 1;
+    if (backgroundTapCount.current >= 10) {
+      backgroundTapCount.current = 0;
+      setBackendModalVisible(true);
+      return;
+    }
+    backgroundTapTimer.current = setTimeout(() => {
+      backgroundTapCount.current = 0;
+    }, 2500);
+  }, []);
+
+  const handleRootTouchEnd = useCallback((event: any) => {
+    if (backendModalVisible) return;
+    const { pageX, pageY } = event.nativeEvent;
+    cardRef.current?.measureInWindow((x, y, width, height) => {
+      const insideCard =
+        pageX >= x &&
+        pageX <= x + width &&
+        pageY >= y &&
+        pageY <= y + height;
+      if (!insideCard) registerBackgroundTap();
+    });
+  }, [backendModalVisible, registerBackgroundTap]);
+
   // Note that this swipe is swipe -> move, not a true "drag". For now, this is fine imo, but could be better technically.
   const swipe = Gesture.Pan()
     .activeOffsetX([-20, 20])   // activate only on clear horizontal movement
@@ -455,6 +580,7 @@ export default function Onboarding() {
     <KeyboardAvoidingView
       className="flex-1 bg-background"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      onTouchEndCapture={handleRootTouchEnd}
     >
       <OnboardingBackground />
       <ScrollView
@@ -469,7 +595,7 @@ export default function Onboarding() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Card */}
-        <View className="w-full max-w-md bg-surface rounded-3xl p-8 shadow-2xl">
+        <View ref={cardRef} className="w-full max-w-md bg-surface rounded-3xl p-8 shadow-2xl">
 
           {/* Step dots */}
           <View className="flex-row mb-8 gap-2">
@@ -561,6 +687,21 @@ export default function Onboarding() {
           </View>
         </View>
       </ScrollView>
+      <BackendHostModal visible={backendModalVisible} onClose={() => setBackendModalVisible(false)} />
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  backendModalCard: {
+    width: '100%',
+    maxWidth: 420,
+  },
+});

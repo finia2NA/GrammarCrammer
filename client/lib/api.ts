@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { getAuthToken, clearAuthToken } from './storage';
+import { getAuthToken, clearAuthToken, getBackendBaseUrl } from './storage';
 import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint } from './types';
 
-function getBaseUrl(): string {
+function getConfiguredBaseUrl(): string {
   if (Platform.OS === 'web' && !__DEV__) {
     // Production web: same origin, nginx proxies /api → Express
     return '/api';
@@ -15,7 +15,10 @@ function getBaseUrl(): string {
   return `http://${host}:${port}/api`;
 }
 
-const BASE_URL = getBaseUrl();
+async function getBaseUrl(): Promise<string> {
+  const override = await getBackendBaseUrl();
+  return override ?? getConfiguredBaseUrl();
+}
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
@@ -35,7 +38,8 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = await getHeaders();
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const baseUrl = await getBaseUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: { ...headers, ...options.headers },
   });
@@ -192,13 +196,14 @@ export async function importDecksFromCsv(
   cardCount: number,
 ): Promise<CsvImportResult> {
   const token = await getAuthToken();
+  const baseUrl = await getBaseUrl();
   const formData = new FormData();
   formData.append('file', new Blob([csvContent], { type: 'text/csv' }), 'import.csv');
   formData.append('collectionPath', collectionPath);
   formData.append('language', language);
   formData.append('cardCount', String(cardCount));
 
-  const res = await fetch(`${BASE_URL}/decks/import-csv`, {
+  const res = await fetch(`${baseUrl}/decks/import-csv`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
@@ -369,7 +374,8 @@ async function streamSSE(
   onCost?: (usd: number) => void,
 ): Promise<{ wasTruncated?: boolean }> {
   const headers = await getHeaders();
-  const url = `${BASE_URL}${path}`;
+  const baseUrl = await getBaseUrl();
+  const url = `${baseUrl}${path}`;
   const wasTruncated = { value: false };
 
   // Web supports ReadableStream; native (iOS/Android) does not expose res.body reliably.

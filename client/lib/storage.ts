@@ -4,6 +4,7 @@ const KEYS = {
   AUTH_TOKEN: 'auth_token',
   ONBOARDING_COMPLETE: 'onboarding_complete',
   COLLAPSED_NODES: 'collapsed_nodes',
+  BACKEND_BASE_URL: 'backend_base_url',
 } as const;
 
 export async function getAuthToken(): Promise<string | null> {
@@ -39,4 +40,16 @@ export async function getCollapsedNodes(): Promise<Set<string>> {
 
 export async function setCollapsedNodes(ids: Set<string>): Promise<void> {
   await AsyncStorage.setItem(KEYS.COLLAPSED_NODES, JSON.stringify([...ids]));
+}
+
+export async function getBackendBaseUrl(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.BACKEND_BASE_URL);
+}
+
+export async function setBackendBaseUrl(url: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.BACKEND_BASE_URL, url);
+}
+
+export async function clearBackendBaseUrl(): Promise<void> {
+  await AsyncStorage.removeItem(KEYS.BACKEND_BASE_URL);
 }
