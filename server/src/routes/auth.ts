@@ -10,7 +10,9 @@ authRouter.post('/register', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) throw new AppError(400, 'MISSING_FIELDS', 'Email and password are required.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError(400, 'INVALID_EMAIL', 'Please enter a valid email address.');
     if (password.length < 8) throw new AppError(400, 'WEAK_PASSWORD', 'Password must be at least 8 characters.');
+    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) throw new AppError(400, 'WEAK_PASSWORD', 'Password must contain at least one letter and one number.');
     const result = await register(email, password);
     res.status(201).json(result);
   } catch (e) { next(e); }

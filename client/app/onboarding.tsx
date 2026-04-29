@@ -494,6 +494,20 @@ export default function Onboarding() {
       setError('Please enter your email and password.');
       return;
     }
+    if (!isLogin) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+      if (password.trim().length < 8) {
+        setError('Password must be at least 8 characters.');
+        return;
+      }
+      if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+        setError('Password must contain at least one letter and one number.');
+        return;
+      }
+    }
     setError(null);
     setLoading(true);
     try {
