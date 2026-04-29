@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { sendPasswordResetEmail } from './email.service.js';
 
 const JWT_EXPIRY = '7d';
 
@@ -75,6 +77,43 @@ export async function findOrCreateByGoogle(googleId: string, email: string | nul
 
   user = await prisma.user.create({ data: { googleId, email } });
   return { token: signToken(user.id), user: { id: user.id, email: user.email } };
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.passwordHash) return;
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await prisma.passwordResetToken.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, tokenHash, expiresAt },
+    update: { tokenHash, expiresAt },
+  });
+
+  const resetUrl = `${config.appUrl}/reset-password?token=${rawToken}`;
+  await sendPasswordResetEmail(email, resetUrl);
+}
+
+export async function resetPassword(rawToken: string, newPassword: string): Promise<void> {
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const record = await prisma.passwordResetToken.findFirst({ where: { tokenHash } });
+
+  if (!record) throw new AppError(400, 'INVALID_TOKEN', 'This reset link is invalid or has expired.');
+
+  if (record.expiresAt < new Date()) {
+    await prisma.passwordResetToken.delete({ where: { id: record.id } });
+    throw new AppError(400, 'INVALID_TOKEN', 'This reset link is invalid or has expired.');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.delete({ where: { id: record.id } }),
+  ]);
 }
 
 export async function getMe(userId: string) {

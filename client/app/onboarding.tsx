@@ -21,7 +21,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl } from '@/lib/storage';
-import { register, login, setApiKey, validateApiKey, getMe, hydrateSettings } from '@/lib/api';
+import { register, login, setApiKey, validateApiKey, getMe, hydrateSettings, forgotPassword } from '@/lib/api';
 import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
@@ -180,10 +180,11 @@ interface AccountCardProps {
   isLogin: boolean;
   onToggleMode: () => void;
   onSubmit: () => void;
+  onForgotPassword: () => void;
   success: boolean;
 }
 
-function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, onSubmit, success }: AccountCardProps) {
+function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, onSubmit, onForgotPassword, success }: AccountCardProps) {
   const colors = useColors();
   const passwordRef = useRef<TextInput>(null);
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -261,11 +262,18 @@ function AccountCard({ email, onEmailChange, password, onPasswordChange, error, 
         <Text className="text-error text-xs mt-2">{error}</Text>
       )}
       {!success && (
-        <TouchableOpacity onPress={onToggleMode} className="mt-4">
-          <Text className="text-primary text-sm">
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity onPress={onToggleMode} className="mt-4">
+            <Text className="text-primary text-sm">
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </Text>
+          </TouchableOpacity>
+          {isLogin && (
+            <TouchableOpacity onPress={onForgotPassword} className="mt-2">
+              <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </>
   );
@@ -445,6 +453,52 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
   );
 }
 
+// ─── Forgot password card (inline, replaces panel 4) ─────────────────────────
+
+interface ForgotPasswordCardProps {
+  email: string;
+  onEmailChange: (v: string) => void;
+  error: string | null;
+  loading: boolean;
+  sent: boolean;
+}
+
+function ForgotPasswordCard({ email, onEmailChange, error, loading, sent }: ForgotPasswordCardProps) {
+  const colors = useColors();
+
+  return (
+    <>
+      <Text className="text-3xl font-bold text-foreground mb-2">Reset password</Text>
+      {sent ? (
+        <Text className="text-foreground-secondary text-sm leading-6">
+          If an account with that email exists, we&apos;ve sent a reset link. Check your inbox.
+        </Text>
+      ) : (
+        <>
+          <Text className="text-foreground-secondary text-sm leading-6 mb-6">
+            Enter your email and we&apos;ll send you a link to reset your password.
+          </Text>
+          <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
+          <View className="p-1">
+            <TextInput
+              className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+              placeholder="you@example.com"
+              placeholderTextColor={colors.foreground_muted}
+              value={email}
+              onChangeText={onEmailChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={!loading}
+            />
+          </View>
+          {error && <Text className="text-error text-xs mt-2">{error}</Text>}
+        </>
+      )}
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Onboarding() {
@@ -460,6 +514,8 @@ export default function Onboarding() {
   const [accountSuccess, setAccountSuccess] = useState(false);
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
   const [backendModalVisible, setBackendModalVisible] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const stepRef = useRef(0);
   const cardRef = useRef<View>(null);
@@ -480,6 +536,7 @@ export default function Onboarding() {
     Keyboard.dismiss();
     setError(null);
     if (showApiKeyForm) setShowApiKeyForm(false);
+    if (showForgotPassword) { setShowForgotPassword(false); setForgotSent(false); }
     const pw = containerWidthRef.current;
     stepRef.current = nextStep;
     Animated.parallel([
@@ -524,6 +581,24 @@ export default function Onboarding() {
     } catch (e) {
       setLoading(false);
       setError(e instanceof Error ? e.message : 'An error occurred.');
+    }
+  }
+
+  async function handleForgotSubmit() {
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await forgotPassword(trimmed);
+      setForgotSent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'An error occurred.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -583,7 +658,8 @@ export default function Onboarding() {
     }
   }, [accountSuccess, isLogin, handlePostAccountNext]);
 
-  const isAccountStep = step === 3 && !showApiKeyForm;
+  const isForgotStep = step === 3 && showForgotPassword;
+  const isAccountStep = step === 3 && !showApiKeyForm && !showForgotPassword;
   const isApiKeyStep = step === 3 && showApiKeyForm;
 
   const registerBackgroundTap = useCallback(() => {
@@ -666,9 +742,11 @@ export default function Onboarding() {
                   <WelcomeCard key="welcome" />,
                   <HowItWorksCard key="how-it-works" />,
                   <AlphaWarningCard key="alpha-warning" />,
-                  showApiKeyForm
-                    ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
-                    : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} success={accountSuccess} />,
+                  showForgotPassword
+                    ? <ForgotPasswordCard key="forgot-card" email={email} onEmailChange={setEmail} error={step === 3 ? error : null} loading={loading} sent={forgotSent} />
+                    : showApiKeyForm
+                      ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
+                      : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} onForgotPassword={() => { setShowForgotPassword(true); setForgotSent(false); setError(null); }} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
                     {panel}
@@ -680,11 +758,15 @@ export default function Onboarding() {
 
           {/* Navigation */}
           <View className="flex-row mt-8 gap-3">
-            {(step > 0 || showApiKeyForm) && (
+            {(step > 0 || showApiKeyForm || showForgotPassword) && (
               <TouchableOpacity
                 className="flex-1 py-3.5 rounded-xl border border-border items-center"
                 onPress={() => {
-                  if (showApiKeyForm) {
+                  if (showForgotPassword) {
+                    setShowForgotPassword(false);
+                    setForgotSent(false);
+                    setError(null);
+                  } else if (showApiKeyForm) {
                     setShowApiKeyForm(false);
                     setError(null);
                   } else {
@@ -696,7 +778,21 @@ export default function Onboarding() {
                 <Text className="text-foreground/80 font-semibold">Back</Text>
               </TouchableOpacity>
             )}
-            {isApiKeyStep ? (
+            {isForgotStep ? (
+              !forgotSent ? (
+                <TouchableOpacity
+                  className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
+                  onPress={handleForgotSubmit}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-primary-foreground font-semibold">Send Link</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null
+            ) : isApiKeyStep ? (
               <TouchableOpacity
                 className={`flex-1 py-3.5 rounded-xl items-center ${loading ? 'bg-primary/70' : 'bg-primary'}`}
                 onPress={handleSubmitKey}

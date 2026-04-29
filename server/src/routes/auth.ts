@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe } from '../services/auth.service.js';
+import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe, requestPasswordReset, resetPassword } from '../services/auth.service.js';
 import { requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { config } from '../config.js';
@@ -62,6 +62,44 @@ authRouter.post('/google', async (req, res, next) => {
 
     const result = await findOrCreateByGoogle(payload.sub, payload.email ?? null);
     res.json(result);
+  } catch (e) { next(e); }
+});
+
+const resetRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+authRouter.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new AppError(400, 'INVALID_EMAIL', 'Please enter a valid email address.');
+    }
+
+    const key = email.toLowerCase();
+    const now = Date.now();
+    const entry = resetRateLimit.get(key);
+    if (entry && entry.resetAt > now && entry.count >= 3) {
+      throw new AppError(429, 'RATE_LIMITED', 'Too many reset requests. Please try again later.');
+    }
+    if (!entry || entry.resetAt <= now) {
+      resetRateLimit.set(key, { count: 1, resetAt: now + 15 * 60 * 1000 });
+    } else {
+      entry.count++;
+    }
+
+    await requestPasswordReset(email.trim());
+    res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
+  } catch (e) { next(e); }
+});
+
+authRouter.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) throw new AppError(400, 'MISSING_FIELDS', 'Token and new password are required.');
+    if (newPassword.length < 8) throw new AppError(400, 'WEAK_PASSWORD', 'Password must be at least 8 characters.');
+    if (!/[a-zA-Z]/.test(newPassword) || !/\d/.test(newPassword)) throw new AppError(400, 'WEAK_PASSWORD', 'Password must contain at least one letter and one number.');
+
+    await resetPassword(token, newPassword);
+    res.json({ message: 'Password has been reset.' });
   } catch (e) { next(e); }
 });
 

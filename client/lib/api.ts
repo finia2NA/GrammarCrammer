@@ -105,6 +105,13 @@ export async function login(email: string, password: string) {
   });
 }
 
+export async function forgotPassword(email: string) {
+  return request<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function loginWithApple(identityToken: string) {
   return request<{ token: string; user: { id: string; email: string | null } }>('/auth/apple', {
     method: 'POST',

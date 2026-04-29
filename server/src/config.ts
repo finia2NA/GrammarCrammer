@@ -18,6 +18,9 @@ export const config = {
   centralApiKey: process.env.CENTRAL_API_KEY || null,
   centralKeyUserMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_USER_MONTHLY_LIMIT ?? '0'),
   centralKeyGlobalMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT ?? '0'),
+  resendApiKey: process.env.RESEND_API_KEY || null,
+  appUrl: process.env.APP_URL || `http://localhost:${process.env.PORT ?? '3001'}`,
+  emailFrom: process.env.EMAIL_FROM || 'GrammarCrammer <noreply@grammarcrammer.richardhanss.de>',
 } as const;
 
 export function isCentralKeyAvailable(): boolean {
