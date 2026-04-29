@@ -9,7 +9,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   const { Resend } = await import('resend');
   const resend = new Resend(config.resendApiKey);
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: config.emailFrom,
     to,
     subject: 'Reset your GrammarCrammer password',
@@ -28,4 +28,10 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
       </div>
     `,
   });
+
+  if (error) {
+    console.error(`[email] Failed to send reset email to ${to}:`, error);
+    throw new Error(`Failed to send reset email: ${error.message}`);
+  }
+  console.log(`[email] Reset email sent to ${to} (id: ${data?.id})`);
 }
