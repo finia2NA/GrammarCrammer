@@ -166,13 +166,13 @@ export function PageSheetModal({
           style={[
             isSmallScreen ? styles.sheet : styles.card,
             { transform: [{ translateY: slideY }] },
-            isSmallScreen ? undefined : { maxHeight: height * 0.9 },
+            isSmallScreen ? undefined : { height: Math.min(height * 0.88, 680) },
           ]}
         >
           <KeyboardAvoidingView
             className={isSmallScreen ? 'flex-1 bg-background' : 'bg-background rounded-2xl overflow-hidden'}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={isSmallScreen ? styles.sheetContainer : { maxHeight: height * 0.9 }}
+            style={isSmallScreen ? styles.sheetContainer : styles.cardContainer}
           >
             {header}
             <ScrollView
@@ -222,6 +222,9 @@ const styles = StyleSheet.create({
   sheetContainer: {
     flex: 1,
     maxHeight: '100%',
+  },
+  cardContainer: {
+    flex: 1,
   },
   sheet: {
     flex: 1,
