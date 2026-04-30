@@ -1,28 +1,26 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
-  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlassView } from 'expo-glass-effect';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, useColors } from '@/constants/theme';
-import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus, createDeckFromPath } from '@/lib/api';
-import type { Card, CardPhase, DeckCard, ChatMessage, CardAttempt, WordHint } from '@/lib/types';
+import { Colors } from '@/constants/theme';
+import { createDeckFromPath } from '@/lib/api';
+import type { Card, DeckCard } from '@/lib/types';
 import type { CardCount } from '@/constants/session';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
 import type { OverlayDeck } from '@/components/session';
 import { DeckModal, type DeckFormData } from '@/components/home/DeckModal';
+import { useSessionCards } from '@/hooks/useSessionCards';
+import { formatCost } from '@/lib/format';
 
 import {
   SidePanel,
@@ -32,78 +30,10 @@ import {
   SessionCompleteScreen,
   PEEK_HEIGHT,
 } from '@/components/session';
+import { SessionTopBar, TOPBAR_HEIGHT } from '@/components/session/SessionTopBar';
 import { useScreenSize } from '@/hooks/useScreenSize';
 
 const SIDEBAR_INITIAL_WIDTH = 320;
-const TOPBAR_HEIGHT = 56;
-
-function fmtCost(usd: number): string {
-  if (usd < 1) return `${(usd * 100).toPrecision(2)}¢`;
-  return `$${usd.toFixed(2)}`;
-}
-
-// ─── Fixed top bar ───────────────────────────────────────────────────────────
-
-function SessionTopBar({
-  cardsRemaining, totalCost, totalSpend, onBack, hasContentBelow, insetTop,
-}: {
-  cardsRemaining: number;
-  totalCost: number;
-  totalSpend: number | null;
-  onBack: () => void;
-  hasContentBelow: boolean;
-  insetTop: number;
-}) {
-  const colors = useColors();
-
-  const inner = (
-    <View style={{ height: TOPBAR_HEIGHT, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <TouchableOpacity
-          onPress={onBack}
-          activeOpacity={0.7}
-          style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(128,128,128,0.15)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(128,128,128,0.25)' }}
-        >
-          <Text style={{ color: colors['foreground'] as string, opacity: 0.7, fontSize: 14, fontWeight: '600' }}>←</Text>
-        </TouchableOpacity>
-        <Text style={{ color: colors['foreground_secondary'] as string, fontSize: 14 }}>
-          {cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''} remaining
-        </Text>
-      </View>
-      <Text style={{ color: colors['foreground_subtle'] as string, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-        {fmtCost(totalCost)}{totalSpend !== null ? ` (${fmtCost(totalSpend)})` : ''}
-      </Text>
-    </View>
-  );
-
-  if (Platform.OS === 'ios') {
-    return (
-      <GlassView
-        glassEffectStyle={hasContentBelow ? 'regular' : 'none'}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, paddingTop: insetTop }}
-      >
-        {inner}
-        {hasContentBelow && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(128,128,128,0.15)' }} />}
-      </GlassView>
-    );
-  }
-
-  const bg = colors['background'] as string;
-  const solidHeight = insetTop + TOPBAR_HEIGHT;
-  const totalHeight = solidHeight + 32;
-  return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 }}>
-      {hasContentBelow && (
-        <LinearGradient
-          colors={[bg, bg, bg + '00'] as any}
-          locations={[0, solidHeight / totalHeight, 1]}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: totalHeight }}
-        />
-      )}
-      <View style={{ paddingTop: insetTop }}>{inner}</View>
-    </View>
-  );
-}
 
 // ─── Route entry point ──────────────────────────────────────────────────────
 
@@ -169,7 +99,6 @@ function DeckSession({
   const multi = useMultiDeckSession({ nodeId, selectedDeckIds });
   const [language, setLanguage] = useState('');
 
-  // Get language from first deck
   useEffect(() => {
     if (multi.decks.size > 0 && !language) {
       const firstId = multi.decks.keys().next().value;
@@ -181,7 +110,6 @@ function DeckSession({
     }
   }, [multi.decks, language]);
 
-  // Derive current card's explanation — while loading, show first deck's explanation
   const currentDeckId = multi.cards.length > 0 ? multi.cards[0].deckId : null;
   const currentDeck: DeckInfo | undefined = currentDeckId ? multi.decks.get(currentDeckId) : undefined;
   const firstDeck: DeckInfo | undefined = multi.decks.size > 0
@@ -258,28 +186,13 @@ function SessionUI({
   const [showOverlay, setShowOverlay] = useState(showExplanationOverlay);
   const [panelNarrowed, setPanelNarrowed] = useState(false);
   const [hasContentBelow, setHasContentBelow] = useState(false);
-  const [beginningTotalSpend, setBeginningTotalSpend] = useState<number | null>(null);
-  const beginningSessionCostRef = useRef<number | null>(null);
-  const [cardPhase, setCardPhase] = useState<CardPhase>('input');
-  const [answer, setAnswer] = useState('');
-  const [submittedAnswer, setSubmittedAnswer] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [wrongExplanation, setWrongExplanation] = useState('');
-  const [showHint, setShowHint] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatStreaming, setChatStreaming] = useState(false);
-  const [vocabHintDismissSignal, setVocabHintDismissSignal] = useState(0);
-  const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
-  const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const studiedRef = useRef(false);
-  const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
   const [quickDeckModalVisible, setQuickDeckModalVisible] = useState(false);
   const [quickDeckCreated, setQuickDeckCreated] = useState(false);
-  // Keyed by card.id so wrong answers are tracked per card, not per position in queue.
-  const cardWrongAnswers = useRef<Map<string, string[]>>(new Map());
-  const hintCache = useRef<Map<string, WordHint>>(new Map());
 
-  const inputRef = useRef<TextInput>(null);
+  const session = useSessionCards({
+    cards, setCards, language, explanation, addCost, setLoadError, showOverlay,
+  });
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -289,166 +202,11 @@ function SessionUI({
     router.replace('/home');
   }
 
-  // Fetch judge_with_explanation + feedback_brevity settings + total spend baseline
-  useEffect(() => {
-    getSetting('judge_with_explanation').then(v => {
-      if (v === 'off') setJudgeWithExplanation(false);
-    });
-    getSetting('feedback_brevity').then(v => {
-      if (v === 'brief') setFeedbackBrevity('brief');
-    });
-    getUsageStatus().then(status => {
-      const total = status.usage.central + status.usage.own;
-      setBeginningTotalSpend(total);
-      beginningSessionCostRef.current = total;
-    }).catch(() => {});
-  }, []);
-
-  // Focus input when card phase resets
-  useEffect(() => {
-    if (cardPhase === 'input' && !showOverlay) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [cardPhase, showOverlay]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  async function handleSubmitAnswer() {
-    const trimmed = answer.trim();
-    if (!trimmed || cardPhase !== 'input') return;
-
-    const current = cards[0];
-    setSubmittedAnswer(trimmed);
-    setCardPhase('judging');
-
-    try {
-      const result = await judgeAnswer(current, trimmed, language, judgeWithExplanation ? explanation : undefined, feedbackBrevity);
-      if (result.cost) addCost(result.cost);
-      console.log(`[judge] correct=${result.correct} reason="${result.reason}"`);
-
-      if (result.correct) {
-        setFeedback(result.reason);
-        setCardPhase('correct');
-      } else {
-        setCardPhase('wrong_explaining');
-        const rejection = await explainRejection(current, trimmed, language, explanation, feedbackBrevity);
-        if (rejection.cost) addCost(rejection.cost);
-        console.log(`[rejection] overrideToCorrect=${rejection.overrideToCorrect}`);
-        if (rejection.overrideToCorrect) {
-          setFeedback(rejection.explanation);
-          setCardPhase('correct');
-        } else {
-          setWrongExplanation(rejection.explanation);
-          setCardPhase('wrong_shown');
-        }
-      }
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'API error.');
-      setCardPhase('input');
-    }
-  }
-
   function handleStartPractising() {
     setPanelNarrowed(true);
     setTimeout(() => {
       setShowOverlay(false);
     }, 420);
-  }
-
-  const handleConfirmCorrect = useCallback(() => {
-    const current = cards[0];
-    const prevAnswers = cardWrongAnswers.current.get(current.id) ?? [];
-    const answers = [...prevAnswers, submittedAnswer];  // append the final correct answer
-    cardWrongAnswers.current.delete(current.id);
-    setCompletedCards(prev => [...prev, {
-      card: current,
-      answers,
-      deckId: (current as DeckCard).deckId,
-    }]);
-    setCards((prev: any[]) => prev.slice(1));
-    setAnswer('');
-    setFeedback('');
-    setShowHint(false);
-    setChatMessages([]);
-    setChatStreaming(false);
-    setCardPhase('input');
-  }, [cards, submittedAnswer, setCards]);
-
-  const handleConfirmWrong = useCallback(() => {
-    const current = cards[0];
-    const prev = cardWrongAnswers.current.get(current.id) ?? [];
-    cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
-    setCards((prev: any[]) => [...prev.slice(1), prev[0]]);
-    setAnswer('');
-    setWrongExplanation('');
-    setShowHint(false);
-    setChatMessages([]);
-    setChatStreaming(false);
-    setCardPhase('input');
-  }, [cards, submittedAnswer, setCards]);
-
-  // Enter key advances past judgment screens
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    if (cardPhase !== 'correct' && cardPhase !== 'wrong_shown') return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        const tag = (document.activeElement as HTMLElement)?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-        e.preventDefault();
-        if (cardPhase === 'correct') handleConfirmCorrect();
-        else handleConfirmWrong();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [cardPhase, handleConfirmCorrect, handleConfirmWrong]);
-
-  async function handleChatSend(text: string) {
-    const currentCard = cards[0];
-    if (!currentCard || chatStreaming) return;
-
-    const userMsg: ChatMessage = { role: 'user', content: text };
-    const assistantMsg: ChatMessage = { role: 'assistant', content: '' };
-
-    setChatMessages(prev => [...prev, userMsg, assistantMsg]);
-    setChatStreaming(true);
-
-    const apiMessages = [...chatMessages, userMsg].map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    }));
-
-    try {
-      await chatAboutCard(
-        currentCard,
-        submittedAnswer,
-        language,
-        cardPhase === 'correct',
-        apiMessages,
-        (chunk) => {
-          setChatMessages(prev => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            updated[updated.length - 1] = { ...last, content: last.content + chunk };
-            return updated;
-          });
-        },
-        addCost,
-        explanation,
-      );
-    } catch {
-      setChatMessages(prev => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again.',
-        };
-        return updated;
-      });
-    } finally {
-      setChatStreaming(false);
-    }
   }
 
   // ── Render: error ──────────────────────────────────────────────────────────
@@ -480,8 +238,6 @@ function SessionUI({
   if (!loading && cards.length === 0) {
     if (!studiedRef.current) {
       studiedRef.current = true;
-      // For quick study sessions (no deck), still mark studied.
-      // For deck sessions, the review endpoint handles lastStudiedAt.
       if (!decks || decks.size === 0) markStudied();
     }
 
@@ -498,7 +254,7 @@ function SessionUI({
     return (
       <>
         <SessionCompleteScreen
-          completedCards={completedCards}
+          completedCards={session.completedCards}
           decks={decks ?? new Map()}
           studyMode={studyMode}
           onDone={() => router.replace('/home')}
@@ -523,26 +279,31 @@ function SessionUI({
 
   // ── Shared flashcard deck props ────────────────────────────────────────────
 
-  const computedTotalSpend = beginningTotalSpend !== null
-    ? totalCost + beginningTotalSpend - (beginningSessionCostRef.current ?? 0)
+  const computedTotalSpend = session.beginningTotalSpend !== null
+    ? totalCost + session.beginningTotalSpend - (session.beginningSessionCostRef.current ?? 0)
     : null;
 
   const deckProps = {
-    cards, language, cardPhase,
-    answer, onChangeAnswer: setAnswer, submittedAnswer,
-    feedback, wrongExplanation,
-    showHint, onToggleHint: () => setShowHint(true),
-    onSubmitAnswer: handleSubmitAnswer,
-    onConfirmCorrect: handleConfirmCorrect,
-    onConfirmWrong: handleConfirmWrong,
-    inputRef,
-    chatMessages,
-    chatStreaming,
-    onChatSend: handleChatSend,
+    cards, language,
+    cardPhase: session.cardPhase,
+    answer: session.answer,
+    onChangeAnswer: session.setAnswer,
+    submittedAnswer: session.submittedAnswer,
+    feedback: session.feedback,
+    wrongExplanation: session.wrongExplanation,
+    showHint: session.showHint,
+    onToggleHint: session.toggleHint,
+    onSubmitAnswer: session.handleSubmitAnswer,
+    onConfirmCorrect: session.handleConfirmCorrect,
+    onConfirmWrong: session.handleConfirmWrong,
+    inputRef: session.inputRef,
+    chatMessages: session.chatMessages,
+    chatStreaming: session.chatStreaming,
+    onChatSend: session.handleChatSend,
     deckName,
-    hintCache,
+    hintCache: session.hintCache,
     addCost,
-    vocabHintDismissSignal,
+    vocabHintDismissSignal: session.vocabHintDismissSignal,
   };
 
   // ── Render: session ────────────────────────────────────────────────────────
@@ -562,7 +323,7 @@ function SessionUI({
             className="flex-1"
             behavior="height"
             enabled={Platform.OS !== 'ios'}
-            onTouchStart={() => setVocabHintDismissSignal(prev => prev + 1)}
+            onTouchStart={() => session.setVocabHintDismissSignal(prev => prev + 1)}
           >
             <SessionTopBar
               cardsRemaining={cards.length}
@@ -647,7 +408,7 @@ function SessionUI({
               {cards.length} card{cards.length !== 1 ? 's' : ''} remaining
             </Text>
             <Text className="text-foreground-subtle text-xs font-mono">
-              ${totalCost.toFixed(4)}{computedTotalSpend !== null ? ` ($${computedTotalSpend.toFixed(4)} total)` : ''}
+              {formatCost(totalCost)}{computedTotalSpend !== null ? ` (${formatCost(computedTotalSpend)} total)` : ''}
             </Text>
           </View>
         </>

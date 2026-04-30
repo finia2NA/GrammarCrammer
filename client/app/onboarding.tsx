@@ -13,96 +13,20 @@ import {
   Platform,
   ScrollView,
   Animated,
-  Easing,
   StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl } from '@/lib/storage';
 import { register, login, setApiKey, validateApiKey, getMe, hydrateSettings, forgotPassword } from '@/lib/api';
-import { formatHex } from 'culori';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
-
-// ─── Animated rainbow button ─────────────────────────────────────────────────
-
-// Perceptually uniform rainbow via OKLCH (first === last for seamless tiling)
-const RAINBOW_STEPS = 7;
-const RAINBOW_CYCLE = Array.from({ length: RAINBOW_STEPS }, (_, i) =>
-  formatHex({ mode: 'oklch', l: 0.7, c: 0.18, h: (i / (RAINBOW_STEPS - 1)) * 360 })!,
-);
-// Two full cycles back-to-back so we can translate by one cycle width seamlessly.
-// slice(1) avoids doubling the boundary color where the two cycles meet.
-const RAINBOW_TILED = [...RAINBOW_CYCLE, ...RAINBOW_CYCLE.slice(1)];
-
-function RainbowButton({ onPress, label }: { onPress: () => void; label: string }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const [btnWidth, setBtnWidth] = useState(0);
-  const animStarted = useRef(false);
-
-  useEffect(() => {
-    if (!btnWidth || animStarted.current) return;
-    animStarted.current = true;
-
-    // The gradient strip is 4*btnWidth wide, containing two identical rainbow
-    // cycles each spanning 2*btnWidth. Sweeping left by exactly 2*btnWidth
-    // brings the second cycle into view — which is identical to the first —
-    // so we can snap back to 0 and the transition is invisible.
-    const sweep = btnWidth * 2;
-
-    // Use a recursive approach instead of Animated.loop + 0-duration resets.
-    // This avoids two problems:
-    //  1. Animated.timing({duration:0}) in a sequence still schedules a frame,
-    //     causing a visible flicker at the reset point.
-    //  2. Animated.loop can apply its own easing curve on top of the inner one.
-    // By using setValue(0) in the completion callback, the reset is synchronous
-    // and happens between frames — no flicker, no extra easing.
-    let fastCount = 0;
-
-    function runSweep() {
-      const duration = fastCount < 2 ? 1500 : 5000;
-      fastCount++;
-
-      Animated.timing(translateX, {
-        toValue: -sweep,
-        duration,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (!finished) return; // unmounted or interrupted
-        translateX.setValue(0); // instant reset — no animation frame, no flicker
-        runSweep();
-      });
-    }
-
-    runSweep();
-  }, [btnWidth, translateX]);
-
-  return (
-    <TouchableOpacity
-      className="flex-1 rounded-xl overflow-hidden"
-      onPress={onPress}
-      activeOpacity={0.8}
-      onLayout={e => setBtnWidth(e.nativeEvent.layout.width)}
-    >
-      <View style={{ height: 50, justifyContent: 'center', alignItems: 'center' }}>
-        {btnWidth > 0 && (
-          <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: btnWidth * 4, transform: [{ translateX }] }}>
-            <LinearGradient
-              colors={[...RAINBOW_TILED]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        )}
-        <Text style={{ color: 'white', fontWeight: '700', fontSize: 15, zIndex: 1 }}>{label}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
+import { validateEmail, validatePassword } from '@grammarcrammer/shared';
+import { RainbowButton } from '@/components/RainbowButton';
+import { AccountCard } from '@/components/onboarding/AccountCard';
+import { ApiKeyCard } from '@/components/onboarding/ApiKeyCard';
+import { ForgotPasswordCard } from '@/components/onboarding/ForgotPasswordCard';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -169,169 +93,6 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
     </>
   );
 });
-
-interface AccountCardProps {
-  email: string;
-  onEmailChange: (v: string) => void;
-  password: string;
-  onPasswordChange: (v: string) => void;
-  error: string | null;
-  loading: boolean;
-  isLogin: boolean;
-  onToggleMode: () => void;
-  onSubmit: () => void;
-  onForgotPassword: () => void;
-  success: boolean;
-}
-
-function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, onSubmit, onForgotPassword, success }: AccountCardProps) {
-  const colors = useColors();
-  const passwordRef = useRef<TextInput>(null);
-  const successOpacity = useRef(new Animated.Value(0)).current;
-  const formDim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (success) {
-      Animated.parallel([
-        Animated.timing(formDim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
-        Animated.timing(successOpacity, { toValue: 1, duration: 500, delay: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [success, formDim, successOpacity]);
-
-  return (
-    <>
-      <Text className="text-3xl font-bold text-foreground mb-2">
-        {success
-          ? (isLogin ? 'Signed in!' : 'Account created!')
-          : (isLogin ? 'Sign in' : 'Create account')}
-      </Text>
-      <Text className="text-foreground-secondary text-sm leading-6 mb-6">
-        {success
-          ? (isLogin
-            ? 'Welcome back — your decks and settings are ready.'
-            : 'Your account is set up and ready to go.')
-          : (isLogin
-            ? 'Welcome back! Sign in to access your decks and settings.'
-            : 'Create an account to save your decks and study progress.')}
-      </Text>
-
-      {/* Email + Password fields */}
-      <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
-        <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
-        <View className="p-1 mb-3">
-          <TextInput
-            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
-            placeholder="you@example.com"
-            placeholderTextColor={colors.foreground_muted}
-            value={email}
-            onChangeText={onEmailChange}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-            editable={!loading && !success}
-          />
-        </View>
-        <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
-        <View className="p-1">
-          <TextInput
-            ref={passwordRef}
-            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
-            placeholder="At least 8 characters"
-            placeholderTextColor={colors.foreground_muted}
-            value={password}
-            onChangeText={onPasswordChange}
-            secureTextEntry
-            autoCapitalize="none"
-            returnKeyType="go"
-            onSubmitEditing={onSubmit}
-            editable={!loading && !success}
-          />
-        </View>
-      </Animated.View>
-
-      {success && (
-        <Animated.Text style={{ opacity: successOpacity, color: colors.foreground, fontSize: 24, fontWeight: '500', textAlign: 'center', marginTop: 20 }}>
-          Success!
-        </Animated.Text>
-      )}
-
-      {error && (
-        <Text className="text-error text-xs mt-2">{error}</Text>
-      )}
-      {!success && (
-        <>
-          <TouchableOpacity onPress={onToggleMode} className="mt-4">
-            <Text className="text-primary text-sm">
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </Text>
-          </TouchableOpacity>
-          {isLogin && (
-            <TouchableOpacity onPress={onForgotPassword} className="mt-2">
-              <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
-            </TouchableOpacity>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
-interface ApiKeyCardProps {
-  apiKey: string;
-  onApiKeyChange: (v: string) => void;
-  error: string | null;
-  loading: boolean;
-  canSkip?: boolean;
-  onSkip?: () => void;
-}
-
-function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, onSkip }: ApiKeyCardProps) {
-  const colors = useColors();
-  return (
-    <>
-      <Text className="text-3xl font-bold text-foreground mb-2">
-        Connect your Claude API key
-      </Text>
-      <Text className="text-foreground-secondary text-sm leading-6 mb-6">
-        GrammarCrammer uses Claude to generate study content and grade your
-        answers. Your key is stored securely on the server — it is only used to authenticate with Anthropic.
-      </Text>
-      <Text className="text-foreground/80 text-sm font-medium mb-2">
-        Anthropic API Key
-      </Text>
-      <View className="p-1">
-        <TextInput
-          className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm font-mono"
-          placeholder="sk-ant-..."
-          placeholderTextColor={colors.foreground_muted}
-          value={apiKey}
-          onChangeText={onApiKeyChange}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!loading}
-        />
-      </View>
-      {error && (
-        <Text className="text-error text-xs mt-2">{error}</Text>
-      )}
-      <Text className="text-foreground-secondary/70 text-xs mt-3 leading-5">
-        Get a key at console.anthropic.com. Usage costs apply based on your
-        Anthropic account.
-      </Text>
-      {canSkip && (
-        <TouchableOpacity onPress={onSkip} className="mt-4">
-          <Text className="text-primary text-sm">
-            Skip — use the server&apos;s key instead
-          </Text>
-        </TouchableOpacity>
-      )}
-    </>
-  );
-}
 
 // ─── Hidden backend override ─────────────────────────────────────────────────
 
@@ -453,52 +214,6 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
   );
 }
 
-// ─── Forgot password card (inline, replaces panel 4) ─────────────────────────
-
-interface ForgotPasswordCardProps {
-  email: string;
-  onEmailChange: (v: string) => void;
-  error: string | null;
-  loading: boolean;
-  sent: boolean;
-}
-
-function ForgotPasswordCard({ email, onEmailChange, error, loading, sent }: ForgotPasswordCardProps) {
-  const colors = useColors();
-
-  return (
-    <>
-      <Text className="text-3xl font-bold text-foreground mb-2">Reset password</Text>
-      {sent ? (
-        <Text className="text-foreground-secondary text-sm leading-6">
-          If an account with that email exists, we&apos;ve sent a reset link. Check your inbox.
-        </Text>
-      ) : (
-        <>
-          <Text className="text-foreground-secondary text-sm leading-6 mb-6">
-            Enter your email and we&apos;ll send you a link to reset your password.
-          </Text>
-          <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
-          <View className="p-1">
-            <TextInput
-              className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
-              placeholder="you@example.com"
-              placeholderTextColor={colors.foreground_muted}
-              value={email}
-              onChangeText={onEmailChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              editable={!loading}
-            />
-          </View>
-          {error && <Text className="text-error text-xs mt-2">{error}</Text>}
-        </>
-      )}
-    </>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Onboarding() {
@@ -545,25 +260,16 @@ export default function Onboarding() {
     ]).start(() => setStep(nextStep));
   }
 
-  // Step 3: account creation / login
   async function handleSubmitAccount() {
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password.');
       return;
     }
     if (!isLogin) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        setError('Please enter a valid email address.');
-        return;
-      }
-      if (password.trim().length < 8) {
-        setError('Password must be at least 8 characters.');
-        return;
-      }
-      if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
-        setError('Password must contain at least one letter and one number.');
-        return;
-      }
+      const emailErr = validateEmail(email);
+      if (emailErr) { setError(emailErr); return; }
+      const pwErr = validatePassword(password.trim());
+      if (pwErr) { setError(pwErr); return; }
     }
     setError(null);
     setLoading(true);
@@ -586,10 +292,8 @@ export default function Onboarding() {
 
   async function handleForgotSubmit() {
     const trimmed = email.trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Please enter a valid email address.');
-      return;
-    }
+    const emailErr = validateEmail(trimmed);
+    if (!trimmed || emailErr) { setError(emailErr ?? 'Please enter a valid email address.'); return; }
     setError(null);
     setLoading(true);
     try {
@@ -602,7 +306,6 @@ export default function Onboarding() {
     }
   }
 
-  // API key submission (shown in-place on step 3 after account success)
   async function handleSubmitKey() {
     const trimmed = apiKey.trim();
     if (!trimmed) {
@@ -627,8 +330,6 @@ export default function Onboarding() {
     }
   }
 
-  // After account success, check if user already has an API key or central key
-  // and either go home or show the API key form in-place.
   const [centralKeyAvailable, setCentralKeyAvailable] = useState(false);
 
   const handlePostAccountNext = useCallback(async () => {
@@ -650,7 +351,6 @@ export default function Onboarding() {
     setShowApiKeyForm(true);
   }, [router]);
 
-  // Auto-redirect after login success: show rainbow for 1.5s then proceed
   useEffect(() => {
     if (accountSuccess && isLogin) {
       const timer = setTimeout(() => handlePostAccountNext(), 1500);
@@ -690,10 +390,9 @@ export default function Onboarding() {
     });
   }, [backendModalVisible, registerBackgroundTap]);
 
-  // Note that this swipe is swipe -> move, not a true "drag". For now, this is fine imo, but could be better technically.
   const swipe = Gesture.Pan()
-    .activeOffsetX([-20, 20])   // activate only on clear horizontal movement
-    .failOffsetY([-10, 10])     // yield to ScrollView if vertical scroll is intended
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-10, 10])
     .runOnJS(true)
     .onEnd(e => {
       if (e.translationX < -50 && stepRef.current < TOTAL_STEPS - 1) goToStep(stepRef.current + 1);
@@ -730,13 +429,12 @@ export default function Onboarding() {
             ))}
           </View>
 
-          {/* Card body — all panels rendered side-by-side for smooth height + slide */}
+          {/* Card body */}
           <GestureDetector gesture={swipe}>
             <Animated.View
               style={{ height: heightAnim, overflow: 'hidden' }}
               onLayout={e => { containerWidthRef.current = e.nativeEvent.layout.width; }}
             >
-              {/* Show the correct card based on the step using a map */}
               <Animated.View style={{ flexDirection: 'row', width: `${TOTAL_STEPS * 100}%`, transform: [{ translateX: cardAnimX }] }}>
                 {([
                   <WelcomeCard key="welcome" />,

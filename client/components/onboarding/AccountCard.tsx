@@ -1,0 +1,111 @@
+import { useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Animated } from 'react-native';
+import { useColors } from '@/constants/theme';
+
+export interface AccountCardProps {
+  email: string;
+  onEmailChange: (v: string) => void;
+  password: string;
+  onPasswordChange: (v: string) => void;
+  error: string | null;
+  loading: boolean;
+  isLogin: boolean;
+  onToggleMode: () => void;
+  onSubmit: () => void;
+  onForgotPassword: () => void;
+  success: boolean;
+}
+
+export function AccountCard({ email, onEmailChange, password, onPasswordChange, error, loading, isLogin, onToggleMode, onSubmit, onForgotPassword, success }: AccountCardProps) {
+  const colors = useColors();
+  const passwordRef = useRef<TextInput>(null);
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const formDim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (success) {
+      Animated.parallel([
+        Animated.timing(formDim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+        Animated.timing(successOpacity, { toValue: 1, duration: 500, delay: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [success, formDim, successOpacity]);
+
+  return (
+    <>
+      <Text className="text-3xl font-bold text-foreground mb-2">
+        {success
+          ? (isLogin ? 'Signed in!' : 'Account created!')
+          : (isLogin ? 'Sign in' : 'Create account')}
+      </Text>
+      <Text className="text-foreground-secondary text-sm leading-6 mb-6">
+        {success
+          ? (isLogin
+            ? 'Welcome back — your decks and settings are ready.'
+            : 'Your account is set up and ready to go.')
+          : (isLogin
+            ? 'Welcome back! Sign in to access your decks and settings.'
+            : 'Create an account to save your decks and study progress.')}
+      </Text>
+
+      <Animated.View style={{ opacity: success ? formDim : 1 }} className="mb-4">
+        <Text className="text-foreground/80 text-sm font-medium mb-2">Email</Text>
+        <View className="p-1 mb-3">
+          <TextInput
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+            placeholder="you@example.com"
+            placeholderTextColor={colors.foreground_muted}
+            value={email}
+            onChangeText={onEmailChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            editable={!loading && !success}
+          />
+        </View>
+        <Text className="text-foreground/80 text-sm font-medium mb-2">Password</Text>
+        <View className="p-1">
+          <TextInput
+            ref={passwordRef}
+            className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+            placeholder="At least 8 characters"
+            placeholderTextColor={colors.foreground_muted}
+            value={password}
+            onChangeText={onPasswordChange}
+            secureTextEntry
+            autoCapitalize="none"
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
+            editable={!loading && !success}
+          />
+        </View>
+      </Animated.View>
+
+      {success && (
+        <Animated.Text style={{ opacity: successOpacity, color: colors.foreground, fontSize: 24, fontWeight: '500', textAlign: 'center', marginTop: 20 }}>
+          Success!
+        </Animated.Text>
+      )}
+
+      {error && (
+        <Text className="text-error text-xs mt-2">{error}</Text>
+      )}
+      {!success && (
+        <>
+          <TouchableOpacity onPress={onToggleMode} className="mt-4">
+            <Text className="text-primary text-sm">
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </Text>
+          </TouchableOpacity>
+          {isLogin && (
+            <TouchableOpacity onPress={onForgotPassword} className="mt-2">
+              <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </>
+  );
+}

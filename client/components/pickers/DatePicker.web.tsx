@@ -1,11 +1,11 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-// react-dom is present for web builds, but this app does not currently install @types/react-dom.
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 // @ts-ignore
 import { createPortal } from 'react-dom';
 import { DayPicker } from 'react-day-picker';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/constants/theme';
 import { formatLocalDateToYmd, formatYmdForDisplay, parseYmd } from './dateUtils';
+import { useWebPopover, usePopoverLifecycle } from './useWebPopoverPosition';
 import 'react-day-picker/style.css';
 
 type DatePickerPlacement = 'auto' | 'above' | 'below';
@@ -30,98 +30,41 @@ export function DatePicker({
   popoverFooter,
 }: DatePickerProps) {
   const colors = useColors();
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [open, setOpen] = useState(false);
-  const [popoverMounted, setPopoverMounted] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+  const popover = useWebPopover({
+    fallbackHeight: 430,
+    maxWidth: 380,
+    placement: popoverPlacement,
+    closeDelay: 140,
+  });
 
   const selectedDate = useMemo(() => parseYmd(value), [value]);
   const [draftDate, setDraftDate] = useState<Date | null>(selectedDate);
   const [month, setMonth] = useState<Date>(selectedDate ?? new Date());
 
   useEffect(() => {
-    if (open) {
+    if (popover.open) {
       setDraftDate(selectedDate);
       if (selectedDate) setMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
       return;
     }
 
     if (selectedDate) setMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
-  }, [open, selectedDate]);
+  }, [popover.open, selectedDate]);
 
-  const closePopover = useCallback(() => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    setClosing(true);
-    setOpen(false);
-    closeTimerRef.current = setTimeout(() => {
-      setPopoverMounted(false);
-      setClosing(false);
-      closeTimerRef.current = null;
-    }, 140);
-  }, []);
+  usePopoverLifecycle(popover.open, popover.updatePosition, [month]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onDocMouseDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (rootRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
-      closePopover();
-    }
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [open, closePopover]);
+  const handleOpen = useCallback(() => {
+    if (disabled) return;
+    const nextDraft = selectedDate ?? null;
+    setDraftDate(nextDraft);
+    setMonth(nextDraft ? new Date(nextDraft.getFullYear(), nextDraft.getMonth(), 1) : new Date());
+    popover.openPopover();
+  }, [disabled, selectedDate, popover]);
 
-  useEffect(() => () => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-  }, []);
-
-  const updatePopoverPosition = useCallback(() => {
-    if (!rootRef.current) return;
-
-    const viewportPadding = 12;
-    const gap = 8;
-    const rect = rootRef.current.getBoundingClientRect();
-    const pickerHeight = popoverRef.current?.offsetHeight ?? 430;
-    const pickerWidth = Math.min(380, window.innerWidth - viewportPadding * 2);
-    const spaceAbove = rect.top - viewportPadding;
-    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const resolvedPlacement = popoverPlacement === 'auto'
-      ? (spaceBelow < pickerHeight && spaceAbove > spaceBelow ? 'above' : 'below')
-      : popoverPlacement;
-    const rawTop = resolvedPlacement === 'above'
-      ? rect.top - pickerHeight - gap
-      : rect.bottom + gap;
-    const maxTop = window.innerHeight - pickerHeight - viewportPadding;
-
-    setPopoverStyle({
-      position: 'fixed',
-      zIndex: 10000,
-      top: Math.max(viewportPadding, Math.min(rawTop, maxTop)),
-      left: Math.max(
-        viewportPadding,
-        Math.min(rect.left + rect.width / 2 - pickerWidth / 2, window.innerWidth - pickerWidth - viewportPadding),
-      ),
-      width: pickerWidth,
-    });
-  }, [popoverPlacement]);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    updatePopoverPosition();
-  }, [open, month, updatePopoverPosition]);
-
-  useEffect(() => {
-    if (!open) return;
-    window.addEventListener('resize', updatePopoverPosition);
-    window.addEventListener('scroll', updatePopoverPosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePopoverPosition);
-      window.removeEventListener('scroll', updatePopoverPosition, true);
-    };
-  }, [open, updatePopoverPosition]);
+  function handleDone() {
+    if (draftDate) onChange(formatLocalDateToYmd(draftDate));
+    popover.closePopover();
+  }
 
   const dayPickerVars = {
     color: colors.foreground,
@@ -134,40 +77,23 @@ export function DatePicker({
     '--rdp-weekday-opacity': '1',
   } as CSSProperties;
 
-  function openPopover() {
-    if (disabled) return;
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    const nextDraft = selectedDate ?? null;
-    setDraftDate(nextDraft);
-    setMonth(nextDraft ? new Date(nextDraft.getFullYear(), nextDraft.getMonth(), 1) : new Date());
-    setPopoverStyle(null);
-    setClosing(false);
-    setPopoverMounted(true);
-    setOpen(true);
-  }
-
-  function handleDone() {
-    if (draftDate) onChange(formatLocalDateToYmd(draftDate));
-    closePopover();
-  }
-
-  const popover = popoverMounted && !disabled && typeof document !== 'undefined'
+  const portal = popover.popoverMounted && !disabled && typeof document !== 'undefined'
     ? createPortal(
         <div
-          ref={popoverRef}
+          ref={popover.popoverRef}
           style={{
-            ...popoverStyle,
+            ...popover.popoverStyle,
             borderRadius: 14,
             border: `1px solid ${colors.border}`,
             background: colors.surface,
             boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
             padding: 10,
-            visibility: popoverStyle ? 'visible' : 'hidden',
+            visibility: popover.popoverStyle ? 'visible' : 'hidden',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
-            animation: popoverStyle
-              ? `${closing ? 'grammarCrammerDatePopoverOut' : 'grammarCrammerDatePopoverIn'} ${closing ? 130 : 160}ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards`
+            animation: popover.popoverStyle
+              ? `${popover.closing ? 'grammarCrammerDatePopoverOut' : 'grammarCrammerDatePopoverIn'} ${popover.closing ? 130 : 160}ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards`
               : undefined,
             transformOrigin: 'bottom center',
           }}
@@ -220,7 +146,7 @@ export function DatePicker({
           >
             <button
               type="button"
-              onClick={closePopover}
+              onClick={popover.closePopover}
               style={{
                 justifySelf: 'start',
                 border: 0,
@@ -330,11 +256,11 @@ export function DatePicker({
     : null;
 
   return (
-    <div ref={rootRef} style={{ position: 'relative', zIndex: open ? 1200 : 1 }}>
+    <div ref={popover.rootRef} style={{ position: 'relative', zIndex: popover.open ? 1200 : 1 }}>
       <button
         type="button"
         disabled={disabled}
-        onClick={() => open ? closePopover() : openPopover()}
+        onClick={() => popover.open ? popover.closePopover() : handleOpen()}
         style={{
           width: '100%',
           minHeight: 44,
@@ -354,7 +280,7 @@ export function DatePicker({
         <span>{formatYmdForDisplay(value, placeholder)}</span>
         <Icon name="clock" size={14} color={colors.foreground} />
       </button>
-      {popover}
+      {portal}
     </div>
   );
 }

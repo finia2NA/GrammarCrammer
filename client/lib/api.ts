@@ -45,6 +45,18 @@ export class ApiError extends Error {
   }
 }
 
+async function handleHttpError(status: number, bodyJson: any): Promise<never> {
+  if (status === 401) {
+    await clearAuthToken();
+    resetLocalSettings();
+    router.replace('/onboarding');
+    throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
+  }
+  const message = bodyJson?.error?.message ?? `HTTP ${status}`;
+  const code = bodyJson?.error?.code;
+  throw new ApiError(message, status, code);
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = await getHeaders();
   const baseUrl = await getBaseUrl();
@@ -54,16 +66,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    if (res.status === 401) {
-      await clearAuthToken();
-      resetLocalSettings();
-      if (!options.signal?.aborted) router.replace('/onboarding');
-      throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
-    }
-    const body = await res.json().catch(() => ({})) as any;
-    const message = body?.error?.message ?? `HTTP ${res.status}`;
-    const code = body?.error?.code;
-    throw new ApiError(message, res.status, code);
+    const body = await res.json().catch(() => ({}));
+    await handleHttpError(res.status, body);
   }
 
   return res.json() as Promise<T>;
@@ -452,13 +456,8 @@ async function streamSSE(
   if (Platform.OS === 'web') {
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) {
-      if (res.status === 401) {
-        await clearAuthToken();
-        router.replace('/onboarding');
-        throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
-      }
-      const err = await res.json().catch(() => ({})) as any;
-      throw new ApiError(err?.error?.message ?? `HTTP ${res.status}`, res.status, err?.error?.code);
+      const err = await res.json().catch(() => ({}));
+      await handleHttpError(res.status, err);
     }
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
@@ -488,15 +487,10 @@ async function streamSSE(
         }
       };
       xhr.onload = () => {
-        if (xhr.status === 401) {
-          clearAuthToken().then(() => router.replace('/onboarding'));
-          reject(new ApiError('Session expired', 401, 'INVALID_TOKEN'));
-          return;
-        }
         if (xhr.status >= 400) {
           let err: any = {};
           try { err = JSON.parse(xhr.responseText); } catch {}
-          reject(new ApiError(err?.error?.message ?? `HTTP ${xhr.status}`, xhr.status, err?.error?.code));
+          handleHttpError(xhr.status, err).catch(reject);
           return;
         }
         resolve();

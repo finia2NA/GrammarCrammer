@@ -8,3 +8,4 @@ export { FlashcardDeck } from './FlashcardDeck';
 export { CardChat } from './CardChat';
 export { SessionCompleteScreen } from './SessionCompleteScreen';
 export { DeckRatingCard } from './DeckRatingCard';
+export { SessionTopBar, TOPBAR_HEIGHT } from './SessionTopBar';

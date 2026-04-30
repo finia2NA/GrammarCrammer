@@ -3,6 +3,7 @@ import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe, requ
 import { requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { config } from '../config.js';
+import { validateEmail, validatePassword } from '@grammarcrammer/shared';
 
 export const authRouter = Router();
 
@@ -10,9 +11,10 @@ authRouter.post('/register', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) throw new AppError(400, 'MISSING_FIELDS', 'Email and password are required.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError(400, 'INVALID_EMAIL', 'Please enter a valid email address.');
-    if (password.length < 8) throw new AppError(400, 'WEAK_PASSWORD', 'Password must be at least 8 characters.');
-    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) throw new AppError(400, 'WEAK_PASSWORD', 'Password must contain at least one letter and one number.');
+    const emailErr = validateEmail(email);
+    if (emailErr) throw new AppError(400, 'INVALID_EMAIL', emailErr);
+    const pwErr = validatePassword(password);
+    if (pwErr) throw new AppError(400, 'WEAK_PASSWORD', pwErr);
     const result = await register(email, password);
     res.status(201).json(result);
   } catch (e) { next(e); }
@@ -70,8 +72,9 @@ const resetRateLimit = new Map<string, { count: number; resetAt: number }>();
 authRouter.post('/forgot-password', async (req, res, next) => {
   try {
     const { email } = req.body;
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new AppError(400, 'INVALID_EMAIL', 'Please enter a valid email address.');
+    const forgotEmailErr = validateEmail(email ?? '');
+    if (!email || forgotEmailErr) {
+      throw new AppError(400, 'INVALID_EMAIL', forgotEmailErr ?? 'Please enter a valid email address.');
     }
 
     const key = email.toLowerCase();

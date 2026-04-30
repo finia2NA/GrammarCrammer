@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
 import { validateResetToken, resetPassword } from '@/lib/api';
+import { validatePassword } from '@grammarcrammer/shared';
 
 type PageState = 'loading' | 'invalid' | 'form' | 'success';
 
@@ -41,8 +42,8 @@ export default function ResetPassword() {
 
   async function handleSubmit() {
     setError(null);
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) { setError('Password must contain at least one letter and one number.'); return; }
+    const pwErr = validatePassword(password);
+    if (pwErr) { setError(pwErr); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
 
     setSubmitting(true);

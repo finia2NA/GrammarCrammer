@@ -1,10 +1,10 @@
-import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-// react-dom is present for web builds, but this app does not currently install @types/react-dom.
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 // @ts-ignore
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import { useColors } from '@/constants/theme';
 import { normalizeTime, splitTime } from './timeUtils';
+import { useWebPopover, usePopoverLifecycle } from './useWebPopoverPosition';
 
 interface TimePickerProps {
   value: string;
@@ -14,13 +14,12 @@ interface TimePickerProps {
 
 export function TimePicker({ value, onChange, disabled = false }: TimePickerProps) {
   const colors = useColors();
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [open, setOpen] = useState(false);
-  const [popoverMounted, setPopoverMounted] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+  const popover = useWebPopover({
+    fallbackHeight: 230,
+    maxWidth: 300,
+    closeDelay: 130,
+  });
+
   const normalizedValue = useMemo(() => normalizeTime(value), [value]);
   const { hour, minute } = splitTime(normalizedValue);
   const [textValue, setTextValue] = useState(normalizedValue);
@@ -29,78 +28,13 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
 
   useEffect(() => {
     setTextValue(normalizedValue);
-    if (!open) {
+    if (!popover.open) {
       setDraftHour(hour);
       setDraftMinute(minute);
     }
-  }, [hour, minute, normalizedValue, open]);
+  }, [hour, minute, normalizedValue, popover.open]);
 
-  const closePopover = useCallback(() => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    setClosing(true);
-    setOpen(false);
-    closeTimerRef.current = setTimeout(() => {
-      setPopoverMounted(false);
-      setClosing(false);
-      closeTimerRef.current = null;
-    }, 130);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDocMouseDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (rootRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
-      closePopover();
-    }
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [open, closePopover]);
-
-  useEffect(() => () => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-  }, []);
-
-  const updatePopoverPosition = useCallback(() => {
-    if (!rootRef.current) return;
-
-    const viewportPadding = 12;
-    const gap = 8;
-    const rect = rootRef.current.getBoundingClientRect();
-    const pickerHeight = popoverRef.current?.offsetHeight ?? 230;
-    const pickerWidth = Math.min(300, window.innerWidth - viewportPadding * 2);
-    const spaceAbove = rect.top - viewportPadding;
-    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
-    const openAbove = spaceBelow < pickerHeight && spaceAbove > spaceBelow;
-    const rawTop = openAbove ? rect.top - pickerHeight - gap : rect.bottom + gap;
-    const maxTop = window.innerHeight - pickerHeight - viewportPadding;
-
-    setPopoverStyle({
-      position: 'fixed',
-      zIndex: 10000,
-      top: Math.max(viewportPadding, Math.min(rawTop, maxTop)),
-      left: Math.max(
-        viewportPadding,
-        Math.min(rect.left + rect.width / 2 - pickerWidth / 2, window.innerWidth - pickerWidth - viewportPadding),
-      ),
-      width: pickerWidth,
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    updatePopoverPosition();
-  }, [open, updatePopoverPosition]);
-
-  useEffect(() => {
-    if (!open) return;
-    window.addEventListener('resize', updatePopoverPosition);
-    window.addEventListener('scroll', updatePopoverPosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePopoverPosition);
-      window.removeEventListener('scroll', updatePopoverPosition, true);
-    };
-  }, [open, updatePopoverPosition]);
+  usePopoverLifecycle(popover.open, popover.updatePosition);
 
   function commitTextValue() {
     const normalized = normalizeTime(textValue);
@@ -108,23 +42,19 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     onChange(normalized);
   }
 
-  function openPopover() {
+  const handleOpen = useCallback(() => {
     if (disabled) return;
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     const { hour: nextHour, minute: nextMinute } = splitTime(textValue);
     setDraftHour(nextHour);
     setDraftMinute(nextMinute);
-    setPopoverStyle(null);
-    setClosing(false);
-    setPopoverMounted(true);
-    setOpen(true);
-  }
+    popover.openPopover();
+  }, [disabled, textValue, popover]);
 
   function handleDone() {
     const next = normalizeTime(`${draftHour}:${draftMinute}`);
     setTextValue(next);
     onChange(next);
-    closePopover();
+    popover.closePopover();
   }
 
   const inputStyle: CSSProperties = {
@@ -150,22 +80,22 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     fontWeight: 650,
   };
 
-  const popover = popoverMounted && !disabled && typeof document !== 'undefined'
+  const portal = popover.popoverMounted && !disabled && typeof document !== 'undefined'
     ? createPortal(
         <div
-          ref={popoverRef}
+          ref={popover.popoverRef}
           style={{
-            ...popoverStyle,
+            ...popover.popoverStyle,
             borderRadius: 14,
             border: `1px solid ${colors.border}`,
             background: colors.surface,
             boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
             padding: 10,
-            visibility: popoverStyle ? 'visible' : 'hidden',
+            visibility: popover.popoverStyle ? 'visible' : 'hidden',
             display: 'grid',
             gap: 10,
-            animation: popoverStyle
-              ? `${closing ? 'grammarCrammerTimePopoverOut' : 'grammarCrammerTimePopoverIn'} ${closing ? 130 : 160}ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards`
+            animation: popover.popoverStyle
+              ? `${popover.closing ? 'grammarCrammerTimePopoverOut' : 'grammarCrammerTimePopoverIn'} ${popover.closing ? 130 : 160}ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards`
               : undefined,
             transformOrigin: 'top center',
           }}
@@ -207,7 +137,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
           >
             <button
               type="button"
-              onClick={closePopover}
+              onClick={popover.closePopover}
               style={{
                 justifySelf: 'start',
                 border: 0,
@@ -260,7 +190,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
 
   return (
     <div
-      ref={rootRef}
+      ref={popover.rootRef}
       style={{
         width: 106,
         height: 33,
@@ -295,7 +225,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
       <button
         type="button"
         disabled={disabled}
-        onClick={open ? closePopover : openPopover}
+        onClick={popover.open ? popover.closePopover : handleOpen}
         aria-label="Open time picker"
         style={{
           width: 36,
@@ -312,7 +242,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
       >
         <Icon name="clock" size={14} color={colors.foreground} />
       </button>
-      {popover}
+      {portal}
     </div>
   );
 }

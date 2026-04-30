@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
@@ -26,6 +26,7 @@ import {
   syncReviewTimezone,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
+import { platformAlert, platformConfirm } from '@/lib/platformAlert';
 import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
 import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
 
@@ -91,20 +92,8 @@ export default function Home() {
         return;
       }
 
-      if (Platform.OS === 'web') {
-        const confirmed = window.confirm('This deck is not due yet. Study it anyway?');
-        if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early' });
-        return;
-      }
-
-      Alert.alert(
-        'Deck not due',
-        'This deck is not due yet. You can still study it now.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Study Anyway', onPress: () => startStudy({ nodeId: node.id, studyMode: 'early' }) },
-        ],
-      );
+      const confirmed = await platformConfirm('Deck not due', 'This deck is not due yet. Study it anyway?');
+      if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early' });
       return;
     }
 
@@ -128,25 +117,12 @@ export default function Home() {
     }
 
     if (notStartedDeckIds.length === 0) {
-      if (Platform.OS === 'web') window.alert('No due decks (or not-yet-started decks) are available in this collection right now.');
-      else Alert.alert('Nothing to study', 'No due decks (or not-yet-started decks) are available in this collection right now.');
+      platformAlert('Nothing to study', 'No due decks (or not-yet-started decks) are available in this collection right now.');
       return;
     }
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('No decks in this collection are due. Study not-yet-started decks anyway?');
-      if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds });
-      return;
-    }
-
-    Alert.alert(
-      'No decks due',
-      'No decks in this collection are due yet. You can still study not-yet-started decks now.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Study Anyway', onPress: () => startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds }) },
-      ],
-    );
+    const confirmed = await platformConfirm('No decks due', 'No decks in this collection are due. Study not-yet-started decks anyway?');
+    if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds });
   }, [router]);
 
   const handleEdit = useCallback(async (node: TreeNode) => {

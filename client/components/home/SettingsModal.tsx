@@ -2,17 +2,13 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { useRouter } from 'expo-router';
 import { clearAuthToken } from '@/lib/storage';
-import { deleteApiKey, setApiKey, validateApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, saveSettings } from '@/lib/api';
+import { deleteApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, saveSettings } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { getSettingsSnapshot, resetLocalSettings } from '@/hooks/state/persistent/settingsStore';
 import { PillDropdown } from '@/components/PillDropdown';
@@ -20,47 +16,17 @@ import { CARD_COUNTS, DEFAULT_LANGUAGES, formatCardCount } from '@/constants/ses
 import type { CardCount } from '@/constants/session';
 import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
+import { platformAlert } from '@/lib/platformAlert';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { TimePicker } from '@/components/pickers/TimePicker';
 import { normalizeTime } from '@/components/pickers/timeUtils';
+import { SectionCard } from './SectionCard';
+import { SettingsRow } from './SettingsRow';
+import { UsageBar } from './UsageBar';
+import { AddApiKeyForm } from './AddApiKeyForm';
+import { formatCost } from '@/lib/format';
 
 type CardOrder = 'sequential' | 'shuffled';
-
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View className="mb-5">
-      <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-2 px-1">
-        {title}
-      </Text>
-      <View className="h-px bg-border mb-4" />
-      <View className="px-1">
-        {children}
-      </View>
-    </View>
-  );
-}
-
-function SettingsRow({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={{ zIndex: 10 }} className="flex-row items-center justify-between mb-4">
-      <View className="flex-1 mr-4">
-        <Text className="text-foreground/80 text-sm font-medium">{label}</Text>
-        {description && (
-          <Text className="text-foreground-secondary text-xs mt-1">{description}</Text>
-        )}
-      </View>
-      {children}
-    </View>
-  );
-}
 
 interface SettingsModalProps {
   visible: boolean;
@@ -72,95 +38,6 @@ const ConfirmButton = NeedsConfirmationButton;
 type KeyPreference = 'central' | 'own';
 const DEFAULT_CARD_COUNT_OPTIONS = CARD_COUNTS.filter((count) => count !== 0);
 
-function formatCost(usd: number): string {
-  if (usd < 0.01) return `$${usd.toFixed(4)}`;
-  return `$${usd.toFixed(2)}`;
-}
-
-function normalizeDailyDueTime(value: string | null | undefined): string {
-  return normalizeTime(value);
-}
-
-function UsageBar({ used, limit, colors }: { used: number; limit: number; colors: ReturnType<typeof useColors> }) {
-  const pct = limit > 0 ? Math.min(used / limit, 1) : 0;
-  const barColor = pct >= 0.9 ? colors.error : colors.primary;
-
-  return (
-    <View className="mt-2">
-      <View className="flex-row justify-between mb-1">
-        <Text className="text-foreground-secondary text-xs">
-          {formatCost(used)} / {formatCost(limit)}
-        </Text>
-        <Text className="text-foreground-secondary text-xs">
-          {(pct * 100).toFixed(0)}%
-        </Text>
-      </View>
-      <View className="h-2 rounded-full bg-background-muted overflow-hidden">
-        <View
-          style={{ width: `${pct * 100}%`, backgroundColor: barColor }}
-          className="h-full rounded-full"
-        />
-      </View>
-    </View>
-  );
-}
-
-function AddApiKeyForm({ onAdded }: { onAdded: () => void }) {
-  const colors = useColors();
-  const [key, setKey] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit() {
-    const trimmed = key.trim();
-    if (!trimmed) return;
-    setLoading(true);
-    setError('');
-    try {
-      const { valid, error: validationError } = await validateApiKey(trimmed);
-      if (!valid) {
-        setError(validationError ?? 'Invalid API key.');
-        return;
-      }
-      await setApiKey(trimmed);
-      setKey('');
-      onAdded();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save key.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <View className="mt-2 gap-2">
-      <TextInput
-        className="bg-background-muted text-foreground placeholder:text-foreground-muted rounded-lg px-3 py-2 text-sm border border-border"
-        placeholder="sk-ant-..."
-        placeholderTextColor={colors.foreground_muted}
-        value={key}
-        onChangeText={setKey}
-        autoCapitalize="none"
-        autoCorrect={false}
-        editable={!loading}
-      />
-      {error ? <Text className="text-xs" style={{ color: '#f87171' }}>{error}</Text> : null}
-      <TouchableOpacity
-        className="bg-secondary rounded-lg py-2 items-center"
-        onPress={handleSubmit}
-        disabled={loading || !key.trim()}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text className="text-primary-foreground text-sm font-semibold">Verify & Save</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const router = useRouter();
   const colors = useColors();
@@ -169,7 +46,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
   const [dailyDueTime, setDailyDueTime] = useState('01:00');
-  const [enabledLanguages, setEnabledLanguagesState] = useState<string[]>(DEFAULT_LANGUAGES);
+  const [enabledLanguages, setEnabledLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [showAddKey, setShowAddKey] = useState(false);
   const [languagesExpanded, setLanguagesExpanded] = useState(false);
@@ -195,8 +72,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
       const n = settings.default_card_count ? parseInt(settings.default_card_count, 10) : 10;
       setDefaultCardCount(CARD_COUNTS.includes(n as CardCount) && n !== 0 ? n as CardCount : 10);
-      setDailyDueTime(normalizeDailyDueTime(settings.daily_due_time));
-      setEnabledLanguagesState(parseEnabledLanguages(settings.enabled_languages ?? null, DEFAULT_LANGUAGES));
+      setDailyDueTime(normalizeTime(settings.daily_due_time));
+      setEnabledLanguages(parseEnabledLanguages(settings.enabled_languages ?? null, DEFAULT_LANGUAGES));
     });
 
     getUsageStatus().then(status => {
@@ -207,31 +84,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
     return () => { mounted = false; };
   }, [visible]);
-
-  function handleChangeOrder(next: CardOrder) {
-    setCardOrder(next);
-  }
-
-  function handleChangeJudgeExplanation(next: 'on' | 'off') {
-    setJudgeWithExplanation(next);
-  }
-
-  function handleChangeFeedbackBrevity(next: 'brief' | 'normal') {
-    setFeedbackBrevity(next);
-  }
-
-  function handleChangeDefaultCardCount(next: CardCount) {
-    setDefaultCardCount(next);
-  }
-
-  function handleChangeDailyDueTime(next: string) {
-    const normalized = normalizeDailyDueTime(next);
-    setDailyDueTime(normalized);
-  }
-
-  function handleChangeEnabledLanguages(next: string[]) {
-    setEnabledLanguagesState(next);
-  }
 
   function handleChangePreference(next: KeyPreference) {
     if (!usageStatus) return;
@@ -245,7 +97,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       judge_with_explanation: judgeWithExplanation,
       feedback_brevity: feedbackBrevity,
       default_card_count: String(defaultCardCount),
-      daily_due_time: normalizeDailyDueTime(dailyDueTime),
+      daily_due_time: normalizeTime(dailyDueTime),
       api_key_preference: usageStatus?.preference ?? getSettingsSnapshot().api_key_preference ?? 'central',
       enabled_languages: JSON.stringify(enabledLanguages),
     };
@@ -256,8 +108,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       onClose();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to save settings.';
-      if (Platform.OS === 'web') window.alert(message);
-      else Alert.alert('Save failed', message);
+      platformAlert('Save failed', message);
     } finally {
       setSaving(false);
     }
@@ -277,7 +128,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     if (usageStatus) {
       setUsageStatus({ ...usageStatus, hasOwnKey: false });
     }
-    // Only redirect if no central key available
     if (!usageStatus?.centralKeyAvailable) {
       onClose();
       router.replace('/onboarding');
@@ -286,7 +136,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
   function handleKeyAdded() {
     setShowAddKey(false);
-    // Refresh usage status
     getUsageStatus().then(setUsageStatus).catch(() => {});
   }
 
@@ -310,7 +159,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <PillDropdown
             value={cardOrder}
             options={['shuffled', 'sequential'] as const}
-            onChange={handleChangeOrder}
+            onChange={setCardOrder}
             formatLabel={(v: CardOrder) => v === 'shuffled' ? 'Shuffled' : 'Sequential'}
           />
         </SettingsRow>
@@ -321,7 +170,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <PillDropdown
             value={judgeWithExplanation}
             options={['on', 'off'] as const}
-            onChange={handleChangeJudgeExplanation}
+            onChange={setJudgeWithExplanation}
             formatLabel={(v: 'on' | 'off') => v === 'on' ? 'On' : 'Off'}
           />
         </SettingsRow>
@@ -332,7 +181,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <PillDropdown
             value={feedbackBrevity}
             options={['normal', 'brief'] as const}
-            onChange={handleChangeFeedbackBrevity}
+            onChange={setFeedbackBrevity}
             formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? 'Brief' : 'Normal'}
           />
         </SettingsRow>
@@ -343,7 +192,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <PillDropdown
             value={defaultCardCount}
             options={DEFAULT_CARD_COUNT_OPTIONS}
-            onChange={handleChangeDefaultCardCount}
+            onChange={setDefaultCardCount}
             formatLabel={formatCardCount}
           />
         </SettingsRow>
@@ -351,7 +200,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           label="Daily Due Release Time"
           description="When decks become due each day"
         >
-          <TimePicker value={dailyDueTime} onChange={handleChangeDailyDueTime} />
+          <TimePicker value={dailyDueTime} onChange={(next: string) => setDailyDueTime(normalizeTime(next))} />
         </SettingsRow>
       </SectionCard>
 
@@ -377,7 +226,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <Text className="text-foreground-secondary text-xs mb-4">
                 Choose which languages appear in the language picker when creating decks.
               </Text>
-              <LanguagePicker enabled={enabledLanguages} onChange={handleChangeEnabledLanguages} />
+              <LanguagePicker enabled={enabledLanguages} onChange={setEnabledLanguages} />
             </View>
           </AnimatedCollapsible>
         </View>
@@ -411,7 +260,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <UsageBar
                 used={usageStatus.usage.central}
                 limit={usageStatus.userLimit}
-                colors={colors}
               />
               {usageStatus.globalLimitReached && (
                 <Text className="text-xs mt-1" style={{ color: colors.error }}>
