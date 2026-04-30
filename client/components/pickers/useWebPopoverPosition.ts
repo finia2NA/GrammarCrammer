@@ -22,6 +22,7 @@ export function useWebPopover({
   const [popoverMounted, setPopoverMounted] = useState(false);
   const [closing, setClosing] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+  const [resolvedPlacement, setResolvedPlacement] = useState<Exclude<Placement, 'auto'>>('below');
 
   const closePopover = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -62,6 +63,7 @@ export function useWebPopover({
     const resolvedPlacement = placement === 'auto'
       ? (spaceBelow < pickerHeight && spaceAbove > spaceBelow ? 'above' : 'below')
       : placement;
+    setResolvedPlacement(resolvedPlacement);
     const rawTop = resolvedPlacement === 'above'
       ? rect.top - pickerHeight - gap
       : rect.bottom + gap;
@@ -96,6 +98,7 @@ export function useWebPopover({
     popoverMounted,
     closing,
     popoverStyle,
+    resolvedPlacement,
     openPopover,
     closePopover,
     updatePosition,
