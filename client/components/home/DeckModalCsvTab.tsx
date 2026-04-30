@@ -45,6 +45,7 @@ export function DeckModalCsvTab({
         placeholder="Japanese::N5"
         value={collectionPath}
         onChangeText={onCollectionPathChange}
+        autoFocus
       />
 
       <View className="mb-6 rounded-xl border border-border bg-background-muted overflow-hidden">

@@ -1,9 +1,11 @@
+import { useRef, type RefObject } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Platform, Alert } from 'react-native';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { DatePicker } from '@/components/pickers/DatePicker';
+import { usePageSheetScrolling } from '@/components/PageSheetScrollContext';
 
 interface DeckModalCreateTabProps {
   isCollection: boolean;
@@ -51,6 +53,15 @@ export function DeckModalCreateTab({
   enabledLanguages,
 }: DeckModalCreateTabProps) {
   const colors = useColors();
+  const isScrollingRef = usePageSheetScrolling();
+  const topicRef = useRef<TextInput>(null);
+  const explanationRef = useRef<TextInput>(null);
+
+  function handleScrollAwareFocus(ref: RefObject<TextInput | null>) {
+    if (Platform.OS !== 'web' && isScrollingRef?.current) {
+      ref.current?.blur();
+    }
+  }
 
   async function handleResetSchedule() {
     if (!editNodeId || !onResetSchedule) return;
@@ -106,6 +117,7 @@ export function DeckModalCreateTab({
             Describe the grammar topic to study. This is sent to Claude to generate the explanation.
           </Text>
           <TextInput
+            ref={topicRef}
             className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-6"
             placeholder='e.g. "Japanese て-form conjugation"'
             placeholderTextColor={colors.foreground_muted}
@@ -113,6 +125,7 @@ export function DeckModalCreateTab({
             onChangeText={onTopicChange}
             multiline
             style={{ minHeight: 80, textAlignVertical: 'top' }}
+            onFocus={() => handleScrollAwareFocus(topicRef)}
           />
 
           <SharedCreationOptionsSection
@@ -130,6 +143,7 @@ export function DeckModalCreateTab({
                 Markdown saved with this deck.
               </Text>
               <TextInput
+                ref={explanationRef}
                 className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm mb-6"
                 placeholder="Generated explanation"
                 placeholderTextColor={colors.foreground_muted}
@@ -137,6 +151,7 @@ export function DeckModalCreateTab({
                 onChangeText={onExplanationChange}
                 multiline
                 style={{ minHeight: 160, textAlignVertical: 'top' }}
+                onFocus={() => handleScrollAwareFocus(explanationRef)}
               />
             </>
           )}

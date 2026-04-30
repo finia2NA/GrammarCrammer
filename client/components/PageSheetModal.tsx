@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { darkThemeVars, lightThemeVars } from '@/constants/theme';
 import { TouchTarget } from '@/components/TouchTarget';
+import { PageSheetScrollContext } from '@/components/PageSheetScrollContext';
 
 interface PageSheetModalProps {
   visible: boolean;
@@ -47,6 +48,7 @@ export function PageSheetModal({
   const insets = useSafeAreaInsets();
   const { height, isSmallScreen } = useScreenSize();
   const [scheme, setScheme] = useState<'light' | 'dark'>(resolveColorScheme(Appearance.getColorScheme()));
+  const isScrollingRef = useRef(false);
 
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
@@ -175,17 +177,22 @@ export function PageSheetModal({
             style={isSmallScreen ? styles.sheetContainer : styles.cardContainer}
           >
             {header}
-            <ScrollView
-              style={styles.bodyScroll}
-              contentContainerStyle={{
-                paddingHorizontal: 24,
-                paddingTop: 16,
-                paddingBottom: bodyPaddingBottom,
-              }}
-              keyboardShouldPersistTaps="handled"
-            >
-              {children}
-            </ScrollView>
+            <PageSheetScrollContext.Provider value={isScrollingRef}>
+              <ScrollView
+                style={styles.bodyScroll}
+                contentContainerStyle={{
+                  paddingHorizontal: 24,
+                  paddingTop: 16,
+                  paddingBottom: bodyPaddingBottom,
+                }}
+                keyboardShouldPersistTaps="handled"
+                onScrollBeginDrag={() => { isScrollingRef.current = true; }}
+                onScrollEndDrag={() => { setTimeout(() => { isScrollingRef.current = false; }, 80); }}
+                onMomentumScrollEnd={() => { isScrollingRef.current = false; }}
+              >
+                {children}
+              </ScrollView>
+            </PageSheetScrollContext.Provider>
           </KeyboardAvoidingView>
         </Animated.View>
       </View>
