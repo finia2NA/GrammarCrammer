@@ -4,14 +4,12 @@ import {
   Text,
   Pressable,
   Modal,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Animated,
   StyleSheet,
   Appearance,
   type ColorSchemeName,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { darkThemeVars, lightThemeVars } from '@/constants/theme';
@@ -171,14 +169,13 @@ export function PageSheetModal({
             isSmallScreen ? undefined : { height: Math.min(height * 0.88, 680) },
           ]}
         >
-          <KeyboardAvoidingView
+          <View
             className={isSmallScreen ? 'flex-1 bg-background' : 'bg-background rounded-2xl overflow-hidden'}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={isSmallScreen ? styles.sheetContainer : styles.cardContainer}
           >
             {header}
             <PageSheetScrollContext.Provider value={isScrollingRef}>
-              <ScrollView
+              <KeyboardAwareScrollView
                 style={styles.bodyScroll}
                 contentContainerStyle={{
                   paddingHorizontal: 24,
@@ -191,9 +188,9 @@ export function PageSheetModal({
                 onMomentumScrollEnd={() => { isScrollingRef.current = false; }}
               >
                 {children}
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </PageSheetScrollContext.Provider>
-          </KeyboardAvoidingView>
+          </View>
         </Animated.View>
       </View>
     </Modal>
