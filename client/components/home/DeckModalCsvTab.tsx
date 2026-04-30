@@ -76,7 +76,7 @@ export function DeckModalCsvTab({
             • If <Text className="text-foreground font-mono">DeckName</Text> is blank, <Text className="text-foreground font-mono">Topic</Text> is used as the deck name.
           </Text>
 
-          <Text className="text-foreground/80 text-sm font-medium mb-2">How This Works</Text>
+          <Text className="text-foreground/80 text-sm font-medium mb-2">Deck Generation</Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-1">
             • Each row creates one subdeck inside the collection.
           </Text>
