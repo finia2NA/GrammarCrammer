@@ -1,5 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import { useColors } from '@/constants/theme';
+import { TouchTarget } from '@/components/TouchTarget';
 
 export interface ApiKeyCardProps {
   apiKey: string;
@@ -45,11 +46,11 @@ export function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, on
         Anthropic account.
       </Text>
       {canSkip && (
-        <TouchableOpacity onPress={onSkip} className="mt-4">
+        <TouchTarget onPress={onSkip!} style={{ marginTop: 8, paddingHorizontal: 0 }}>
           <Text className="text-primary text-sm">
             Skip — use the server&apos;s key instead
           </Text>
-        </TouchableOpacity>
+        </TouchTarget>
       )}
     </>
   );

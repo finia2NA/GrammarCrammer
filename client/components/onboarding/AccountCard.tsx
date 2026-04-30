@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TextInput, Animated } from 'react-native';
 import { useColors } from '@/constants/theme';
+import { TouchTarget } from '@/components/TouchTarget';
 
 export interface AccountCardProps {
   email: string;
@@ -94,15 +95,15 @@ export function AccountCard({ email, onEmailChange, password, onPasswordChange, 
       )}
       {!success && (
         <>
-          <TouchableOpacity onPress={onToggleMode} className="mt-4">
+          <TouchTarget onPress={onToggleMode} style={{ marginTop: 8, paddingHorizontal: 0 }}>
             <Text className="text-primary text-sm">
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </Text>
-          </TouchableOpacity>
+          </TouchTarget>
           {isLogin && (
-            <TouchableOpacity onPress={onForgotPassword} className="mt-2">
+            <TouchTarget onPress={onForgotPassword} style={{ marginTop: 0, paddingHorizontal: 0 }}>
               <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
-            </TouchableOpacity>
+            </TouchTarget>
           )}
         </>
       )}

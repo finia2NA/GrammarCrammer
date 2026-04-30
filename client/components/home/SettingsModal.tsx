@@ -18,6 +18,7 @@ import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import { platformAlert } from '@/lib/platformAlert';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
+import { TouchTarget } from '@/components/TouchTarget';
 import { TimePicker } from '@/components/pickers/TimePicker';
 import { normalizeTime } from '@/components/pickers/timeUtils';
 import { SectionCard } from './SectionCard';
@@ -211,16 +212,15 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         </Text>
         <View className="h-px bg-border mb-4" />
         <View className="px-1">
-          <TouchableOpacity
+          <TouchTarget
             onPress={() => setLanguagesExpanded(e => !e)}
-            activeOpacity={0.85}
-            className="flex-row items-center justify-between mb-2"
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 0 }}
           >
             <Text className="text-foreground text-sm font-medium">
               {languagesExpanded ? 'Hide Languages' : 'Show languages'}
             </Text>
             <Text className="text-foreground-secondary text-sm">{languagesExpanded ? '▼' : '▶'}</Text>
-          </TouchableOpacity>
+          </TouchTarget>
           <AnimatedCollapsible expanded={languagesExpanded} keepMounted={false}>
             <View className="pb-2">
               <Text className="text-foreground-secondary text-xs mb-4">

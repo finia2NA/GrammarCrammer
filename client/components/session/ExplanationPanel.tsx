@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { GrammarMarkdown } from './GrammarMarkdown';
+import { TouchTarget } from '@/components/TouchTarget';
 
 export const PEEK_HEIGHT = 72;
 
@@ -205,9 +206,9 @@ export function BottomSheet({ explanation, wasTruncated }: { explanation: string
             Grammar Reference
           </Text>
           {expanded && (
-            <TouchableOpacity onPress={() => snapTo(false)}>
+            <TouchTarget onPress={() => snapTo(false)} style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
               <Text className="text-foreground-secondary text-xs">↓ Dismiss</Text>
-            </TouchableOpacity>
+            </TouchTarget>
           )}
         </View>
       </View>

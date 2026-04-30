@@ -2,7 +2,6 @@ import { type ReactNode, useRef, useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   Pressable,
   Modal,
   ScrollView,
@@ -16,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { darkThemeVars, lightThemeVars } from '@/constants/theme';
+import { TouchTarget } from '@/components/TouchTarget';
 
 interface PageSheetModalProps {
   visible: boolean;
@@ -117,28 +117,28 @@ export function PageSheetModal({
       className="flex-row items-center border-b border-border"
       style={{
         paddingHorizontal: 24,
-        paddingTop: isSmallScreen ? insets.top + 16 : 20,
-        paddingBottom: 16,
+        paddingTop: isSmallScreen ? insets.top + 8 : 12,
+        paddingBottom: 8,
       }}
     >
-      <TouchableOpacity onPress={handleCancel} style={styles.headerSide}>
+      <TouchTarget onPress={handleCancel} style={[styles.headerSide, styles.headerTargetLeft]}>
         <Text className="text-primary text-base">{cancelText}</Text>
-      </TouchableOpacity>
+      </TouchTarget>
 
       <Text className="flex-1 text-center text-foreground text-lg font-bold" numberOfLines={1}>
         {title}
       </Text>
 
       {confirmText ? (
-        <TouchableOpacity
+        <TouchTarget
           onPress={handleConfirm}
           disabled={confirmDisabled}
-          style={[styles.headerSide, styles.headerSideRight]}
+          style={[styles.headerSide, styles.headerSideRight, styles.headerTargetRight]}
         >
           <Text className={`text-base font-semibold ${confirmDisabled ? 'text-foreground-secondary' : 'text-primary'}`}>
             {confirmText}
           </Text>
-        </TouchableOpacity>
+        </TouchTarget>
       ) : (
         <View style={styles.headerSide} />
       )}
@@ -238,5 +238,15 @@ const styles = StyleSheet.create({
   },
   headerSideRight: {
     alignItems: 'flex-end',
+  },
+  headerTargetLeft: {
+    paddingVertical: 8,
+    paddingRight: 16,
+    paddingLeft: 0,
+  },
+  headerTargetRight: {
+    paddingVertical: 8,
+    paddingLeft: 16,
+    paddingRight: 0,
   },
 });

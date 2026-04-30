@@ -11,6 +11,7 @@ import type { Card, CardPhase, ChatMessage, WordHint } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { CardChat } from './CardChat';
 import { ClickableEnglishSentence } from './ClickableEnglishSentence';
+import { TouchTarget } from '@/components/TouchTarget';
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -128,9 +129,9 @@ export function FlashcardDeck({
                   <Text className="text-foreground-secondary text-xs">{currentCard.notes}</Text>
                 </View>
               ) : (
-                <TouchableOpacity onPress={onToggleHint}>
+                <TouchTarget onPress={onToggleHint} style={{ alignSelf: 'center' }}>
                   <Text className="text-foreground-secondary/50 text-xs text-center">Show hint</Text>
-                </TouchableOpacity>
+                </TouchTarget>
               )
             )}
           </>
