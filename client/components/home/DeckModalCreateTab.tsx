@@ -66,6 +66,26 @@ export function DeckModalCreateTab({
     }
   }
 
+  function confirmResetSchedule() {
+    if (Platform.OS === 'web') {
+      void handleResetSchedule();
+      return;
+    }
+
+    Alert.alert(
+      'Reset schedule?',
+      'This deck will return to never studied.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => { void handleResetSchedule(); },
+        },
+      ],
+    );
+  }
+
   return (
     <>
       <SharedCreationNameField
@@ -144,6 +164,11 @@ export function DeckModalCreateTab({
                 destructive
               />
             ) : undefined}
+            androidNeutralButton={onResetSchedule ? {
+              label: 'Reset',
+              textColor: colors.error,
+              onPress: confirmResetSchedule,
+            } : undefined}
           />
         </View>
       )}

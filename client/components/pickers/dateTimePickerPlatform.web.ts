@@ -8,6 +8,7 @@ export function openAndroidDatePicker(
   _nativePickerModule: any,
   _value: Date,
   _onSelected: (selected: Date) => void,
+  _options: unknown = {},
 ) {
   return false;
 }

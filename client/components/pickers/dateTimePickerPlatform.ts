@@ -1,5 +1,10 @@
 import { Keyboard, Platform } from 'react-native';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid, type ButtonType, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+
+interface AndroidNeutralButtonOptions {
+  neutralButton?: ButtonType;
+  onNeutralButtonPress?: () => void;
+}
 
 export function useDateTimePickerModule() {
   return { default: DateTimePicker, DateTimePickerAndroid };
@@ -13,6 +18,7 @@ export function openAndroidDatePicker(
   nativePickerModule: any,
   value: Date,
   onSelected: (selected: Date) => void,
+  options: AndroidNeutralButtonOptions = {},
 ) {
   if (Platform.OS !== 'android') return false;
 
@@ -20,7 +26,12 @@ export function openAndroidDatePicker(
     value,
     mode: 'date',
     is24Hour: true,
-    onChange: (_event: unknown, selected?: Date) => {
+    neutralButton: options.neutralButton,
+    onChange: (event: DateTimePickerEvent, selected?: Date) => {
+      if (event.type === 'neutralButtonPressed') {
+        options.onNeutralButtonPress?.();
+        return;
+      }
       if (!selected) return;
       onSelected(selected);
     },

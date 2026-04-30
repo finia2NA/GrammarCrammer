@@ -13,6 +13,11 @@ interface DatePickerProps {
   popoverPlacement?: 'auto' | 'above' | 'below';
   popoverTitle?: string;
   popoverFooter?: ReactNode;
+  androidNeutralButton?: {
+    label: string;
+    textColor?: string;
+    onPress: () => void;
+  };
 }
 
 export function DatePicker({
@@ -23,6 +28,7 @@ export function DatePicker({
   popoverPlacement = 'auto',
   popoverTitle = 'Select Date',
   popoverFooter,
+  androidNeutralButton,
 }: DatePickerProps) {
   const nativePickerModule = useDateTimePickerModule();
   const selectedDate = useMemo(() => parseYmd(value), [value]);
@@ -38,17 +44,24 @@ export function DatePicker({
     if (disabled) return;
     dismissPickerKeyboard();
     const current = selectedDate ?? new Date();
+    const androidOptions = androidNeutralButton ? {
+      neutralButton: {
+        label: androidNeutralButton.label,
+        textColor: androidNeutralButton.textColor,
+      },
+      onNeutralButtonPress: androidNeutralButton.onPress,
+    } : undefined;
 
     if (openAndroidDatePicker(nativePickerModule, current, (selected) => {
       onChange(formatLocalDateToYmd(selected));
-    })) {
+    }, androidOptions)) {
       return;
     }
 
     setDraftDate(selectedDate);
     setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
     openPopover();
-  }, [disabled, nativePickerModule, onChange, selectedDate]);
+  }, [androidNeutralButton, disabled, nativePickerModule, onChange, selectedDate]);
 
   function handleDone() {
     if (draftDate) onChange(formatLocalDateToYmd(draftDate));
