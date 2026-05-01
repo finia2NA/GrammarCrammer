@@ -21,9 +21,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     deploymentTarget: '26.0',
     infoPlist: {
       NSAppTransportSecurity: {
-        NSAllowsArbitraryLoads: true,
         NSAllowsLocalNetworking: true,
+        NSExceptionDomains: {
+          'tora.nord': {
+            NSExceptionAllowsInsecureHTTPLoads: true,
+          },
+        },
       },
+      NSLocalNetworkUsageDescription:
+        'GrammarCrammer connects to your development backend on your private Meshnet.',
     },
   },
   android: {
