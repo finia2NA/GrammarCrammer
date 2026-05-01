@@ -1,4 +1,4 @@
-# GrammarCrammer
+# Pattern Deck
 
 An AI-powered grammar flashcard app. You name a grammar topic, Claude generates a tailored explanation and a set of flashcards, then judges your answers in real time.
 
@@ -8,7 +8,7 @@ Anki is a truly great and extensible application. But using it for grammar study
 
 Wouldn't it be nice to have a flashcard-like app that generates a full explanation of whatever concept you want to study, and tests you on it in a more dynamic way, with changing sentences for you to solve and personalized breakdowns of what you can improve?
 
-This is the problem GrammarCrammer is trying to solve.
+This is the problem Pattern Deck is trying to solve.
 
 ## How it works
 
@@ -24,10 +24,10 @@ You can also **save decks** to a hierarchical collection tree for later review, 
 
 ## Architecture
 
-GrammarCrammer is a **monorepo** with two packages:
+Pattern Deck is a **monorepo** with two packages:
 
 ```
-GrammarCrammer/
+Pattern Deck/
   client/   ← React Native / Expo app (iOS, Android, Web)
   server/   ← Express + Prisma API server
 ```
@@ -114,7 +114,7 @@ Requires macOS with Xcode installed.
 pnpm dev:ios
 ```
 
-To run on a physical device, run `npx expo prebuild && open ios/GrammarCrammer.xcworkspace` from the `client/` directory, then select your device in Xcode's scheme bar and hit Run.
+To run on a physical device, run `npx expo prebuild && open ios/*.xcworkspace` from the `client/` directory, then select your device in Xcode's scheme bar and hit Run.
 
 > **Note:** after adding any new native package, re-run `pod install` from `client/ios/` before building in Xcode.
 
@@ -130,9 +130,9 @@ Runs the iPad layout natively on macOS. Requires macOS + Xcode.
    ```
 2. Open the workspace:
    ```bash
-   open ios/GrammarCrammer.xcworkspace
+   open ios/*.xcworkspace
    ```
-3. In Xcode: select the **GrammarCrammer** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
+3. In Xcode: select the **Pattern Deck** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
 4. Select **My Mac** in the scheme bar → **Product → Run** (⌘R)
 
 ### Android
@@ -145,7 +145,7 @@ npx expo run:android
 ```
 
 For Android push notifications, create or open the Firebase project used by the
-Expo project, add an Android app with package name `com.finite.grammarcrammer`,
+Expo project, add an Android app with package name `de.richardhanss.patterndeck`,
 download `google-services.json`, and place it at `client/google-services.json`.
 The private FCM v1 service-account JSON is only needed when uploading push
 credentials to EAS with `eas credentials`; do not commit that private key.

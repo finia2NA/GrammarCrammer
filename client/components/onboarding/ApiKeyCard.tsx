@@ -19,7 +19,7 @@ export function ApiKeyCard({ apiKey, onApiKeyChange, error, loading, canSkip, on
         Connect your Claude API key
       </Text>
       <Text className="text-foreground-secondary text-sm leading-6 mb-6">
-        GrammarCrammer uses Claude to generate study content and grade your
+        Pattern Deck uses Claude to generate study content and grade your
         answers. Your key is stored securely on the server — it is only used to authenticate with Anthropic.
       </Text>
       <Text className="text-foreground/80 text-sm font-medium mb-2">

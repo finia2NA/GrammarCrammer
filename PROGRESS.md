@@ -1,4 +1,4 @@
-# GrammarCrammer — Project Description & Progress
+# Pattern Deck — Project Description & Progress
 
 ## Overview
 AI-assisted grammar studying app, flashcard style. React Native (Expo, web-first).
@@ -29,7 +29,7 @@ To implement this, multiple changes are necessary. In order, they are
   - Clicking on a pencil icon on the right of the collection and decks opens an edit view. For collections, this allows a rename. For decks, this opens the same modal that was shown when the deck was created, and allows the user to change the name/prompt/language of the deck. The explanation is re-generated in the background if prompt or language are changed, not if name is changed.
   - On the home screen, there is a settings icon in the top right that opens a modal (or full-screen on small screens, same as the modal for deck creation) determines how cards are sorted initially when reviewing a collection - either all cards of one deck at once, or shuffled
   - It also contains a button to delete the API key, in which case we go back to onboarding.
-  - The GrammarCrammer Name is moved to the top right
+  - The Pattern Deck Name is moved to the top right
 - Update the study view to handle collections and decks with pre-generated explanations. The best way to do this would probably be to re-use the UI of session.tsx, but move the generation logic up to a new session manager. the session manager can handle prompts the way they are now from the homescreen, where everything needs to be generated, decks (one pre-generated explanation) and collections (multiple explanations).
 
 ---

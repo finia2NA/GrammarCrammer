@@ -50,7 +50,7 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         <div id="gc-loader">
-          <div id="gc-loader-wordmark">GrammarCrammer</div>
+          <div id="gc-loader-wordmark">Pattern Deck</div>
           <div id="gc-spinner" />
         </div>
         {children}

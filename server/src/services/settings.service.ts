@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { SETTING_DEFAULTS } from '@grammarcrammer/shared';
+import { SETTING_DEFAULTS } from '@patterndeck/shared';
 
 export async function getAllSettings(userId: string): Promise<Record<string, string>> {
   const settings = await prisma.setting.findMany({

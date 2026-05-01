@@ -67,7 +67,7 @@ export default function AppleSignInButton(_: AppleSignInButtonProps) { return nu
 - `useAutoDiscovery('https://accounts.google.com')`
 - `useAuthRequest`:
   - `clientId`: Web OAuth 2.0 client ID (browser flow on all platforms via expo-auth-session)
-  - `redirectUri`: `makeRedirectUri({ scheme: 'grammarcrammer' })`
+  - `redirectUri`: `makeRedirectUri({ scheme: 'patterndeck' })`
   - `responseType`: `ResponseType.IdToken`
   - `scopes`: `['openid', 'profile', 'email']`
 - `useEffect` on `response`:
@@ -142,13 +142,13 @@ import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 
 | Var | Value | How to get it |
 |-----|-------|---------------|
-| `APPLE_CLIENT_ID` | `com.finite.grammarcrammer` | Already your Bundle ID — no extra setup needed |
+| `APPLE_CLIENT_ID` | `de.richardhanss.patterndeck` | Already your Bundle ID — no extra setup needed |
 | `GOOGLE_CLIENT_ID` | Web OAuth 2.0 client ID | Google Cloud Console (see below) |
 
 **Getting `GOOGLE_CLIENT_ID`:**
 1. Google Cloud Console → APIs & Services → OAuth consent screen → External → scopes: `openid`, `email`, `profile`
 2. Credentials → Create OAuth Client ID → **Web application**
-3. Authorized redirect URIs: `grammarcrammer://` and `https://auth.expo.io/@<your-expo-username>/grammarcrammer`
+3. Authorized redirect URIs: `patterndeck://` and `https://auth.expo.io/@<your-expo-username>/patterndeck`
 4. Copy the client ID → both `server/.env` (`GOOGLE_CLIENT_ID=...`) and `GoogleSignInButton.tsx` (`const GOOGLE_CLIENT_ID = '...'`)
 
 ---

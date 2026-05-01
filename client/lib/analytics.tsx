@@ -96,7 +96,7 @@ function AnalyticsRouteTracker() {
 function ErrorFallback() {
   return (
     <View className="flex-1 bg-background items-center justify-center px-8">
-      <Text className="text-error text-base text-center">Something went wrong. Please restart GrammarCrammer.</Text>
+      <Text className="text-error text-base text-center">Something went wrong. Please restart Pattern Deck.</Text>
     </View>
   );
 }

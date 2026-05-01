@@ -34,11 +34,11 @@ export function DatePickerContent({
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <style>
         {`
-          .grammar-crammer-date-picker .rdp-selected {
+          .pattern-deck-date-picker .rdp-selected {
             font-size: inherit;
           }
 
-          .grammar-crammer-date-picker .rdp-selected .rdp-day_button {
+          .pattern-deck-date-picker .rdp-selected .rdp-day_button {
             background: ${colors.primary};
             border-color: ${colors.primary};
             border-radius: 999px;
@@ -46,13 +46,13 @@ export function DatePickerContent({
             font-weight: 700;
           }
 
-          .grammar-crammer-date-picker .rdp-selected.rdp-today:not(.rdp-outside) .rdp-day_button {
+          .pattern-deck-date-picker .rdp-selected.rdp-today:not(.rdp-outside) .rdp-day_button {
             color: ${colors.primary_foreground};
           }
         `}
       </style>
       <DayPicker
-        className="grammar-crammer-date-picker"
+        className="pattern-deck-date-picker"
         mode="single"
         month={month}
         selected={draftDate ?? undefined}

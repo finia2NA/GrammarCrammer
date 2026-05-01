@@ -1,12 +1,12 @@
 [Unit]
-Description=GrammarCrammer API Server
+Description=Pattern Deck API Server
 After=network.target
 
 [Service]
 Type=simple
-User=grammarcrammer
-Group=grammarcrammer
-WorkingDirectory=/home/grammarcrammer/app/server
+User=patterndeck
+Group=patterndeck
+WorkingDirectory=/home/patterndeck/app/server
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5
@@ -16,7 +16,7 @@ Environment=NODE_ENV=production
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/grammarcrammer/data
+ReadWritePaths=/home/patterndeck/data
 PrivateTmp=true
 
 [Install]

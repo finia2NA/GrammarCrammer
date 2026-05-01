@@ -17,7 +17,7 @@ importers:
       '@expo/vector-icons':
         specifier: ^15.0.3
         version: 15.1.1(expo-font@55.0.6)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
-      '@grammarcrammer/shared':
+      '@patterndeck/shared':
         specifier: workspace:*
         version: link:../shared
       '@react-native-async-storage/async-storage':
@@ -171,7 +171,7 @@ importers:
 
   server:
     dependencies:
-      '@grammarcrammer/shared':
+      '@patterndeck/shared':
         specifier: workspace:*
         version: link:../shared
       '@prisma/client':

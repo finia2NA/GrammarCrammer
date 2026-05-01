@@ -223,7 +223,7 @@ export default function Home() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-foreground text-xl font-bold">GrammarCrammer</Text>
+          <Text className="text-foreground text-xl font-bold">Pattern Deck</Text>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
             <Icon name="settings" size={22} color={colors.foreground_secondary} />
           </TouchableOpacity>

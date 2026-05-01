@@ -52,6 +52,9 @@ function getConfiguredBaseUrl(): string {
     // Production web: same origin, nginx proxies /api → Express
     return '/api';
   }
+  if (!__DEV__) {
+    return Constants.expoConfig?.extra?.productionBackendBaseUrl ?? 'https://patterndeck.richardhanss.de/api';
+  }
   // Dev (all platforms) and native prod: use configured host
   const host = Constants.expoConfig?.extra?.devServerHost ?? 'localhost';
   const port = Constants.expoConfig?.extra?.devServerPort ?? '3001';

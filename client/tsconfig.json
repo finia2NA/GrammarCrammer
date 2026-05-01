@@ -4,7 +4,7 @@
     "strict": true,
     "paths": {
       "@/*": ["./*"],
-      "@grammarcrammer/shared": ["../shared/src/index.ts"]
+      "@patterndeck/shared": ["../shared/src/index.ts"]
     }
   },
   "include": [

@@ -19,7 +19,7 @@ config.resolver.nodeModulesPaths = Array.from(new Set([
 ]));
 
 function isSharedImport(context, moduleName) {
-  if (moduleName === '@grammarcrammer/shared' || moduleName.startsWith('@grammarcrammer/shared/')) {
+  if (moduleName === '@patterndeck/shared' || moduleName.startsWith('@patterndeck/shared/')) {
     return true;
   }
 
@@ -68,7 +68,7 @@ nativeWindConfig.server = {
         .getDependencyGraph()
         .then((graph) => {
           const haste = graph?._haste;
-          if (!haste || haste.__grammarcrammerPatchedEmit) return;
+          if (!haste || haste.__patterndeckPatchedEmit) return;
 
           const emit = haste.emit.bind(haste);
           haste.emit = (eventName, payload, ...rest) => {
@@ -101,7 +101,7 @@ nativeWindConfig.server = {
             return emit(eventName, payload, ...rest);
           };
 
-          haste.__grammarcrammerPatchedEmit = true;
+          haste.__patterndeckPatchedEmit = true;
         })
         .catch(() => {});
     }

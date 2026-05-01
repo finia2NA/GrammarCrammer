@@ -1,5 +1,5 @@
 {
-  "name": "grammarcrammer",
+  "name": "pattern-deck",
   "private": true,
   "scripts": {
     "backend": "pnpm --filter server dev",
@@ -16,7 +16,7 @@
     "android": "pnpm --filter client android",
     "android:phone": "pnpm --filter client android:phone",
     "dev:android:phone": "concurrently --raw \"pnpm android:phone\" \"pnpm backend\"",
-    "build:shared": "pnpm --filter @grammarcrammer/shared build",
+    "build:shared": "pnpm --filter @patterndeck/shared build",
     "build:server": "pnpm build:shared && pnpm --filter server build",
     "start:server": "pnpm --filter server start",
     "lint": "pnpm --filter client lint",

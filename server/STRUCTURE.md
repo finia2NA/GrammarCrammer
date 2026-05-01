@@ -26,7 +26,7 @@ server/
 │   │   ├── auth.service.ts         ← Registration, login, OAuth, JWT generation
 │   │   ├── deck.service.ts         ← Deck CRUD, explanation status updates, cascading deletes
 │   │   ├── tree.service.ts         ← Tree queries (full tree, path, descendants)
-│   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @grammarcrammer/shared for unset keys
+│   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared for unset keys
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
 │   │   ├── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
@@ -52,9 +52,9 @@ server/
 └── tsconfig.json
 ```
 
-## Shared package (`@grammarcrammer/shared`)
+## Shared package (`@patterndeck/shared`)
 
-Constants shared with the client (language lists, setting defaults, card count options) live in `shared/` at the repo root and are imported as `@grammarcrammer/shared`. In dev, `tsx` consumes the TypeScript source directly via the `"source"` export condition — no pre-build needed. For production (`pnpm build:server`), the shared package is compiled first automatically (`pnpm build:shared && tsc`).
+Constants shared with the client (language lists, setting defaults, card count options) live in `shared/` at the repo root and are imported as `@patterndeck/shared`. In dev, `tsx` consumes the TypeScript source directly via the `"source"` export condition — no pre-build needed. For production (`pnpm build:server`), the shared package is compiled first automatically (`pnpm build:shared && tsc`).
 
 ## Routes reference
 

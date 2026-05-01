@@ -3,7 +3,7 @@ import { register, login, findOrCreateByApple, findOrCreateByGoogle, getMe, requ
 import { requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { config } from '../config.js';
-import { validateEmail, validatePassword } from '@grammarcrammer/shared';
+import { validateEmail, validatePassword } from '@patterndeck/shared';
 import { capture, identify } from '../services/analytics.service.js';
 
 export const authRouter = Router();

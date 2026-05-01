@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const devServerHost = process.env.DEV_SERVER_HOST || 'localhost';
 const devServerPort = process.env.DEV_SERVER_PORT || '3001';
+const productionBackendBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://patterndeck.richardhanss.de/api';
 const backendDebugUiEnabled = process.env.BACKEND_DEBUG_UI !== '0';
 const expoProjectId = process.env.EXPO_PUBLIC_EXPO_PROJECT_ID || process.env.EXPO_PROJECT_ID;
 const defaultAndroidGoogleServicesFile = './google-services.json';
@@ -14,17 +15,17 @@ const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'GrammarCrammer',
-  slug: 'grammarcrammer',
+  name: 'Pattern Deck',
+  slug: 'patterndeck',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'grammarcrammer',
+  scheme: 'patterndeck',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.finite.grammarcrammer',
+    bundleIdentifier: 'de.richardhanss.patterndeck',
     deploymentTarget: '26.0',
     infoPlist: {
       NSAppTransportSecurity: {
@@ -36,7 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
       NSLocalNetworkUsageDescription:
-        'GrammarCrammer connects to your development backend on your private Meshnet.',
+        'Pattern Deck connects to your development backend on your private Meshnet.',
     },
   },
   android: {
@@ -48,7 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
-    package: 'com.finite.grammarcrammer',
+    package: 'de.richardhanss.patterndeck',
     ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
   },
   web: {
@@ -77,6 +78,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     devServerHost,
     devServerPort,
+    productionBackendBaseUrl,
     backendDebugUiEnabled,
     ...(expoProjectId ? {
       expoProjectId,

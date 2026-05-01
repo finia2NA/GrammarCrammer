@@ -3,6 +3,10 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+const defaultAppUrl = process.env.NODE_ENV === 'production'
+  ? 'https://patterndeck.richardhanss.de'
+  : `http://localhost:${process.env.PORT ?? '3001'}`;
+
 function required(key: string): string {
   const val = process.env[key];
   if (!val) throw new Error(`Missing required env var: ${key}`);
@@ -19,8 +23,8 @@ export const config = {
   centralKeyUserMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_USER_MONTHLY_LIMIT ?? '0'),
   centralKeyGlobalMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT ?? '0'),
   resendApiKey: process.env.RESEND_API_KEY || null,
-  appUrl: process.env.APP_URL || `http://localhost:${process.env.PORT ?? '3001'}`,
-  emailFrom: process.env.EMAIL_FROM || 'GrammarCrammer <noreply@grammarcrammer.richardhanss.de>',
+  appUrl: process.env.APP_URL || defaultAppUrl,
+  emailFrom: process.env.EMAIL_FROM || 'Pattern Deck <noreply@patterndeck.richardhanss.de>',
   posthogProjectApiKey: process.env.POSTHOG_PROJECT_API_KEY || null,
   posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
   posthogEnabled: process.env.POSTHOG_ENABLED !== '0' && !!process.env.POSTHOG_PROJECT_API_KEY,

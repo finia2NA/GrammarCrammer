@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
 import { validateResetToken, resetPassword } from '@/lib/api';
-import { validatePassword } from '@grammarcrammer/shared';
+import { validatePassword } from '@patterndeck/shared';
 
 type PageState = 'loading' | 'invalid' | 'form' | 'success';
 
@@ -155,7 +155,7 @@ export default function ResetPassword() {
             <>
               <Text className="text-3xl font-bold text-primary mb-3">Password reset!</Text>
               <Text className="text-foreground-secondary text-sm leading-6">
-                Your password has been updated. Open the GrammarCrammer app to sign in with your new password.
+                Your password has been updated. Open the Pattern Deck app to sign in with your new password.
               </Text>
             </>
           )}

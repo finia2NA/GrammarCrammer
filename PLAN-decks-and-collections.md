@@ -2,7 +2,7 @@
 
 ## Context
 
-GrammarCrammer currently runs ephemeral sessions: the user types a topic, Claude generates an explanation + cards, the user practices, and everything is discarded. This plan adds **persistent decks and collections**, turning the app into a re-learnable flashcard system where explanations are generated once and reused for future study sessions. The implementation must be FSRS-compatible so spaced repetition scheduling can be layered on afterward.
+Pattern Deck currently runs ephemeral sessions: the user types a topic, Claude generates an explanation + cards, the user practices, and everything is discarded. This plan adds **persistent decks and collections**, turning the app into a re-learnable flashcard system where explanations are generated once and reused for future study sessions. The implementation must be FSRS-compatible so spaced repetition scheduling can be layered on afterward.
 
 ---
 
@@ -45,7 +45,7 @@ let _db: SQLite.SQLiteDatabase;
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!_db) {
-    _db = await SQLite.openDatabaseAsync('grammarcrammer.db');
+    _db = await SQLite.openDatabaseAsync('patterndeck.db');
     await _db.execAsync(`PRAGMA journal_mode = WAL;`);
     await runMigrations(_db);
   }
@@ -261,7 +261,7 @@ The home screen is redesigned from a single topic input to a deck/collection bro
 
 ```
 ┌─────────────────────────────────┐
-│  [⚙️]              GrammarCrammer│  ← settings left, title right
+│  [⚙️]              Pattern Deck│  ← settings left, title right
 │─────────────────────────────────│
 │                                 │
 │  ▼ JP                      [✏️] │  ← expanded collection

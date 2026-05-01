@@ -31,7 +31,7 @@ import {
 } from '@/lib/api';
 import { useColors } from '@/constants/theme';
 import { OnboardingBackground } from '@/components/OnboardingBackground';
-import { validateEmail, validatePassword } from '@grammarcrammer/shared';
+import { validateEmail, validatePassword } from '@patterndeck/shared';
 import { RainbowButton } from '@/components/RainbowButton';
 import { AccountCard } from '@/components/onboarding/AccountCard';
 import { ApiKeyCard } from '@/components/onboarding/ApiKeyCard';
@@ -47,10 +47,10 @@ const WelcomeCard = memo(function WelcomeCard() {
   return (
     <>
       <Text className="text-4xl font-bold text-foreground mb-3">
-        Welcome to{'\n'}GrammarCrammer
+        Welcome to{'\n'}Pattern Deck
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
-        GrammarCrammer is your AI-powered grammar study partner.
+        Pattern Deck is your AI-powered grammar study partner.
         Tell it what you want to practise, and it will generate
         a custom set of flashcards tailored to your topic — in any
         language you choose.
@@ -89,7 +89,7 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
         Alpha version
       </Text>
       <Text className="text-foreground-secondary text-base leading-7 mb-4">
-        GrammarCrammer is in early development. Future updates may reset your data, including saved decks and collections.
+        Pattern Deck is in early development. Future updates may reset your data, including saved decks and collections.
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
         For now, use it to explore the concept and practise grammar freely — but don&apos;t invest time building elaborate collections just yet.

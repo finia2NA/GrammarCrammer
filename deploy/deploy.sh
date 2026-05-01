@@ -1,21 +1,21 @@
 #!/bin/bash
-# Deploy GrammarCrammer frontend + backend to VPS
+# Deploy Pattern Deck frontend + backend to VPS
 # Usage: bash deploy/deploy.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 SERVER="ionos"
-REMOTE_APP="/home/grammarcrammer/app"
-REMOTE_WEB="/home/grammarcrammer/web"
-TEMP_DIR="/tmp/gc-deploy"
+REMOTE_APP="/home/patterndeck/app"
+REMOTE_WEB="/home/patterndeck/web"
+TEMP_DIR="/tmp/patterndeck-deploy"
 
 echo "=== Building frontend (Expo web) ==="
 pnpm --filter client exec expo export --platform web
 
 echo ""
 echo "=== Building shared package ==="
-pnpm --filter @grammarcrammer/shared build
+pnpm --filter @patterndeck/shared build
 
 echo ""
 echo "=== Building backend (TypeScript) ==="
@@ -38,6 +38,10 @@ rsync -az \
   package.json pnpm-workspace.yaml pnpm-lock.yaml \
   ${SERVER}:${TEMP_DIR}/
 
+rsync -az \
+  deploy/patterndeck.nginx.conf deploy/patterndeck.service \
+  ${SERVER}:${TEMP_DIR}/
+
 # Send real client package.json so the lockfile matches
 rsync -az client/package.json ${SERVER}:${TEMP_DIR}/client/package.json
 
@@ -55,18 +59,51 @@ echo "=== Deploying on server ==="
 ssh ${SERVER} << 'DEPLOY_EOF'
   set -euo pipefail
 
-  REMOTE_APP="/home/grammarcrammer/app"
-  REMOTE_WEB="/home/grammarcrammer/web"
-  TEMP_DIR="/tmp/gc-deploy"
+  REMOTE_APP="/home/patterndeck/app"
+  REMOTE_WEB="/home/patterndeck/web"
+  TEMP_DIR="/tmp/patterndeck-deploy"
 
-  ENV_DIR="/home/grammarcrammer/env"
-  mkdir -p ${ENV_DIR}
+  ENV_DIR="/home/patterndeck/env"
+  id patterndeck &>/dev/null || useradd --system --create-home --shell /bin/bash patterndeck
+  mkdir -p ${ENV_DIR} ${REMOTE_APP}/server ${REMOTE_WEB} /home/patterndeck/data
+
+  # Install nginx config on first deploy. Do not overwrite later, because certbot
+  # manages this file after HTTPS is enabled.
+  [ -f /etc/nginx/sites-available/patterndeck ] || install -m 0644 ${TEMP_DIR}/patterndeck.nginx.conf /etc/nginx/sites-available/patterndeck
+  ln -sf /etc/nginx/sites-available/patterndeck /etc/nginx/sites-enabled/patterndeck
+  rm -f /etc/nginx/sites-enabled/grammarcrammer
+  install -m 0644 ${TEMP_DIR}/patterndeck.service /etc/systemd/system/patterndeck.service
+  systemctl daemon-reload
+
+  # Carry forward data/secrets from the pre-rename deployment.
+  if [ -d /home/grammarcrammer ]; then
+    if [ ! -f /home/patterndeck/data/patterndeck.db ] && [ -f /home/grammarcrammer/data/grammarcrammer.db ]; then
+      cp /home/grammarcrammer/data/grammarcrammer.db /home/patterndeck/data/patterndeck.db
+    fi
+
+    if [ ! -f ${ENV_DIR}/server.env ]; then
+      if [ -f /home/grammarcrammer/env/server.env ]; then
+        cp /home/grammarcrammer/env/server.env ${ENV_DIR}/server.env
+      elif [ -f /home/grammarcrammer/app/server/.env ]; then
+        cp /home/grammarcrammer/app/server/.env ${ENV_DIR}/server.env
+      fi
+    fi
+  fi
 
   # Move .env files to persistent location if still inside app/
   [ -f ${REMOTE_APP}/server/.env ] && [ ! -f ${ENV_DIR}/server.env ] && mv ${REMOTE_APP}/server/.env ${ENV_DIR}/server.env
   [ -f ${REMOTE_APP}/client/.env ] && [ ! -f ${ENV_DIR}/client.env ] && mv ${REMOTE_APP}/client/.env ${ENV_DIR}/client.env
 
+  if [ -f ${ENV_DIR}/server.env ]; then
+    sed -i \
+      -e 's|^DATABASE_URL=.*|DATABASE_URL="file:/home/patterndeck/data/patterndeck.db"|' \
+      -e 's|^APP_URL=.*|APP_URL="https://patterndeck.richardhanss.de"|' \
+      -e 's|^EMAIL_FROM=.*|EMAIL_FROM="Pattern Deck <noreply@patterndeck.richardhanss.de>"|' \
+      ${ENV_DIR}/server.env
+  fi
+
   # Stop service
+  systemctl stop patterndeck 2>/dev/null || true
   systemctl stop grammarcrammer 2>/dev/null || true
 
   # Swap in new app files
@@ -85,34 +122,35 @@ ssh ${SERVER} << 'DEPLOY_EOF'
   cp -r ${TEMP_DIR}/web/* ${REMOTE_WEB}/
 
   # Fix ownership and permissions for nginx
-  chown -R grammarcrammer:grammarcrammer ${REMOTE_APP} ${REMOTE_WEB}
-  chmod o+x /home/grammarcrammer
+  chown -R patterndeck:patterndeck ${REMOTE_APP} ${REMOTE_WEB}
+  chmod o+x /home/patterndeck
   chmod -R o+r ${REMOTE_WEB}
   find ${REMOTE_WEB} -type d -exec chmod o+x {} +
 
   # Install production dependencies (prisma is a prod dep)
   cd ${REMOTE_APP}
-  sudo -u grammarcrammer pnpm install --filter server --prod --frozen-lockfile --ignore-scripts
+  sudo -u patterndeck pnpm install --filter server --prod --frozen-lockfile --ignore-scripts
 
   # Generate Prisma client and run migrations
   cd ${REMOTE_APP}/server
-  sudo -u grammarcrammer npx prisma generate
-  sudo -u grammarcrammer npx prisma migrate deploy
+  sudo -u patterndeck npx prisma generate
+  sudo -u patterndeck npx prisma migrate deploy
 
   # Start service
-  systemctl start grammarcrammer
+  systemctl disable grammarcrammer 2>/dev/null || true
+  systemctl start patterndeck
 
   # Cleanup
   rm -rf ${TEMP_DIR}
 
   echo ""
-  echo "Service status: $(systemctl is-active grammarcrammer)"
+  echo "Service status: $(systemctl is-active patterndeck)"
 DEPLOY_EOF
 
 echo ""
 echo "=== Verifying deployment ==="
 sleep 2
-STATUS=$(curl -sf https://grammarcrammer.richardhanss.de/api/health 2>&1) && echo "Health check: ${STATUS}" || echo "Health check failed (may need DNS/SSL setup first)"
+STATUS=$(curl -sf https://patterndeck.richardhanss.de/api/health 2>&1) && echo "Health check: ${STATUS}" || echo "Health check failed (may need DNS/SSL setup first)"
 
 echo ""
 echo "=== Done ==="
