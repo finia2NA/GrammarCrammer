@@ -11,6 +11,7 @@ interface SessionCompleteScreenProps {
   completedCards: CardAttempt[];
   decks: Map<string, DeckInfo>;
   studyMode: 'scheduled' | 'early';
+  studySessionId?: string;
   onDone: () => void | Promise<void>;
   onMakeDeck?: () => void;
   quickDeckCreated?: boolean;
@@ -34,6 +35,7 @@ export function SessionCompleteScreen({
   completedCards,
   decks,
   studyMode,
+  studySessionId,
   onDone,
   onMakeDeck,
   quickDeckCreated = false,
@@ -86,7 +88,7 @@ export function SessionCompleteScreen({
         await Promise.all(deckGroupEntries.map(async ([deckId]) => {
           const draft = deckReviewDrafts[deckId];
           if (!draft) throw new Error('Still generating deck ratings. Please wait a moment and try again.');
-          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode);
+          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode, studySessionId);
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not save your deck reviews. Please try again.';
@@ -98,7 +100,7 @@ export function SessionCompleteScreen({
       }
     }
     await onDone();
-  }, [doneDisabled, isQuickStudy, deckGroupEntries, deckReviewDrafts, onDone, studyMode]);
+  }, [doneDisabled, isQuickStudy, deckGroupEntries, deckReviewDrafts, onDone, studyMode, studySessionId]);
 
   const totalCards = completedCards.length;
   const firstTryCorrect = completedCards.filter(a => a.answers.length === 1).length;
@@ -160,6 +162,7 @@ export function SessionCompleteScreen({
                   language={info.language}
                   cards={deckCards}
                   disabled={submitting}
+                  studySessionId={studySessionId}
                   onDraftChange={handleDeckDraftChange}
                 />
               )}

@@ -10,10 +10,13 @@ import {
   markStudied as apiMarkStudied,
 } from '@/lib/api';
 import type { Card, DeckCard, DeckData } from '@/lib/types';
+import type { AnalyticsContext } from '@/lib/types';
 
 interface UseMultiDeckSessionParams {
   nodeId: string;
   selectedDeckIds?: string[];
+  studySessionId?: string;
+  studyMode?: 'scheduled' | 'early';
 }
 
 export interface DeckInfo {
@@ -24,6 +27,9 @@ export interface DeckInfo {
   language: string;
   deckName: string;
   nodeId: string;
+  dueAt: number | null;
+  isDue: boolean;
+  intervalDays: number;
 }
 
 interface DeckMeta extends DeckData {
@@ -31,7 +37,7 @@ interface DeckMeta extends DeckData {
   deckName: string;
 }
 
-export function useMultiDeckSession({ nodeId, selectedDeckIds }: UseMultiDeckSessionParams) {
+export function useMultiDeckSession({ nodeId, selectedDeckIds, studySessionId, studyMode }: UseMultiDeckSessionParams) {
   const router = useRouter();
   const selectedDeckIdsKey = selectedDeckIds?.join(',') ?? '';
 
@@ -53,14 +59,23 @@ export function useMultiDeckSession({ nodeId, selectedDeckIds }: UseMultiDeckSes
     if (generatedDecksRef.current.has(meta.id) || generatingRef.current.has(meta.id)) return [];
     generatingRef.current.add(meta.id);
     try {
-      const result = await generateCards(meta.topic, meta.language, meta.cardCount, meta.explanation!);
+      const analyticsContext: AnalyticsContext = {
+        studySessionId,
+        studyMode,
+        deckId: meta.id,
+        deckName: meta.deckName,
+        deckTopic: meta.topic,
+        language: meta.language,
+        traceId: `deck_generation:${meta.id}`,
+      };
+      const result = await generateCards(meta.topic, meta.language, meta.cardCount, meta.explanation!, analyticsContext);
       if (result.cost) addCost(result.cost);
       generatedDecksRef.current.add(meta.id);
       return result.cards.map((c): DeckCard => ({ ...c, deckId: meta.id }));
     } finally {
       generatingRef.current.delete(meta.id);
     }
-  }, []);
+  }, [studyMode, studySessionId]);
 
   useEffect(() => {
     async function load() {
@@ -96,13 +111,16 @@ export function useMultiDeckSession({ nodeId, selectedDeckIds }: UseMultiDeckSes
             metaList.push({ ...d, id, deckName });
             infoMap.set(id, {
               explanation: d.explanation!,
-              wasTruncated: false,
-              topic: d.topic,
-              clarification: d.clarification,
-              language: d.language,
-              deckName,
-              nodeId: id,
-            });
+  wasTruncated: false,
+  topic: d.topic,
+  clarification: d.clarification,
+  language: d.language,
+  deckName,
+  nodeId: id,
+  dueAt: d.dueAt ?? null,
+  isDue: d.isDue ?? false,
+  intervalDays: d.intervalDays ?? 1,
+});
           } catch { continue; }
         }
 

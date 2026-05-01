@@ -4,6 +4,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview, updateDeckSchedule } from '../services/deck.service.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { enqueueExplanation } from '../services/scheduler.service.js';
+import { capture } from '../services/analytics.service.js';
+import { getNodePath } from '../services/tree.service.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const CSV_MAX_DATA_ROWS = 5000;
@@ -29,6 +31,18 @@ decksRouter.post('/', async (req, res, next) => {
     if (existingExplanation === undefined) {
       enqueueExplanation(req.userId!, nodeId);
     }
+
+    capture(req.userId!, 'deck_created', {
+      deck_id: nodeId,
+      deck_name: String(path).split('::').pop()?.trim() ?? String(path),
+      deck_topic: String(topic),
+      collection_path: String(path).split('::').slice(0, -1).join('::') || undefined,
+      language: String(language),
+      card_count: Number(cardCount ?? 0),
+      has_clarification: deckClarification !== undefined,
+      has_existing_explanation: existingExplanation !== undefined,
+      creation_source: existingExplanation !== undefined ? 'quick_study_save' : 'manual',
+    });
 
     res.status(201).json({ nodeId });
   } catch (e) { next(e); }
@@ -187,6 +201,16 @@ decksRouter.post('/import-csv', upload.single('file'), async (req, res, next) =>
     const failedCount = failures.length;
     failures.sort((a, b) => a.line - b.line);
 
+    capture(req.userId!, failedCount > 0 ? 'import_failed' : 'deck_import_completed', {
+      collection_path: basePath || undefined,
+      language: String(language),
+      card_count: cardCount,
+      import_rows: dataRowCount,
+      created_count: createdCount,
+      queued_count: queuedCount,
+      failed_count: failedCount,
+    });
+
     res.status(201).json({ createdCount, queuedCount, failedCount, failures });
   } catch (e) { next(e); }
 });
@@ -207,6 +231,18 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
     if (result.regenerateExplanation) {
       enqueueExplanation(req.userId!, req.params.nodeId);
     }
+
+    capture(req.userId!, 'deck_updated', {
+      deck_id: req.params.nodeId,
+      deck_name: typeof name === 'string' ? name : undefined,
+      deck_topic: typeof topic === 'string' ? topic : undefined,
+      language: typeof language === 'string' ? language : undefined,
+      card_count: cardCount !== undefined ? Number(cardCount) : undefined,
+      has_clarification: typeof clarification === 'string' ? clarification.trim().length > 0 : undefined,
+      regenerated_explanation: result.regenerateExplanation,
+      updated_fields: ['name', 'topic', 'clarification', 'language', 'cardCount', 'explanation']
+        .filter(field => req.body[field] !== undefined),
+    });
 
     res.json(result);
   } catch (e) { next(e); }
@@ -251,20 +287,46 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
 
 decksRouter.post('/:nodeId/review', async (req, res, next) => {
   try {
-    const { userStars, aiStars, aiRecap, studyMode } = req.body;
+    const { userStars, aiStars, aiRecap, studyMode, studySessionId } = req.body;
     if (!userStars || aiStars === undefined || aiRecap === undefined || aiRecap === null) {
       throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
     }
     const resolvedStudyMode = studyMode === 'early' ? 'early' : 'scheduled';
     const stars = Math.max(1, Math.min(5, Math.round(Number(userStars)))) as 1 | 2 | 3 | 4 | 5;
+    const deck = await getDeck(req.userId!, req.params.nodeId);
     const result = await saveDeckReview(req.userId!, req.params.nodeId, stars, Number(aiStars), String(aiRecap), resolvedStudyMode);
+    capture(req.userId!, 'deck_review_submitted', {
+      deck_id: req.params.nodeId,
+      study_session_id: typeof studySessionId === 'string' ? studySessionId : undefined,
+      deck_topic: deck?.topic,
+      language: deck?.language,
+      study_mode: resolvedStudyMode,
+      ai_stars: Number(aiStars),
+      user_stars: stars,
+      stars_delta: stars - Number(aiStars),
+      user_overrode_ai_rating: stars !== Number(aiStars),
+      interval_before_days: deck?.intervalDays,
+      interval_after_days: result.nextIntervalDays,
+      was_due_when_studied: deck?.isDue,
+    });
     res.json(result);
   } catch (e) { next(e); }
 });
 
 decksRouter.delete('/:nodeId', async (req, res, next) => {
   try {
+    const [deck, path] = await Promise.all([
+      getDeck(req.userId!, req.params.nodeId).catch(() => null),
+      getNodePath(req.userId!, req.params.nodeId).catch(() => null),
+    ]);
     await deleteNode(req.userId!, req.params.nodeId);
+    capture(req.userId!, 'deck_deleted', {
+      deck_id: req.params.nodeId,
+      deck_name: path?.split('::').pop(),
+      deck_topic: deck?.topic,
+      language: deck?.language,
+      collection_path: path?.split('::').slice(0, -1).join('::') || undefined,
+    });
     res.json({ success: true });
   } catch (e) { next(e); }
 });

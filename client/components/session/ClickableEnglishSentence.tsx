@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { wordHint } from '@/lib/api';
-import type { Card, WordHint } from '@/lib/types';
+import type { AnalyticsContext, Card, WordHint } from '@/lib/types';
 import { FuriganaText } from './FuriganaText';
 
 const LINE_HEIGHT = 32;
@@ -23,6 +23,8 @@ interface ClickableEnglishSentenceProps {
   hintCache: React.MutableRefObject<Map<string, WordHint>>;
   addCost: (usd: number) => void;
   dismissSignal?: number;
+  analyticsContext?: AnalyticsContext;
+  onWordHint?: () => void;
 }
 
 function cleanWord(token: string): string {
@@ -30,7 +32,7 @@ function cleanWord(token: string): string {
 }
 
 export function ClickableEnglishSentence({
-  card, language, hintCache, addCost, dismissSignal,
+  card, language, hintCache, addCost, dismissSignal, analyticsContext, onWordHint,
 }: ClickableEnglishSentenceProps) {
   const colors = useColors();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -100,10 +102,15 @@ export function ClickableEnglishSentence({
     setLoading(true);
     setHint(null);
     try {
-      const result = await wordHint(clean, card.english, card.targetLanguage, language);
+      const result = await wordHint(clean, card.english, card.targetLanguage, language, {
+        ...analyticsContext,
+        deckId: card.deckId ?? analyticsContext?.deckId,
+        wordIndex: index,
+      });
       const { cost, ...hintData } = result;
       hintCache.current.set(cacheKey, hintData);
       addCost(cost);
+      onWordHint?.();
       setActiveIndex(prev => {
         if (prev === index) setHint(hintData);
         return prev;
@@ -113,7 +120,7 @@ export function ClickableEnglishSentence({
     } finally {
       setLoading(false);
     }
-  }, [card, language, hintCache, addCost]);
+  }, [card, language, hintCache, addCost, analyticsContext, onWordHint]);
 
   function showWord(index: number, token: string) {
     if (hideTimer.current) clearTimeout(hideTimer.current);

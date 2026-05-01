@@ -7,6 +7,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ColorsContext, darkThemeVars, lightThemeVars, dark, light } from '@/constants/theme';
 import { hydrateSettings } from '@/lib/api';
+import { AnalyticsProvider, analytics } from '@/lib/analytics';
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -14,6 +15,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     hydrateSettings().catch(() => {});
+    analytics.track('app_opened');
 
     if (Platform.OS === 'web') {
       const loader = document.getElementById('gc-loader');
@@ -27,15 +29,17 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ColorsContext.Provider value={colors}>
-        <View style={[{ flex: 1 }, scheme === 'dark' ? darkThemeVars : lightThemeVars]}>
-          <KeyboardProvider>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
-            <StatusBar style="auto" />
-          </KeyboardProvider>
-        </View>
-      </ColorsContext.Provider>
-    </GestureHandlerRootView>
+    <AnalyticsProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ColorsContext.Provider value={colors}>
+          <View style={[{ flex: 1 }, scheme === 'dark' ? darkThemeVars : lightThemeVars]}>
+            <KeyboardProvider>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+              <StatusBar style="auto" />
+            </KeyboardProvider>
+          </View>
+        </ColorsContext.Provider>
+      </GestureHandlerRootView>
+    </AnalyticsProvider>
   );
 }

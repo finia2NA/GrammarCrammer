@@ -12,6 +12,7 @@ import {
 import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getSetting } from '../services/settings.service.js';
+import type { AiAnalyticsContext } from '../services/analytics.service.js';
 
 const DEFAULT_CARD_COUNT = 10;
 
@@ -22,6 +23,24 @@ claudeProxyRouter.use(requireAuth);
 
 function logAI(email: string, type: string, model: string) {
   console.log(`[AI] ${email} | ${type} | ${model}`);
+}
+
+function analyticsContext(body: any, fallback: Partial<AiAnalyticsContext> = {}): AiAnalyticsContext {
+  const raw = body?.analyticsContext ?? {};
+  return {
+    studySessionId: typeof raw.studySessionId === 'string' ? raw.studySessionId : fallback.studySessionId,
+    deckId: typeof raw.deckId === 'string' ? raw.deckId : fallback.deckId,
+    deckName: typeof raw.deckName === 'string' ? raw.deckName : fallback.deckName,
+    deckTopic: typeof raw.deckTopic === 'string' ? raw.deckTopic : fallback.deckTopic,
+    collectionPath: typeof raw.collectionPath === 'string' ? raw.collectionPath : fallback.collectionPath,
+    language: typeof raw.language === 'string' ? raw.language : fallback.language,
+    studyMode: typeof raw.studyMode === 'string' ? raw.studyMode : fallback.studyMode,
+    cardIndex: typeof raw.cardIndex === 'number' ? raw.cardIndex : fallback.cardIndex,
+    attemptNumber: typeof raw.attemptNumber === 'number' ? raw.attemptNumber : fallback.attemptNumber,
+    turnIndex: typeof raw.turnIndex === 'number' ? raw.turnIndex : fallback.turnIndex,
+    wordIndex: typeof raw.wordIndex === 'number' ? raw.wordIndex : fallback.wordIndex,
+    traceId: typeof raw.traceId === 'string' ? raw.traceId : fallback.traceId,
+  };
 }
 
 // Non-streaming: generate cards
@@ -37,7 +56,11 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
       resolvedCount = setting ? parseInt(setting, 10) : DEFAULT_CARD_COUNT;
     }
     logAI(req.userEmail!, 'cards', 'haiku');
-    const result = await generateCards(req.userId!, topic, language, resolvedCount, explanation);
+    const result = await generateCards(req.userId!, topic, language, resolvedCount, explanation, analyticsContext(req.body, {
+      deckTopic: String(topic),
+      language: String(language),
+      traceId: req.body.analyticsContext?.deckId ? `deck_generation:${req.body.analyticsContext.deckId}` : undefined,
+    }));
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -51,7 +74,11 @@ claudeProxyRouter.post('/judge', async (req, res, next) => {
     }
     const resolvedBrevity = brevity === 'brief' ? 'brief' : 'normal';
     logAI(req.userEmail!, `judge:${resolvedBrevity}`, 'haiku');
-    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation, resolvedBrevity);
+    const ctx = analyticsContext(req.body, { language: String(language) });
+    const result = await judgeAnswer(req.userId!, card, userAnswer, language, explanation, resolvedBrevity, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `answer:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.attemptNumber ?? 1}` : undefined),
+    });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -64,7 +91,10 @@ claudeProxyRouter.post('/explanation/stream', async (req, res, next) => {
       throw new AppError(400, 'MISSING_FIELDS', 'topic and language are required.');
     }
     logAI(req.userEmail!, 'explanation', 'sonnet');
-    await streamExplanationGeneric(req, res, req.userId!, topic, language);
+    await streamExplanationGeneric(req, res, req.userId!, topic, language, analyticsContext(req.body, {
+      deckTopic: String(topic),
+      language: String(language),
+    }));
   } catch (e) { next(e); }
 });
 
@@ -77,7 +107,11 @@ claudeProxyRouter.post('/rejection', async (req, res, next) => {
     }
     const resolvedBrevity = brevity === 'brief' ? 'brief' : 'normal';
     logAI(req.userEmail!, `rejection:${resolvedBrevity}`, 'sonnet');
-    const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation, resolvedBrevity);
+    const ctx = analyticsContext(req.body, { language: String(language) });
+    const result = await reviewRejection(req.userId!, card, userAnswer, language, explanation, resolvedBrevity, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `answer:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.attemptNumber ?? 1}` : undefined),
+    });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -90,7 +124,11 @@ claudeProxyRouter.post('/rate-session', async (req, res, next) => {
       throw new AppError(400, 'MISSING_FIELDS', 'topic, language, and cards are required.');
     }
     logAI(req.userEmail!, 'rate-session', 'haiku');
-    const result = await rateSession(req.userId!, topic, language, cards);
+    const ctx = analyticsContext(req.body, { deckTopic: String(topic), language: String(language) });
+    const result = await rateSession(req.userId!, topic, language, cards, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `session_rating:${ctx.studySessionId}:${ctx.deckId ?? 'quick'}` : undefined),
+    });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -103,7 +141,11 @@ claudeProxyRouter.post('/word-hint', async (req, res, next) => {
       throw new AppError(400, 'MISSING_FIELDS', 'word, english, targetLanguage, and language are required.');
     }
     logAI(req.userEmail!, 'word-hint', 'haiku');
-    const result = await generateWordHint(req.userId!, word, english, targetLanguage, language);
+    const ctx = analyticsContext(req.body, { language: String(language) });
+    const result = await generateWordHint(req.userId!, word, english, targetLanguage, language, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `word_hint:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.wordIndex ?? 0}` : undefined),
+    });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -120,6 +162,10 @@ claudeProxyRouter.post('/chat/stream', async (req, res, next) => {
       language, card.english, card.targetLanguage,
       userAnswer, wasCorrect, card.sentenceContext, explanation,
     );
-    await streamChat(req, res, req.userId!, systemPrompt, messages);
+    const ctx = analyticsContext(req.body, { language: String(language) });
+    await streamChat(req, res, req.userId!, systemPrompt, messages, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `chat:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.turnIndex ?? 0}` : undefined),
+    });
   } catch (e) { next(e); }
 });

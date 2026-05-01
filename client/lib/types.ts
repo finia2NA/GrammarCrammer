@@ -56,3 +56,18 @@ export interface WordHint {
   with_annotation: string;
   word_type: string;
 }
+
+export interface AnalyticsContext {
+  studySessionId?: string;
+  deckId?: string;
+  deckName?: string;
+  deckTopic?: string;
+  collectionPath?: string;
+  language?: string;
+  studyMode?: string;
+  cardIndex?: number;
+  attemptNumber?: number;
+  turnIndex?: number;
+  wordIndex?: number;
+  traceId?: string;
+}

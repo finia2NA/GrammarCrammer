@@ -1,8 +1,9 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { getAuthToken, clearAuthToken, getBackendBaseUrl } from './storage';
-import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint } from './types';
+import { getAuthToken, clearAuthToken, clearUserId, getBackendBaseUrl } from './storage';
+import { analytics } from './analytics';
+import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint, AnalyticsContext } from './types';
 import {
   areSettingsHydrated,
   getLocalSetting,
@@ -80,6 +81,8 @@ export class ApiError extends Error {
 async function handleHttpError(status: number, bodyJson: any): Promise<never> {
   if (status === 401) {
     await clearAuthToken();
+    await clearUserId();
+    analytics.reset();
     resetLocalSettings();
     router.replace('/onboarding');
     throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
@@ -306,6 +309,8 @@ export async function importDecksFromCsv(
   if (!res.ok) {
     if (res.status === 401) {
       await clearAuthToken();
+      await clearUserId();
+      analytics.reset();
       router.replace('/onboarding');
       throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
     }
@@ -410,21 +415,21 @@ export async function getUsageStatus() {
 
 // ─── AI (non-streaming) ──────────────────────────────────────────────────────
 
-export async function generateCards(topic: string, language: string, count: number, explanation: string) {
+export async function generateCards(topic: string, language: string, count: number, explanation: string, analyticsContext?: AnalyticsContext) {
   return request<{ cards: Card[]; cost: number }>('/ai/cards', {
     method: 'POST',
-    body: JSON.stringify({ topic, language, count, explanation }),
+    body: JSON.stringify({ topic, language, count, explanation, analyticsContext }),
   });
 }
 
-export async function judgeAnswer(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal') {
+export async function judgeAnswer(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal', analyticsContext?: AnalyticsContext) {
   return request<{ correct: boolean; reason: string; cost: number }>('/ai/judge', {
     method: 'POST',
-    body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
+    body: JSON.stringify({ card, userAnswer, language, explanation, brevity, analyticsContext }),
   });
 }
 
-export async function rateSession(topic: string, language: string, cards: CardAttempt[]) {
+export async function rateSession(topic: string, language: string, cards: CardAttempt[], analyticsContext?: AnalyticsContext) {
   const payload = cards.map(a => ({
     english: a.card.english,
     targetLanguage: a.card.targetLanguage,
@@ -432,7 +437,7 @@ export async function rateSession(topic: string, language: string, cards: CardAt
   }));
   return request<{ stars: number; recap: string; cost: number }>('/ai/rate-session', {
     method: 'POST',
-    body: JSON.stringify({ topic, language, cards: payload }),
+    body: JSON.stringify({ topic, language, cards: payload, analyticsContext }),
   });
 }
 
@@ -442,10 +447,11 @@ export async function submitDeckReview(
   aiStars: number,
   aiRecap: string,
   studyMode: 'scheduled' | 'early' = 'scheduled',
+  studySessionId?: string,
 ) {
   return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
     method: 'POST',
-    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode }),
+    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode, studySessionId }),
   });
 }
 
@@ -547,15 +553,16 @@ export async function generateExplanation(
   language: string,
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
+  analyticsContext?: AnalyticsContext,
 ): Promise<{ wasTruncated: boolean }> {
-  const result = await streamSSE('/ai/explanation/stream', { topic, language }, onChunk, onCost);
+  const result = await streamSSE('/ai/explanation/stream', { topic, language, analyticsContext }, onChunk, onCost);
   return { wasTruncated: result.wasTruncated ?? false };
 }
 
-export async function explainRejection(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal') {
+export async function explainRejection(card: Card, userAnswer: string, language: string, explanation?: string, brevity?: 'brief' | 'normal', analyticsContext?: AnalyticsContext) {
   return request<{ explanation: string; overrideToCorrect: boolean; cost: number }>('/ai/rejection', {
     method: 'POST',
-    body: JSON.stringify({ card, userAnswer, language, explanation, brevity }),
+    body: JSON.stringify({ card, userAnswer, language, explanation, brevity, analyticsContext }),
   });
 }
 
@@ -564,10 +571,11 @@ export async function wordHint(
   english: string,
   targetLanguage: string,
   language: string,
+  analyticsContext?: AnalyticsContext,
 ): Promise<WordHint & { cost: number }> {
   return request('/ai/word-hint', {
     method: 'POST',
-    body: JSON.stringify({ word, english, targetLanguage, language }),
+    body: JSON.stringify({ word, english, targetLanguage, language, analyticsContext }),
   });
 }
 
@@ -580,6 +588,7 @@ export async function chatAboutCard(
   onChunk: (text: string) => void,
   onCost?: (usd: number) => void,
   explanation?: string,
+  analyticsContext?: AnalyticsContext,
 ): Promise<void> {
-  await streamSSE('/ai/chat/stream', { card, userAnswer, language, wasCorrect, messages, explanation }, onChunk, onCost);
+  await streamSSE('/ai/chat/stream', { card, userAnswer, language, wasCorrect, messages, explanation, analyticsContext }, onChunk, onCost);
 }

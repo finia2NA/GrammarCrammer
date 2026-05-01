@@ -9,6 +9,7 @@ import { collectionsRouter } from './routes/collections.js';
 import { settingsRouter } from './routes/settings.js';
 import { claudeProxyRouter } from './routes/claude-proxy.js';
 import { initScheduler } from './services/scheduler.service.js';
+import { shutdown as shutdownAnalytics } from './services/analytics.service.js';
 
 const app = express();
 
@@ -33,9 +34,20 @@ app.get('/api/health', (_req, res) => {
 app.use(errorHandler);
 
 const host = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
-app.listen(config.port, host, () => {
+const server = app.listen(config.port, host, () => {
   console.log(`[server] Listening on http://${host}:${config.port}`);
   initScheduler().catch(err => {
     console.error('[scheduler] Failed to initialize:', err);
   });
 });
+
+async function shutdown(signal: string) {
+  console.log(`[server] ${signal} received, shutting down.`);
+  server.close(async () => {
+    await shutdownAnalytics().catch(err => console.error('[analytics] Failed to flush during shutdown:', err));
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', () => { void shutdown('SIGINT'); });
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });

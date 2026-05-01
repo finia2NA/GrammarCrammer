@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useColors } from '@/constants/theme';
-import type { Card, CardPhase, ChatMessage, WordHint } from '@/lib/types';
+import type { AnalyticsContext, Card, CardPhase, ChatMessage, WordHint } from '@/lib/types';
 import { GrammarMarkdown } from './GrammarMarkdown';
 import { CardChat } from './CardChat';
 import { ClickableEnglishSentence } from './ClickableEnglishSentence';
@@ -57,6 +57,8 @@ interface FlashcardDeckProps {
   hintCache: React.MutableRefObject<Map<string, WordHint>>;
   addCost: (usd: number) => void;
   vocabHintDismissSignal?: number;
+  analyticsContext?: AnalyticsContext;
+  onWordHint?: () => void;
 }
 
 export function FlashcardDeck({
@@ -66,7 +68,7 @@ export function FlashcardDeck({
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong,
   inputRef, chatMessages, chatStreaming, onChatSend, deckName,
-  hintCache, addCost, vocabHintDismissSignal,
+  hintCache, addCost, vocabHintDismissSignal, analyticsContext, onWordHint,
 }: FlashcardDeckProps) {
   const colors = useColors();
   const currentCard = cards[0] ?? { english: '', targetLanguage: '', notes: '', sentenceContext: '' };
@@ -86,6 +88,8 @@ export function FlashcardDeck({
             hintCache={hintCache}
             addCost={addCost}
             dismissSignal={vocabHintDismissSignal}
+            analyticsContext={analyticsContext}
+            onWordHint={onWordHint}
           />
         </View>
         {currentCard.sentenceContext && (

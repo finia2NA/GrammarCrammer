@@ -21,6 +21,9 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY || null,
   appUrl: process.env.APP_URL || `http://localhost:${process.env.PORT ?? '3001'}`,
   emailFrom: process.env.EMAIL_FROM || 'GrammarCrammer <noreply@grammarcrammer.richardhanss.de>',
+  posthogProjectApiKey: process.env.POSTHOG_PROJECT_API_KEY || null,
+  posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
+  posthogEnabled: process.env.POSTHOG_ENABLED !== '0' && !!process.env.POSTHOG_PROJECT_API_KEY,
 } as const;
 
 export function isCentralKeyAvailable(): boolean {

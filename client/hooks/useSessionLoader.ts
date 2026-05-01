@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { getAuthToken } from '@/lib/storage';
 import { generateExplanation, generateCards } from '@/lib/api';
-import type { Card, LoadPhase } from '@/lib/types';
+import type { AnalyticsContext, Card, LoadPhase } from '@/lib/types';
 
 interface UseSessionLoaderParams {
   topic: string;
   language: string;
   cardCount: number;
   existingExplanation?: string;
+  analyticsContext?: AnalyticsContext;
 }
 
-export function useSessionLoader({ topic, language, cardCount, existingExplanation }: UseSessionLoaderParams) {
+export function useSessionLoader({ topic, language, cardCount, existingExplanation, analyticsContext }: UseSessionLoaderParams) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -40,12 +41,13 @@ export function useSessionLoader({ topic, language, cardCount, existingExplanati
               setExplanation(prev => prev + chunk);
             },
             addCost,
+            analyticsContext,
           );
           setExplanationTruncated(wasTruncated);
         }
 
         setLoadPhase('cards');
-        const result = await generateCards(topic, language, cardCount, fullExplanation);
+        const result = await generateCards(topic, language, cardCount, fullExplanation, analyticsContext);
         if (result.cost) addCost(result.cost);
         setCards(result.cards);
       } catch (e) {

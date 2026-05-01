@@ -7,7 +7,7 @@ import {
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { useRouter } from 'expo-router';
-import { clearAuthToken, clearUserEmail, getUserEmail } from '@/lib/storage';
+import { clearAuthToken, clearUserEmail, clearUserId, getUserEmail } from '@/lib/storage';
 import { deleteApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, saveSettings } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { getSettingsSnapshot, resetLocalSettings } from '@/hooks/state/persistent/settingsStore';
@@ -26,6 +26,7 @@ import { SettingsRow } from './SettingsRow';
 import { UsageBar } from './UsageBar';
 import { AddApiKeyForm } from './AddApiKeyForm';
 import { formatCost } from '@/lib/format';
+import { analytics } from '@/lib/analytics';
 
 type CardOrder = 'sequential' | 'shuffled';
 
@@ -121,7 +122,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
   async function handleLogout() {
     await clearAuthToken();
+    await clearUserId();
     await clearUserEmail();
+    analytics.reset();
     resetLocalSettings();
     onClose();
     router.replace('/onboarding');

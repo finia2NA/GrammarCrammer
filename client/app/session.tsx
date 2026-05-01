@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, useColors } from '@/constants/theme';
 import { createDeckFromPath } from '@/lib/api';
-import type { Card, DeckCard } from '@/lib/types';
+import type { AnalyticsContext, Card, DeckCard } from '@/lib/types';
 import type { CardCount } from '@/constants/session';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
@@ -32,8 +32,13 @@ import {
 } from '@/components/session';
 import { SessionTopBar, TOPBAR_HEIGHT } from '@/components/session/SessionTopBar';
 import { useScreenSize } from '@/hooks/useScreenSize';
+import { analytics } from '@/lib/analytics';
 
 const SIDEBAR_INITIAL_WIDTH = 320;
+
+function createStudySessionId() {
+  return `study_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 // ─── Route entry point ──────────────────────────────────────────────────────
 
@@ -62,10 +67,18 @@ export default function Session() {
 // ─── Quick study (one-off, old flow) ────────────────────────────────────────
 
 function QuickSession({ topic, language, cardCount }: { topic: string; language: string; cardCount: number }) {
-  const loader = useSessionLoader({ topic, language, cardCount });
+  const studySessionId = useRef(createStudySessionId()).current;
+  const analyticsContext = useRef<AnalyticsContext>({
+    studySessionId,
+    deckTopic: topic,
+    language,
+    studyMode: 'quick',
+  }).current;
+  const loader = useSessionLoader({ topic, language, cardCount, analyticsContext });
 
   return (
     <SessionUI
+      studySessionId={studySessionId}
       loading={loader.loading}
       loadPhase={loader.loadPhase}
       loadError={loader.loadError}
@@ -81,6 +94,7 @@ function QuickSession({ topic, language, cardCount }: { topic: string; language:
       showExplanationOverlay
       markStudied={async () => {}}
       quickStudyCardCount={cardCount}
+      analyticsBase={analyticsContext}
     />
   );
 }
@@ -96,7 +110,8 @@ function DeckSession({
   selectedDeckIds?: string[];
   studyMode: 'scheduled' | 'early';
 }) {
-  const multi = useMultiDeckSession({ nodeId, selectedDeckIds });
+  const studySessionId = useRef(createStudySessionId()).current;
+  const multi = useMultiDeckSession({ nodeId, selectedDeckIds, studySessionId, studyMode });
   const [language, setLanguage] = useState('');
 
   useEffect(() => {
@@ -127,6 +142,7 @@ function DeckSession({
 
   return (
     <SessionUI
+      studySessionId={studySessionId}
       loading={multi.loading}
       loadPhase="cards"
       loadError={multi.loadError}
@@ -146,6 +162,7 @@ function DeckSession({
       overlayDecks={overlayDecks}
       decks={multi.decks}
       studyMode={studyMode}
+      analyticsBase={{ studySessionId, studyMode }}
     />
   );
 }
@@ -153,6 +170,7 @@ function DeckSession({
 // ─── Shared session UI ──────────────────────────────────────────────────────
 
 interface SessionUIProps {
+  studySessionId: string;
   loading: boolean;
   loadPhase: 'explanation' | 'cards';
   loadError: string | null;
@@ -173,14 +191,16 @@ interface SessionUIProps {
   decks?: Map<string, DeckInfo>;
   studyMode?: 'scheduled' | 'early';
   quickStudyCardCount?: number;
+  analyticsBase: AnalyticsContext;
 }
 
 function SessionUI({
+  studySessionId,
   loading, loadPhase, loadError, setLoadError,
   cards, setCards, totalCost, addCost,
   explanation, wasTruncated, topic, clarification, language,
   showExplanationOverlay, markStudied, deckName, overlayDecks, decks, studyMode = 'scheduled',
-  quickStudyCardCount,
+  quickStudyCardCount, analyticsBase,
 }: SessionUIProps) {
   const router = useRouter();
   const { isSmallScreen } = useScreenSize();
@@ -191,12 +211,126 @@ function SessionUI({
   const [panelNarrowed, setPanelNarrowed] = useState(false);
   const [hasContentBelow, setHasContentBelow] = useState(false);
   const studiedRef = useRef(false);
+  const startedAtRef = useRef(Date.now());
+  const startedTrackedRef = useRef(false);
+  const loadedTrackedRef = useRef(false);
+  const completedTrackedRef = useRef(false);
+  const exitedTrackedRef = useRef(false);
+  const latestExitStateRef = useRef({ cardsRemaining: 0, cardsCompleted: 0, totalCost: 0, studyMode: 'quick' });
   const [quickDeckModalVisible, setQuickDeckModalVisible] = useState(false);
   const [quickDeckCreated, setQuickDeckCreated] = useState(false);
 
   const session = useSessionCards({
     cards, setCards, language, explanation, addCost, setLoadError, showOverlay,
+    analyticsContext: analyticsBase,
+    deckInfoById: decks,
   });
+
+  const deckSummary = useCallback(() => {
+    const deckList = decks ? Array.from(decks.values()) : [];
+    const dueAges = deckList
+      .map(deck => deck.dueAt ? Math.max(0, Date.now() - deck.dueAt) / 36e5 : null)
+      .filter((value): value is number => value !== null);
+    const maxDueAge = dueAges.length ? Math.max(...dueAges) : 0;
+    return {
+      deck_count: deckList.length,
+      due_deck_count: deckList.filter(deck => deck.isDue).length,
+      early_deck_count: deckList.filter(deck => !deck.isDue).length,
+      avg_due_age_hours: dueAges.length ? dueAges.reduce((sum, value) => sum + value, 0) / dueAges.length : 0,
+      max_due_age_hours: maxDueAge,
+      due_bucket: maxDueAge >= 24 * 7 ? 'week_plus' : maxDueAge >= 24 ? 'day_plus' : maxDueAge > 0 ? 'same_day' : 'not_due',
+    };
+  }, [decks]);
+
+  useEffect(() => {
+    if (startedTrackedRef.current) return;
+    if (decks && decks.size === 0 && loading) return;
+    startedTrackedRef.current = true;
+    analytics.track('study_session_started', {
+      study_session_id: studySessionId,
+      study_mode: decks && decks.size > 0 ? studyMode : 'quick',
+      planned_card_count: quickStudyCardCount,
+      language,
+      deck_topic: topic,
+      deck_name: deckName,
+      ...deckSummary(),
+    });
+  }, [deckName, deckSummary, decks, language, loading, quickStudyCardCount, studyMode, studySessionId, topic]);
+
+  useEffect(() => {
+    if (loadedTrackedRef.current || loading || cards.length === 0) return;
+    loadedTrackedRef.current = true;
+    analytics.track('study_session_cards_loaded', {
+      study_session_id: studySessionId,
+      study_mode: decks && decks.size > 0 ? studyMode : 'quick',
+      loaded_card_count: cards.length,
+      total_ai_cost_usd: totalCost,
+      language,
+      deck_topic: topic,
+      deck_name: deckName,
+      ...deckSummary(),
+    });
+  }, [cards.length, deckName, deckSummary, decks, language, loading, studyMode, studySessionId, topic, totalCost]);
+
+  useEffect(() => {
+    if (completedTrackedRef.current || loading || cards.length !== 0 || session.completedCards.length === 0) return;
+    completedTrackedRef.current = true;
+    const totalCards = session.completedCards.length;
+    const firstTryCorrect = session.completedCards.filter(a => a.answers.length === 1).length;
+    const totalWrongAttempts = session.completedCards.reduce((sum, attempt) => sum + Math.max(0, attempt.answers.length - 1), 0);
+    analytics.track('study_session_completed', {
+      study_session_id: studySessionId,
+      study_mode: decks && decks.size > 0 ? studyMode : 'quick',
+      cards_completed: totalCards,
+      first_try_correct_count: firstTryCorrect,
+      first_try_correct_rate: totalCards > 0 ? firstTryCorrect / totalCards : 0,
+      total_wrong_attempts: totalWrongAttempts,
+      cards_with_chat: session.metricsRef.current.chatCardsCount,
+      chat_message_count: session.metricsRef.current.chatMessageCount,
+      hint_cards_count: session.metricsRef.current.hintCardsCount,
+      word_hint_count: session.metricsRef.current.wordHintCount,
+      duration_seconds: Math.round((Date.now() - startedAtRef.current) / 1000),
+      total_ai_cost_usd: totalCost,
+      language,
+      deck_topic: topic,
+      deck_name: deckName,
+      ...deckSummary(),
+    });
+  }, [cards.length, deckName, deckSummary, decks, language, loading, session.completedCards, session.metricsRef, studyMode, studySessionId, topic, totalCost]);
+
+  useEffect(() => {
+    latestExitStateRef.current = {
+      cardsRemaining: cards.length,
+      cardsCompleted: session.completedCards.length,
+      totalCost,
+      studyMode: decks && decks.size > 0 ? studyMode : 'quick',
+    };
+  }, [cards.length, decks, session.completedCards.length, studyMode, totalCost]);
+
+  useEffect(() => () => {
+    if (completedTrackedRef.current || exitedTrackedRef.current) return;
+    exitedTrackedRef.current = true;
+    analytics.track('study_session_exited', {
+      study_session_id: studySessionId,
+      study_mode: latestExitStateRef.current.studyMode,
+      cards_remaining: latestExitStateRef.current.cardsRemaining,
+      cards_completed: latestExitStateRef.current.cardsCompleted,
+      duration_seconds: Math.round((Date.now() - startedAtRef.current) / 1000),
+      total_ai_cost_usd: latestExitStateRef.current.totalCost,
+    });
+  }, [studySessionId]);
+
+  useEffect(() => {
+    if (!loadError) return;
+    analytics.track('session_load_failed', {
+      study_session_id: studySessionId,
+      study_mode: decks && decks.size > 0 ? studyMode : 'quick',
+      error_message: loadError,
+      language,
+      deck_topic: topic,
+      deck_name: deckName,
+    });
+  }, [deckName, decks, language, loadError, studyMode, studySessionId, topic]);
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -262,6 +396,7 @@ function SessionUI({
           completedCards={session.completedCards}
           decks={decks ?? new Map()}
           studyMode={studyMode}
+          studySessionId={studySessionId}
           onDone={() => router.replace('/home')}
           onMakeDeck={isQuickSession ? () => setQuickDeckModalVisible(true) : undefined}
           quickDeckCreated={quickDeckCreated}
@@ -288,7 +423,7 @@ function SessionUI({
     ? totalCost + session.beginningTotalSpend - (session.beginningSessionCostRef.current ?? 0)
     : null;
 
-  const deckProps = {
+    const deckProps = {
     cards, language,
     cardPhase: session.cardPhase,
     answer: session.answer,
@@ -309,6 +444,8 @@ function SessionUI({
     hintCache: session.hintCache,
     addCost,
     vocabHintDismissSignal: session.vocabHintDismissSignal,
+    analyticsContext: analyticsBase,
+    onWordHint: session.recordWordHint,
   };
 
   // ── Render: session ────────────────────────────────────────────────────────

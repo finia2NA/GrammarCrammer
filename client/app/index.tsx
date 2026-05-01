@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getAuthToken } from '@/lib/storage';
+import { getAuthToken, setUserId } from '@/lib/storage';
 import { getMe, hydrateSettings } from '@/lib/api';
 import { Colors } from '@/constants/theme';
+import { analytics } from '@/lib/analytics';
 
 export default function Index() {
   const router = useRouter();
@@ -16,7 +17,13 @@ export default function Index() {
         return;
       }
       try {
-        await getMe();
+        const me = await getMe();
+        await setUserId(me.id);
+        analytics.identify(me.id, {
+          has_api_key: me.hasApiKey,
+          central_key_available: me.centralKeyAvailable,
+          auth_methods: me.authMethods,
+        });
         await hydrateSettings();
         router.replace('/home');
       } catch {

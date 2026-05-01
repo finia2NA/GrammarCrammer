@@ -18,7 +18,7 @@ import {
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl, setUserEmail } from '@/lib/storage';
+import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl, setUserEmail, setUserId } from '@/lib/storage';
 import {
   register,
   login,
@@ -36,6 +36,7 @@ import { RainbowButton } from '@/components/RainbowButton';
 import { AccountCard } from '@/components/onboarding/AccountCard';
 import { ApiKeyCard } from '@/components/onboarding/ApiKeyCard';
 import { ForgotPasswordCard } from '@/components/onboarding/ForgotPasswordCard';
+import { analytics } from '@/lib/analytics';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -251,6 +252,10 @@ export default function Onboarding() {
   const cardAnimX = useRef(new Animated.Value(0)).current;
   const heightAnim = useRef(new Animated.Value(200)).current;
 
+  useEffect(() => {
+    analytics.track('onboarding_started');
+  }, []);
+
   function onPanelLayout(index: number, h: number) {
     heights.current[index] = h;
     if (stepRef.current === index) heightAnim.setValue(h);
@@ -292,7 +297,12 @@ export default function Onboarding() {
         minWait,
       ]);
       await setAuthToken(result.token);
+      await setUserId(result.user.id);
       if (result.user.email) await setUserEmail(result.user.email);
+      analytics.identify(result.user.id, { auth_method: 'email' });
+      if (!isLogin) {
+        analytics.track('onboarding_completed', { auth_method: 'email', auth_flow: 'register' });
+      }
       setLoading(false);
       setAccountSuccess(true);
     } catch (e) {
@@ -347,6 +357,12 @@ export default function Onboarding() {
     setLoading(true);
     try {
       const me = await getMe();
+      await setUserId(me.id);
+      analytics.identify(me.id, {
+        has_api_key: me.hasApiKey,
+        central_key_available: me.centralKeyAvailable,
+        auth_methods: me.authMethods,
+      });
       await hydrateSettings();
       setCentralKeyAvailable(me.centralKeyAvailable);
       if (me.hasApiKey || me.centralKeyAvailable) {
@@ -468,7 +484,7 @@ export default function Onboarding() {
                   showForgotPassword
                     ? <ForgotPasswordCard key="forgot-card" email={email} onEmailChange={setEmail} error={step === 3 ? error : null} loading={loading} sent={forgotSent} />
                     : showApiKeyForm
-                      ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => router.replace('/home')} />
+                      ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => { analytics.track('onboarding_skipped_api_key'); router.replace('/home'); }} />
                       : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} onForgotPassword={() => { setShowForgotPassword(true); setForgotSent(false); setError(null); }} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>

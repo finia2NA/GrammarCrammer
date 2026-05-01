@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { config } from '../config.js';
 import { validateEmail, validatePassword } from '@grammarcrammer/shared';
+import { capture, identify } from '../services/analytics.service.js';
 
 export const authRouter = Router();
 
@@ -16,6 +17,8 @@ authRouter.post('/register', async (req, res, next) => {
     const pwErr = validatePassword(password);
     if (pwErr) throw new AppError(400, 'WEAK_PASSWORD', pwErr);
     const result = await register(email, password);
+    identify(result.user.id, { auth_method: 'email' });
+    capture(result.user.id, 'onboarding_completed', { auth_method: 'email', auth_flow: 'register' });
     res.status(201).json(result);
   } catch (e) { next(e); }
 });
@@ -25,6 +28,7 @@ authRouter.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
     if (!email || !password) throw new AppError(400, 'MISSING_FIELDS', 'Email and password are required.');
     const result = await login(email, password);
+    identify(result.user.id, { auth_method: 'email' });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -44,6 +48,7 @@ authRouter.post('/apple', async (req, res, next) => {
     const appleId = payload.sub;
     const email = payload.email ?? null;
     const result = await findOrCreateByApple(appleId, email);
+    identify(result.user.id, { auth_method: 'apple' });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -63,6 +68,7 @@ authRouter.post('/google', async (req, res, next) => {
     if (!payload?.sub) throw new AppError(401, 'INVALID_TOKEN', 'Invalid Google token.');
 
     const result = await findOrCreateByGoogle(payload.sub, payload.email ?? null);
+    identify(result.user.id, { auth_method: 'google' });
     res.json(result);
   } catch (e) { next(e); }
 });
@@ -118,6 +124,7 @@ authRouter.post('/reset-password', async (req, res, next) => {
 authRouter.get('/me', requireAuth, async (req, res, next) => {
   try {
     const result = await getMe(req.userId!);
+    identify(req.userId!, { has_api_key: result.hasApiKey, central_key_available: result.centralKeyAvailable });
     res.json(result);
   } catch (e) { next(e); }
 });

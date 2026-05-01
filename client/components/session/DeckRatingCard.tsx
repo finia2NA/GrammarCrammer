@@ -16,10 +16,11 @@ interface DeckRatingCardProps {
   language: string;
   cards: CardAttempt[];
   disabled?: boolean;
+  studySessionId?: string;
   onDraftChange: (nodeId: string, draft: DeckReviewDraft) => void;
 }
 
-export function DeckRatingCard({ nodeId, topic, language, cards, disabled = false, onDraftChange }: DeckRatingCardProps) {
+export function DeckRatingCard({ nodeId, topic, language, cards, disabled = false, studySessionId, onDraftChange }: DeckRatingCardProps) {
   const colors = useColors();
   const [aiStars, setAiStars] = useState<number | null>(null);
   const [userStars, setUserStars] = useState<number | null>(null);
@@ -32,7 +33,13 @@ export function DeckRatingCard({ nodeId, topic, language, cards, disabled = fals
     setAiStars(null);
     setUserStars(null);
     setRecap('');
-    rateSession(topic, language, cards)
+    rateSession(topic, language, cards, {
+      studySessionId,
+      deckId: nodeId,
+      deckTopic: topic,
+      language,
+      traceId: studySessionId ? `session_rating:${studySessionId}:${nodeId}` : undefined,
+    })
       .then(result => {
         if (cancelled) return;
         setAiStars(result.stars);
@@ -51,7 +58,7 @@ export function DeckRatingCard({ nodeId, topic, language, cards, disabled = fals
         onDraftChange(nodeId, { userStars: 3, aiStars: 3, aiRecap: '' });
       });
     return () => { cancelled = true; };
-  }, [nodeId, topic, language, cards, onDraftChange]);
+  }, [nodeId, topic, language, cards, onDraftChange, studySessionId]);
 
   const stars = loading ? 0 : (userStars ?? aiStars ?? 3);
 

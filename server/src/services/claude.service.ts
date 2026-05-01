@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { decrypt } from './crypto.service.js';
 import { setExplanation, setExplanationError, setExplanationGenerating } from './deck.service.js';
@@ -7,6 +8,7 @@ import { recordUsage, canUseCentralKey } from './usage.service.js';
 import { config, isCentralKeyAvailable } from '../config.js';
 import { sseHeaders, sendChunk, sendDone, sendError } from '../lib/sse.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { capture, captureAiGeneration, captureException, type AiAnalyticsContext } from './analytics.service.js';
 import {
   EXPLANATION_PROMPT,
   DECK_EXPLANATION_PROMPT,
@@ -32,6 +34,32 @@ const PRICE: Record<string, { input: number; output: number }> = {
 function calcCost(model: string, inputTokens: number, outputTokens: number): number {
   const p = PRICE[model] ?? { input: 3.00, output: 15.00 };
   return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: unknown): string | undefined {
+  if (error instanceof AppError) return error.code;
+  if (error instanceof Error) return error.name;
+  return undefined;
+}
+
+function defaultTraceId(endpoint: string, context?: AiAnalyticsContext): string {
+  if (context?.traceId) return context.traceId;
+  if (context?.studySessionId && context.deckId) return `${endpoint}:${context.studySessionId}:${context.deckId}`;
+  if (context?.studySessionId) return `${endpoint}:${context.studySessionId}`;
+  if (context?.deckId) return `${endpoint}:${context.deckId}`;
+  return `${endpoint}:${crypto.randomUUID()}`;
+}
+
+interface AiCallAnalytics {
+  userId: string;
+  source: 'central' | 'own';
+  endpoint: string;
+  context?: AiAnalyticsContext;
+  stream?: boolean;
 }
 
 // ─── Resolve which API key to use ────────────────────────────────────────────
@@ -89,25 +117,27 @@ async function callTextStream(
   maxTokens: number,
   onChunk: (text: string) => void,
   signal?: AbortSignal,
-): Promise<{ wasTruncated: boolean; cost: number }> {
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: headers(apiKey),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, stream: true, messages }),
-    signal,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as any;
-    throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
-  }
-
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
+  analytics?: AiCallAnalytics,
+): Promise<{ wasTruncated: boolean; cost: number; inputTokens: number; outputTokens: number; latencyMs: number }> {
+  const startedAt = Date.now();
   let buffer = '';
   const state = { inputTokens: 0, outputTokens: 0, wasTruncated: false };
 
   try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: headers(apiKey),
+      body: JSON.stringify({ model, max_tokens: maxTokens, system, stream: true, messages }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as any;
+      throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -132,14 +162,66 @@ async function callTextStream(
         } catch { /* malformed event */ }
       }
     }
-  } finally {
-    reader.cancel();
-  }
+    reader.cancel().catch(() => {});
 
-  return {
-    wasTruncated: state.wasTruncated,
-    cost: calcCost(model, state.inputTokens, state.outputTokens),
-  };
+    const latencyMs = Date.now() - startedAt;
+    const cost = calcCost(model, state.inputTokens, state.outputTokens);
+    if (analytics) {
+      captureAiGeneration(analytics.userId, {
+        ...analytics.context,
+        endpoint: analytics.endpoint,
+        traceId: defaultTraceId(analytics.endpoint, analytics.context),
+        model,
+        source: analytics.source,
+        inputTokens: state.inputTokens,
+        outputTokens: state.outputTokens,
+        cost,
+        latencyMs,
+        success: true,
+        stream: true,
+      });
+    }
+
+    return {
+      wasTruncated: state.wasTruncated,
+      cost,
+      inputTokens: state.inputTokens,
+      outputTokens: state.outputTokens,
+      latencyMs,
+    };
+  } catch (error) {
+    if (analytics && errorCode(error) !== 'AbortError') {
+      captureAiGeneration(analytics.userId, {
+        ...analytics.context,
+        endpoint: analytics.endpoint,
+        traceId: defaultTraceId(analytics.endpoint, analytics.context),
+        model,
+        source: analytics.source,
+        inputTokens: state.inputTokens,
+        outputTokens: state.outputTokens,
+        cost: calcCost(model, state.inputTokens, state.outputTokens),
+        latencyMs: Date.now() - startedAt,
+        success: false,
+        errorCode: errorCode(error),
+        errorMessage: errorMessage(error),
+        stream: true,
+      });
+      captureException(error, analytics.userId, {
+        endpoint: analytics.endpoint,
+        model,
+        study_session_id: analytics.context?.studySessionId,
+        deck_id: analytics.context?.deckId,
+      });
+      capture(analytics.userId, 'ai_request_failed', {
+        endpoint: analytics.endpoint,
+        model,
+        error_code: errorCode(error),
+        study_session_id: analytics.context?.studySessionId,
+        deck_id: analytics.context?.deckId,
+      });
+    }
+    throw error;
+  }
 }
 
 async function callTool<T>(
@@ -151,29 +233,88 @@ async function callTool<T>(
   toolDescription: string,
   inputSchema: object,
   maxTokens: number,
-): Promise<{ result: T; cost: number }> {
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: headers(apiKey),
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      tools: [{ name: toolName, description: toolDescription, input_schema: inputSchema }],
-      tool_choice: { type: 'tool', name: toolName },
-      messages: [{ role: 'user', content: userMessage }],
-    }),
-  });
+  analytics?: AiCallAnalytics,
+): Promise<{ result: T; cost: number; inputTokens: number; outputTokens: number; latencyMs: number }> {
+  const startedAt = Date.now();
+  let inputTokens = 0;
+  let outputTokens = 0;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as any;
-    throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
+  try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: headers(apiKey),
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system,
+        tools: [{ name: toolName, description: toolDescription, input_schema: inputSchema }],
+        tool_choice: { type: 'tool', name: toolName },
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as any;
+      throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
+    }
+
+    const data = await res.json() as any;
+    inputTokens = data.usage?.input_tokens ?? 0;
+    outputTokens = data.usage?.output_tokens ?? 0;
+    const cost = calcCost(model, inputTokens, outputTokens);
+    const latencyMs = Date.now() - startedAt;
+    const toolUse = data.content.find((b: any) => b.type === 'tool_use');
+
+    if (analytics) {
+      captureAiGeneration(analytics.userId, {
+        ...analytics.context,
+        endpoint: analytics.endpoint,
+        traceId: defaultTraceId(analytics.endpoint, analytics.context),
+        model,
+        source: analytics.source,
+        inputTokens,
+        outputTokens,
+        cost,
+        latencyMs,
+        success: true,
+        stream: false,
+      });
+    }
+
+    return { result: toolUse.input as T, cost, inputTokens, outputTokens, latencyMs };
+  } catch (error) {
+    if (analytics) {
+      captureAiGeneration(analytics.userId, {
+        ...analytics.context,
+        endpoint: analytics.endpoint,
+        traceId: defaultTraceId(analytics.endpoint, analytics.context),
+        model,
+        source: analytics.source,
+        inputTokens,
+        outputTokens,
+        cost: calcCost(model, inputTokens, outputTokens),
+        latencyMs: Date.now() - startedAt,
+        success: false,
+        errorCode: errorCode(error),
+        errorMessage: errorMessage(error),
+        stream: false,
+      });
+      captureException(error, analytics.userId, {
+        endpoint: analytics.endpoint,
+        model,
+        study_session_id: analytics.context?.studySessionId,
+        deck_id: analytics.context?.deckId,
+      });
+      capture(analytics.userId, 'ai_request_failed', {
+        endpoint: analytics.endpoint,
+        model,
+        error_code: errorCode(error),
+        study_session_id: analytics.context?.studySessionId,
+        deck_id: analytics.context?.deckId,
+      });
+    }
+    throw error;
   }
-
-  const data = await res.json() as any;
-  const cost = calcCost(model, data.usage.input_tokens, data.usage.output_tokens);
-  const toolUse = data.content.find((b: any) => b.type === 'tool_use');
-  return { result: toolUse.input as T, cost };
 }
 
 // ─── Background explanation generation ───────────────────────────────────────
@@ -192,7 +333,10 @@ export function generateDeckExplanation(userId: string, deckId: string): Promise
 async function runExplanation(userId: string, deckId: string, version: number): Promise<void> {
   const { apiKey, source } = await resolveApiKey(userId);
 
-  const deck = await prisma.deck.findUnique({ where: { nodeId: deckId } });
+  const deck = await prisma.deck.findUnique({
+    where: { nodeId: deckId },
+    include: { node: { select: { name: true } } },
+  });
   if (!deck) throw new Error(`Deck ${deckId} not found`);
 
   await setExplanationGenerating(deckId);
@@ -205,6 +349,20 @@ async function runExplanation(userId: string, deckId: string, version: number): 
       [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
       4096,
       (chunk) => { fullText += chunk; },
+      undefined,
+      {
+        userId,
+        source,
+        endpoint: 'explanation',
+        context: {
+          deckId,
+          deckName: deck.node.name,
+          deckTopic: deck.topic,
+          language: deck.language,
+          traceId: `deck_generation:${deckId}`,
+        },
+        stream: true,
+      },
     );
     await recordUsage(userId, source, 'explanation', SONNET, cost);
     if (activeVersion.get(deckId) === version) {
@@ -222,7 +380,10 @@ async function runExplanation(userId: string, deckId: string, version: number): 
 
 export async function streamExplanation(req: Request, res: Response, userId: string, deckId: string) {
   const { apiKey, source } = await resolveApiKey(userId);
-  const deck = await prisma.deck.findUnique({ where: { nodeId: deckId } });
+  const deck = await prisma.deck.findUnique({
+    where: { nodeId: deckId },
+    include: { node: { select: { name: true } } },
+  });
   if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
   await setExplanationGenerating(deckId);
@@ -244,6 +405,19 @@ export async function streamExplanation(req: Request, res: Response, userId: str
         sendChunk(res, { type: 'text', text: chunk });
       },
       controller.signal,
+      {
+        userId,
+        source,
+        endpoint: 'explanation',
+        context: {
+          deckId,
+          deckName: deck.node.name,
+          deckTopic: deck.topic,
+          language: deck.language,
+          traceId: `deck_generation:${deckId}`,
+        },
+        stream: true,
+      },
     );
     await recordUsage(userId, source, 'explanation', SONNET, cost);
     await setExplanation(deckId, fullText);
@@ -258,7 +432,7 @@ export async function streamExplanation(req: Request, res: Response, userId: str
 
 // ─── Public AI endpoints ─────────────────────────────────────────────────────
 
-export async function generateCards(userId: string, topic: string, language: string, count: number, explanation: string) {
+export async function generateCards(userId: string, topic: string, language: string, count: number, explanation: string, analyticsContext?: AiAnalyticsContext) {
   const { apiKey, source } = await resolveApiKey(userId);
 
   const { result, cost } = await callTool<{ cards: Omit<Card, 'id'>[] }>(
@@ -289,6 +463,16 @@ export async function generateCards(userId: string, topic: string, language: str
       required: ['cards'],
     },
     2000,
+    {
+      userId,
+      source,
+      endpoint: 'cards',
+      context: {
+        ...analyticsContext,
+        deckTopic: analyticsContext?.deckTopic ?? topic,
+        language: analyticsContext?.language ?? language,
+      },
+    },
   );
 
   await recordUsage(userId, source, 'cards', HAIKU, cost);
@@ -303,7 +487,7 @@ export async function generateCards(userId: string, topic: string, language: str
   return { cards, cost };
 }
 
-export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal') {
+export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal', analyticsContext?: AiAnalyticsContext) {
   const { apiKey, source } = await resolveApiKey(userId);
 
   const prompt = JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation, brevity);
@@ -326,6 +510,12 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
       required: ['reason', 'correct'],
     },
     brevity === 'brief' ? 60 : 120,
+    {
+      userId,
+      source,
+      endpoint: 'judge',
+      context: { ...analyticsContext, language: analyticsContext?.language ?? language },
+    },
   );
 
   if (DEBUG_AI) console.log('[AI:judge response]', JSON.stringify(result));
@@ -334,7 +524,7 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
 }
 
 export async function reviewRejection(
-  userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal',
+  userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal', analyticsContext?: AiAnalyticsContext,
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
 
@@ -356,6 +546,12 @@ export async function reviewRejection(
       required: ['explanation', 'overrideToCorrect'],
     },
     brevity === 'brief' ? 200 : 400,
+    {
+      userId,
+      source,
+      endpoint: 'rejection',
+      context: { ...analyticsContext, language: analyticsContext?.language ?? language },
+    },
   );
 
   if (DEBUG_AI) console.log('[AI:rejection response]', JSON.stringify(result));
@@ -368,6 +564,7 @@ export async function streamChat(
   userId: string,
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
+  analyticsContext?: AiAnalyticsContext,
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
@@ -380,6 +577,13 @@ export async function streamChat(
       apiKey, SONNET, systemPrompt, messages, 600,
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
+      {
+        userId,
+        source,
+        endpoint: 'chat',
+        context: analyticsContext,
+        stream: true,
+      },
     );
     await recordUsage(userId, source, 'chat', SONNET, cost);
     sendDone(res, { cost });
@@ -401,6 +605,7 @@ export async function rateSession(
   topic: string,
   language: string,
   cards: CardAttemptData[],
+  analyticsContext?: AiAnalyticsContext,
 ): Promise<{ stars: number; recap: string; cost: number }> {
   const { apiKey, source } = await resolveApiKey(userId);
 
@@ -432,6 +637,16 @@ export async function rateSession(
       required: ['stars', 'recap'],
     },
     200,
+    {
+      userId,
+      source,
+      endpoint: 'rate-session',
+      context: {
+        ...analyticsContext,
+        deckTopic: analyticsContext?.deckTopic ?? topic,
+        language: analyticsContext?.language ?? language,
+      },
+    },
   );
 
   await recordUsage(userId, source, 'rate-session', HAIKU, cost);
@@ -444,6 +659,7 @@ export async function generateWordHint(
   english: string,
   targetLanguage: string,
   language: string,
+  analyticsContext?: AiAnalyticsContext,
 ): Promise<{ infinitive: string; with_annotation: string; word_type: string; cost: number }> {
   const { apiKey, source } = await resolveApiKey(userId);
 
@@ -463,6 +679,12 @@ export async function generateWordHint(
       required: ['infinitive', 'with_annotation', 'word_type'],
     },
     150,
+    {
+      userId,
+      source,
+      endpoint: 'word-hint',
+      context: { ...analyticsContext, language: analyticsContext?.language ?? language },
+    },
   );
 
   await recordUsage(userId, source, 'word-hint', HAIKU, cost);
@@ -471,7 +693,7 @@ export async function generateWordHint(
 
 export async function streamExplanationGeneric(
   req: Request, res: Response,
-  userId: string, topic: string, language: string,
+  userId: string, topic: string, language: string, analyticsContext?: AiAnalyticsContext,
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
@@ -487,6 +709,17 @@ export async function streamExplanationGeneric(
       4096,
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
+      {
+        userId,
+        source,
+        endpoint: 'explanation',
+        context: {
+          ...analyticsContext,
+          deckTopic: analyticsContext?.deckTopic ?? topic,
+          language: analyticsContext?.language ?? language,
+        },
+        stream: true,
+      },
     );
     await recordUsage(userId, source, 'explanation', SONNET, cost);
     sendDone(res, { cost, wasTruncated });
