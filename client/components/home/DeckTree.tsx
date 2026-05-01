@@ -189,7 +189,12 @@ function StatusBadge({ status }: { status: string }) {
         </View>
       );
     case 'error':
-      return <Icon name="warning" size={12} color={colors.error} />;
+      return (
+        // @ts-ignore — title is valid on web View for hover tooltip
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title="Explanation generation failed">
+          <Icon name="warning" size={12} color={colors.error} />
+        </View>
+      );
     default:
       return null;
   }
