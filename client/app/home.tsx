@@ -12,6 +12,7 @@ import { DeckTree } from '@/components/home/DeckTree';
 import { DeckModal, type DeckFormData, type CsvImportData } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
 import { Icon } from '@/components/Icon';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   createDeckFromPath,
   updateDeck,
@@ -223,7 +224,7 @@ export default function Home() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-foreground text-xl font-bold">Pattern Deck</Text>
+          <BrandLogo size={34} wordmarkSize={20} />
           <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
             <Icon name="settings" size={22} color={colors.foreground_secondary} />
           </TouchableOpacity>

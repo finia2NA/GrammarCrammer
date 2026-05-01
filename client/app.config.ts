@@ -27,6 +27,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: 'de.richardhanss.patterndeck',
     deploymentTarget: '26.0',
+    icon: {
+      light: './assets/images/icon.png',
+      dark: './assets/images/icon-dark.png',
+    },
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsLocalNetworking: true,
@@ -42,7 +46,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#FAECDC',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -65,9 +69,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',
-        imageWidth: 200,
+        imageWidth: 320,
         resizeMode: 'contain',
-        backgroundColor: '#000000',
+        backgroundColor: '#FAECDC',
+        dark: {
+          image: './assets/images/splash-icon-dark.png',
+          backgroundColor: '#141517',
+        },
+        android: {
+          image: './assets/images/splash-icon-android.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
+          backgroundColor: '#FAECDC',
+          dark: {
+            image: './assets/images/splash-icon-android-dark.png',
+            backgroundColor: '#141517',
+          },
+        },
       },
     ],
   ],

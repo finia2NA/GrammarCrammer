@@ -37,6 +37,7 @@ import { AccountCard } from '@/components/onboarding/AccountCard';
 import { ApiKeyCard } from '@/components/onboarding/ApiKeyCard';
 import { ForgotPasswordCard } from '@/components/onboarding/ForgotPasswordCard';
 import { analytics } from '@/lib/analytics';
+import { BrandLogo } from '@/components/BrandLogo';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
@@ -46,8 +47,9 @@ const BACKEND_DEBUG_UI_ENABLED = Constants.expoConfig?.extra?.backendDebugUiEnab
 const WelcomeCard = memo(function WelcomeCard() {
   return (
     <>
+      <BrandLogo size={58} wordmarkSize={26} style={styles.welcomeBrand} />
       <Text className="text-4xl font-bold text-foreground mb-3">
-        Welcome to{'\n'}Pattern Deck
+        Welcome to your{'\n'}grammar study partner
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
         Pattern Deck is your AI-powered grammar study partner.
@@ -586,5 +588,8 @@ const styles = StyleSheet.create({
   backendModalCard: {
     width: '100%',
     maxWidth: 420,
+  },
+  welcomeBrand: {
+    marginBottom: 24,
   },
 });

@@ -5,6 +5,7 @@ import { getAuthToken, setUserId } from '@/lib/storage';
 import { getMe, hydrateSettings } from '@/lib/api';
 import { Colors } from '@/constants/theme';
 import { analytics } from '@/lib/analytics';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export default function Index() {
   const router = useRouter();
@@ -34,8 +35,9 @@ export default function Index() {
   }, [router]);
 
   return (
-    <View className="flex-1 items-center justify-center bg-background">
+    <View className="flex-1 items-center justify-center bg-background" style={{ gap: 28 }}>
       <ActivityIndicator size="large" color={Colors.primary} />
+      <BrandLogo direction="column" size={84} wordmarkSize={30} />
     </View>
   );
 }

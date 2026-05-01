@@ -23,24 +23,35 @@ export default function Root({ children }: PropsWithChildren) {
           #gc-loader {
             position: fixed; inset: 0; z-index: 9999;
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 28px;
+            align-items: center; justify-content: center; gap: 26px;
             background: #FDF0E0;
             opacity: 0;
             animation: gc-loader-in 0.2s ease-in 0.5s forwards;
           }
           @keyframes gc-loader-in { to { opacity: 1; } }
-          #gc-loader-wordmark {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 22px; font-weight: 700; letter-spacing: 0.3px;
-            color: rgba(28, 20, 16, 0.9);
-          }
           #gc-spinner {
-            width: 48px; height: 48px; border-radius: 50%;
+            width: 44px; height: 44px; border-radius: 50%;
             border: 3px solid rgba(232, 114, 12, 0.2);
             border-top-color: #E8720C;
             animation: gc-spin 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           }
           @keyframes gc-spin { to { transform: rotate(360deg); } }
+          #gc-loader-brand {
+            display: flex; align-items: center; gap: 18px;
+          }
+          #gc-loader-logo {
+            width: 92px; height: 92px; object-fit: contain;
+          }
+          #gc-loader-wordmark {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 34px; font-weight: 700; letter-spacing: 0;
+            color: rgba(28, 20, 16, 0.9);
+          }
+          @media (max-width: 480px) {
+            #gc-loader-brand { flex-direction: column; gap: 12px; }
+            #gc-loader-logo { width: 96px; height: 96px; }
+            #gc-loader-wordmark { font-size: 30px; }
+          }
           @media (prefers-color-scheme: dark) {
             #gc-loader { background: #141517; }
             #gc-loader-wordmark { color: rgba(243, 235, 221, 0.9); }
@@ -50,8 +61,14 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         <div id="gc-loader">
-          <div id="gc-loader-wordmark">Pattern Deck</div>
           <div id="gc-spinner" />
+          <div id="gc-loader-brand">
+            <picture>
+              <source srcSet="/logo-mark-dark.svg" media="(prefers-color-scheme: dark)" />
+              <img id="gc-loader-logo" src="/logo-mark.svg" alt="" />
+            </picture>
+            <div id="gc-loader-wordmark">Pattern Deck</div>
+          </div>
         </div>
         {children}
       </body>
