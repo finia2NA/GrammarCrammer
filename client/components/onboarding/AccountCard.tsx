@@ -23,6 +23,7 @@ export function AccountCard({ email, onEmailChange, password, onPasswordChange, 
   const passwordRef = useRef<TextInput>(null);
   const successOpacity = useRef(new Animated.Value(0)).current;
   const formDim = useRef(new Animated.Value(1)).current;
+  const forgotPasswordVisibility = useRef(new Animated.Value(isLogin ? 1 : 0)).current;
 
   useEffect(() => {
     if (success) {
@@ -32,6 +33,14 @@ export function AccountCard({ email, onEmailChange, password, onPasswordChange, 
       ]).start();
     }
   }, [success, formDim, successOpacity]);
+
+  useEffect(() => {
+    Animated.timing(forgotPasswordVisibility, {
+      toValue: isLogin ? 1 : 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [forgotPasswordVisibility, isLogin]);
 
   return (
     <>
@@ -109,13 +118,27 @@ export function AccountCard({ email, onEmailChange, password, onPasswordChange, 
         <Text className="text-error text-xs mt-2">{error}</Text>
       )}
       {!success && (
-        <>
-          {isLogin && (
-            <TouchTarget onPress={onForgotPassword} style={{ marginTop: 4, paddingHorizontal: 0 }}>
-              <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
-            </TouchTarget>
-          )}
-        </>
+        <Animated.View
+          pointerEvents={isLogin ? 'auto' : 'none'}
+          style={{
+            height: 36,
+            opacity: forgotPasswordVisibility,
+            transform: [{
+              translateY: forgotPasswordVisibility.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-4, 0],
+              }),
+            }],
+          }}
+        >
+          <TouchTarget
+            onPress={onForgotPassword}
+            disabled={!isLogin || loading}
+            style={{ marginTop: 4, paddingHorizontal: 0 }}
+          >
+            <Text className="text-foreground-secondary text-sm">Forgot password?</Text>
+          </TouchTarget>
+        </Animated.View>
       )}
     </>
   );

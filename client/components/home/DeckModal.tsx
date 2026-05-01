@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Animated, Easing, Alert, Platform } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Alert, Platform } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import { AnimatedTabbed } from '@/components/AnimatedTabbed';
 import type { Language, CardCount } from '@/constants/session';
@@ -85,37 +85,15 @@ export function DeckModal({
   const [dueDate, setDueDate] = useState('');
   const [explanation, setExplanation] = useState('');
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
-  const [contentTab, setContentTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
-  const tabContentOpacity = useRef(new Animated.Value(1)).current;
-  const tabContentTranslateX = useRef(new Animated.Value(0)).current;
-  const tabContentHeight = useRef(new Animated.Value(0)).current;
-  const tabTransition = useRef<Animated.CompositeAnimation | null>(null);
-  const tabHeightTransition = useRef<Animated.CompositeAnimation | null>(null);
-  const contentHeightRef = useRef(0);
-  const hasMeasuredContentRef = useRef(false);
-  const pendingFadeInRef = useRef(false);
-  const [hasMeasuredHeight, setHasMeasuredHeight] = useState(false);
-  const [heightAnimating, setHeightAnimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setActiveTab('create');
-      setContentTab('create');
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
-      tabTransition.current?.stop();
-      tabHeightTransition.current?.stop();
-      tabContentOpacity.setValue(1);
-      tabContentTranslateX.setValue(0);
-      tabContentHeight.setValue(0);
-      hasMeasuredContentRef.current = false;
-      contentHeightRef.current = 0;
-      pendingFadeInRef.current = false;
-      setHasMeasuredHeight(false);
-      setHeightAnimating(false);
       if (isEdit && editNode) {
         setName(editNodePath ?? editNode.name);
         if (editNode.deck) {
@@ -138,108 +116,12 @@ export function DeckModal({
         setExplanation(initialData?.explanation ?? '');
       }
     }
-  }, [visible, editNode, editNodePath, initialData, isEdit, tabContentOpacity, tabContentTranslateX, tabContentHeight]);
+  }, [visible, editNode, editNodePath, initialData, isEdit]);
 
   useEffect(() => {
     if (!visible) return;
     setLanguage((prev: string) => enabledLanguages.includes(prev) ? prev : enabledLanguages[0] ?? DEFAULT_LANGUAGES[0]);
   }, [visible, enabledLanguages]);
-
-  const startFadeIn = useCallback(() => {
-    tabTransition.current?.stop();
-    tabTransition.current = Animated.parallel([
-      Animated.timing(tabContentOpacity, {
-        toValue: 1,
-        duration: 140,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabContentTranslateX, {
-        toValue: 0,
-        duration: 140,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]);
-    tabTransition.current.start();
-  }, [tabContentOpacity, tabContentTranslateX]);
-
-  useEffect(() => {
-    if (!visible || activeTab === contentTab) return;
-
-    const direction = activeTab === 'csv' ? 1 : -1;
-    const exitOffset = direction * -16;
-    const enterOffset = direction * 16;
-
-    tabTransition.current?.stop();
-    tabTransition.current = Animated.parallel([
-      Animated.timing(tabContentOpacity, {
-        toValue: 0,
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabContentTranslateX, {
-        toValue: exitOffset,
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]);
-
-    tabTransition.current.start(({ finished }) => {
-      if (!finished) return;
-      setContentTab(activeTab);
-      tabContentOpacity.setValue(0);
-      tabContentTranslateX.setValue(enterOffset);
-      // Defer fade-in until height settles (handled in handleContentLayout).
-      // Keep a fallback in case the new content's measured height matches the
-      // current one within 1px and onLayout doesn't trigger an animation.
-      pendingFadeInRef.current = true;
-    });
-  }, [activeTab, contentTab, visible, tabContentOpacity, tabContentTranslateX]);
-
-  useEffect(() => () => {
-    tabTransition.current?.stop();
-    tabHeightTransition.current?.stop();
-  }, []);
-
-  const handleContentLayout = useCallback((nextHeight: number) => {
-    if (nextHeight <= 0) return;
-    if (!hasMeasuredContentRef.current) {
-      hasMeasuredContentRef.current = true;
-      contentHeightRef.current = nextHeight;
-      tabContentHeight.setValue(nextHeight);
-      setHasMeasuredHeight(true);
-      return;
-    }
-
-    if (Math.abs(contentHeightRef.current - nextHeight) < 1) {
-      if (pendingFadeInRef.current) {
-        pendingFadeInRef.current = false;
-        startFadeIn();
-      }
-      return;
-    }
-
-    contentHeightRef.current = nextHeight;
-    tabHeightTransition.current?.stop();
-    setHeightAnimating(true);
-    tabHeightTransition.current = Animated.timing(tabContentHeight, {
-      toValue: nextHeight,
-      duration: 160,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    });
-    tabHeightTransition.current.start(({ finished }) => {
-      setHeightAnimating(false);
-      if (!finished) return;
-      if (pendingFadeInRef.current) {
-        pendingFadeInRef.current = false;
-        startFadeIn();
-      }
-    });
-  }, [tabContentHeight, startFadeIn]);
 
   async function submitDeckForm() {
     const trimmedName = name.trim();
@@ -339,6 +221,42 @@ export function DeckModal({
   const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : submitting ? 'Saving…' : isEdit ? 'Save' : 'Create';
   const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
   const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
+  const tabContent = activeTab === 'csv' ? (
+    <DeckModalCsvTab
+      collectionPath={name}
+      onCollectionPathChange={setName}
+      language={language}
+      onLanguageChange={setLanguage}
+      cardCount={cardCount}
+      onCardCountChange={setCardCount}
+      onFileSelected={handleFileSelected}
+      importStatus={importStatus}
+      enabledLanguages={enabledLanguages}
+    />
+  ) : (
+    <DeckModalCreateTab
+      isCollection={isCollection}
+      isEdit={isEdit}
+      onDelete={onDelete}
+      onExport={isEdit ? handleExport : undefined}
+      onResetSchedule={onResetSchedule}
+      editNodeId={editNode?.id}
+      dueDate={dueDate}
+      onDueDateChange={setDueDate}
+      name={name}
+      onNameChange={setName}
+      topic={topic}
+      onTopicChange={setTopic}
+      explanation={explanation}
+      onExplanationChange={setExplanation}
+      showExplanationField={isEdit || explanation.length > 0}
+      language={language}
+      onLanguageChange={setLanguage}
+      cardCount={cardCount}
+      onCardCountChange={setCardCount}
+      enabledLanguages={enabledLanguages}
+    />
+  );
 
   return (
     <PageSheetModal
@@ -361,61 +279,12 @@ export function DeckModal({
           ]}
           value={activeTab}
           onChange={setActiveTab}
-        />
+        >
+          {tabContent}
+        </AnimatedTabbed>
       )}
 
-      <Animated.View
-        style={{
-          opacity: tabContentOpacity,
-          transform: [{ translateX: tabContentTranslateX }],
-        }}
-      >
-        <Animated.View
-          style={[
-            { overflow: heightAnimating ? 'hidden' : 'visible' },
-            hasMeasuredHeight ? { height: tabContentHeight } : null,
-          ]}
-        >
-          <View onLayout={(event) => handleContentLayout(event.nativeEvent.layout.height)}>
-            {contentTab === 'csv' ? (
-              <DeckModalCsvTab
-                collectionPath={name}
-                onCollectionPathChange={setName}
-                language={language}
-                onLanguageChange={setLanguage}
-                cardCount={cardCount}
-                onCardCountChange={setCardCount}
-                onFileSelected={handleFileSelected}
-                importStatus={importStatus}
-                enabledLanguages={enabledLanguages}
-              />
-            ) : (
-              <DeckModalCreateTab
-                isCollection={isCollection}
-                isEdit={isEdit}
-                onDelete={onDelete}
-                onExport={isEdit ? handleExport : undefined}
-                onResetSchedule={onResetSchedule}
-                editNodeId={editNode?.id}
-                dueDate={dueDate}
-                onDueDateChange={setDueDate}
-                name={name}
-                onNameChange={setName}
-                topic={topic}
-                onTopicChange={setTopic}
-                explanation={explanation}
-                onExplanationChange={setExplanation}
-                showExplanationField={isEdit || explanation.length > 0}
-                language={language}
-                onLanguageChange={setLanguage}
-                cardCount={cardCount}
-                onCardCountChange={setCardCount}
-                enabledLanguages={enabledLanguages}
-              />
-            )}
-          </View>
-        </Animated.View>
-      </Animated.View>
+      {!canUseCsvTab && tabContent}
     </PageSheetModal>
   );
 }

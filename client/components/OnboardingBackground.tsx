@@ -5,6 +5,7 @@ import { useColors } from '@/constants/theme';
 // ─── Content ──────────────────────────────────────────────────────────────────
 
 const GRAMMAR_WORDS = [
+  'Grammar',     // English
   '文法',        // Japanese
   'Grammatik',   // German
   'Grammaire',   // French
