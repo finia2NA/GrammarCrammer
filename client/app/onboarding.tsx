@@ -106,17 +106,24 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
 
 // ─── Hidden backend override ─────────────────────────────────────────────────
 
+function shouldDefaultBackendToHttp(input: string): boolean {
+  const host = input.split('/')[0].split(':')[0].toLowerCase();
+  return (
+    /^[\d.]+$/.test(host) ||
+    host === 'localhost' ||
+    !host.includes('.') ||
+    host.endsWith('.local') ||
+    host.endsWith('.nord')
+  );
+}
+
 function normalizeBackendInput(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
   try {
     const hasScheme = /^https?:\/\//i.test(trimmed);
-    const withScheme = hasScheme
-      ? trimmed
-      : /^[\d.]+(:\d+)?$/.test(trimmed) || trimmed.startsWith('localhost')
-        ? `http://${trimmed}`
-        : `https://${trimmed}`;
+    const withScheme = hasScheme ? trimmed : `${shouldDefaultBackendToHttp(trimmed) ? 'http' : 'https'}://${trimmed}`;
     const url = new URL(withScheme);
     if (!url.hostname) return null;
     if (!hasScheme && !url.port && url.protocol === 'http:') url.port = '3001';
