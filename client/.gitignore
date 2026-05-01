@@ -6,3 +6,9 @@ expo-env.d.ts
 # @end expo-cli
 
 .env
+
+# Firebase Android app config. It is public-facing, but kept local for comfort.
+google-services.json
+
+# Private Firebase service-account key used for EAS FCM credentials.
+firebase.json
