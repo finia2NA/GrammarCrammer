@@ -185,7 +185,7 @@ export function ClickableEnglishSentence({
                 lineHeight: LINE_HEIGHT,
                 color: isActive ? (colors.primary as string) : (colors.foreground as string),
                 textDecorationLine: isClickable && !isActive ? 'underline' : 'none',
-                textDecorationStyle: 'dotted',
+                textDecorationStyle: 'solid',
                 textDecorationColor: colors.foreground_subtle as string,
               }}
             >
