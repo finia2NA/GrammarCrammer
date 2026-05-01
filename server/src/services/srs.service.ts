@@ -107,7 +107,7 @@ function dueCutoffMinutes(config: SrsConfig): number {
   return hour * 60 + minute;
 }
 
-function getZonedParts(date: Date, timeZone: string): {
+export function getZonedParts(date: Date, timeZone: string): {
   year: number;
   month: number;
   day: number;
@@ -144,7 +144,7 @@ function studyDayKeyFromParts(
   return formatDayKeyUtc(new Date(dayStartMs));
 }
 
-function zonedDateTimeToUtc(
+export function zonedDateTimeToUtc(
   year: number,
   month: number,
   day: number,

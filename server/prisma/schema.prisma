@@ -17,11 +17,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  nodes              Node[]
-  settings           Setting[]
-  usageLedger        UsageLedger[]
-  usageSummaries     MonthlyUsageSummary[]
-  passwordResetToken PasswordResetToken?
+  nodes                  Node[]
+  settings               Setting[]
+  usageLedger            UsageLedger[]
+  usageSummaries         MonthlyUsageSummary[]
+  passwordResetToken     PasswordResetToken?
+  pushDevices            PushDevice[]
+  notificationSchedule   NotificationSchedule?
+  notificationDeliveries NotificationDelivery[]
 }
 
 model PasswordResetToken {
@@ -53,18 +56,18 @@ model Node {
 }
 
 model Deck {
-  nodeId            String @id
+  nodeId            String    @id
   topic             String
   clarification     String?
   language          String
   explanation       String?
-  explanationStatus String @default("pending")
-  cardCount         Int    @default(10)
+  explanationStatus String    @default("pending")
+  cardCount         Int       @default(10)
   lastStudiedAt     DateTime?
   dueAt             DateTime?
   intervalDays      Float     @default(1)
 
-  node    Node        @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  node    Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   reviews DeckReview[]
 }
 
@@ -90,12 +93,53 @@ model Setting {
   @@id([userId, key])
 }
 
+model PushDevice {
+  id            String    @id @default(uuid())
+  userId        String
+  expoPushToken String    @unique
+  platform      String
+  disabledAt    DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, disabledAt])
+}
+
+model NotificationSchedule {
+  userId           String   @id
+  scheduledFor     DateTime
+  notificationTime String
+  timezone         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledFor])
+}
+
+model NotificationDelivery {
+  id           String   @id @default(uuid())
+  userId       String
+  studyDayKey  String
+  dueDeckCount Int
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, studyDayKey])
+  @@index([createdAt])
+}
+
 model UsageLedger {
   id        String   @id @default(uuid())
   userId    String
   yearMonth String
-  source    String   // "central" | "own"
-  endpoint  String   // "cards" | "judge" | "explanation" | "rejection" | "chat"
+  source    String // "central" | "own"
+  endpoint  String // "cards" | "judge" | "explanation" | "rejection" | "chat"
   model     String
   cost      Float
   createdAt DateTime @default(now())

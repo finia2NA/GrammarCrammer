@@ -7,6 +7,7 @@ import { treeRouter } from './routes/tree.js';
 import { decksRouter } from './routes/decks.js';
 import { collectionsRouter } from './routes/collections.js';
 import { settingsRouter } from './routes/settings.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { claudeProxyRouter } from './routes/claude-proxy.js';
 import { initScheduler } from './services/scheduler.service.js';
 import { shutdown as shutdownAnalytics } from './services/analytics.service.js';
@@ -23,6 +24,7 @@ app.use('/api/decks', decksRouter);
 app.use('/api/collections', collectionsRouter);
 app.use('/api/nodes', collectionsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/notifications', notificationsRouter);
 app.use('/api/ai', claudeProxyRouter);
 
 // Health check

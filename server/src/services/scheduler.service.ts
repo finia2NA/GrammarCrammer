@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { generateDeckExplanation } from './claude.service.js';
+import { initializeNotificationScheduling, startNotificationWorker } from './notification.service.js';
 
 const MAX_CONCURRENT_PER_USER = 5;
 
@@ -76,4 +77,7 @@ export async function initScheduler() {
   if (pendingDecks.length > 0) {
     console.log(`[scheduler] Re-enqueued ${pendingDecks.length} pending explanation(s)`);
   }
+
+  await initializeNotificationScheduling();
+  startNotificationWorker();
 }

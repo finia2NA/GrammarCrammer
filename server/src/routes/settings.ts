@@ -6,8 +6,14 @@ import { config, isCentralKeyAvailable } from '../config.js';
 import { prisma } from '../lib/prisma.js';
 import { encrypt } from '../services/crypto.service.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { reconcileNotificationSchedule } from '../services/notification.service.js';
 
 export const settingsRouter = Router();
+const NOTIFICATION_SCHEDULE_SETTING_KEYS = new Set(['notifications_enabled', 'notification_time', 'review_timezone']);
+
+function shouldReconcileNotificationSchedule(keys: string[]): boolean {
+  return keys.some(key => NOTIFICATION_SCHEDULE_SETTING_KEYS.has(key));
+}
 
 settingsRouter.use(requireAuth);
 
@@ -111,7 +117,11 @@ settingsRouter.put('/', async (req, res, next) => {
       throw new AppError(400, 'INVALID_SETTINGS', 'All setting values must be strings.');
     }
 
-    await setSettings(req.userId!, settings as Record<string, string>);
+    const nextSettings = settings as Record<string, string>;
+    await setSettings(req.userId!, nextSettings);
+    if (shouldReconcileNotificationSchedule(Object.keys(nextSettings))) {
+      await reconcileNotificationSchedule(req.userId!);
+    }
     res.json({ success: true });
   } catch (e) { next(e); }
 });
@@ -128,6 +138,9 @@ settingsRouter.put('/:key', async (req, res, next) => {
     const { value } = req.body;
     if (value === undefined) throw new AppError(400, 'MISSING_FIELDS', 'value is required.');
     await setSetting(req.userId!, req.params.key, value);
+    if (shouldReconcileNotificationSchedule([req.params.key])) {
+      await reconcileNotificationSchedule(req.userId!);
+    }
     res.json({ success: true });
   } catch (e) { next(e); }
 });

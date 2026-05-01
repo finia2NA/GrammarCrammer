@@ -9,4 +9,6 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   enabled_languages: JSON.stringify(DEFAULT_LANGUAGES),
   daily_due_time: '01:00',
   review_timezone: 'UTC',
+  notifications_enabled: 'off',
+  notification_time: '09:00',
 };
