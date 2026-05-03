@@ -20,6 +20,10 @@ export function PlatformButton({
   cornerRadius,
   contentAlignment,
   accessibilityLabel,
+  confirmationTitle,
+  confirmationMessage,
+  confirmationActionText,
+  confirmationDestructive,
 }: PlatformButtonProps) {
   const resolvedVariant = variant ?? (text ? 'glass' : 'plain');
 
@@ -40,6 +44,10 @@ export function PlatformButton({
       cornerRadius={cornerRadius}
       contentAlignment={contentAlignment}
       accessibilityLabel={accessibilityLabel ?? text}
+      confirmationTitle={confirmationTitle}
+      confirmationMessage={confirmationMessage}
+      confirmationActionText={confirmationActionText}
+      confirmationDestructive={confirmationDestructive}
       onButtonPress={onPress}
       style={style as object}
     />

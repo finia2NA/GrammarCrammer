@@ -16,6 +16,10 @@ export interface PlatformButtonNativeViewProps {
   cornerRadius?: number;
   contentAlignment?: 'left' | 'center' | 'right';
   accessibilityLabel?: string;
+  confirmationTitle?: string;
+  confirmationMessage?: string;
+  confirmationActionText?: string;
+  confirmationDestructive?: boolean;
   onButtonPress?: () => void;
   style?: object;
 }

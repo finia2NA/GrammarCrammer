@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "backend": "pnpm --filter server dev",
+    "client": "pnpm --filter client start",
     "web": "pnpm --filter client web",
     "start": "pnpm --filter client start",
     "fresh": "pnpm --filter client exec expo start --clear",

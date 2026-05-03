@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Platform, Text, TouchableOpacity } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
-import { PlatformPopover } from '@/components/pickers/PlatformPopover';
+import { PlatformButton } from '@/components/PlatformButton';
 import { AnimatedTabbed } from '@/components/AnimatedTabbed';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
@@ -28,6 +28,10 @@ function triggerCsvDownload(filename: string, csv: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function estimateHeaderButtonWidth(label: string) {
+  return Math.max(88, Math.min(132, label.length * 9 + 48));
 }
 
 interface DeckModalProps {
@@ -226,31 +230,26 @@ export function DeckModal({
   const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : submitting ? 'Saving…' : isEdit ? 'Save' : 'Create';
   const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
   const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
+  const confirmButtonWidth = estimateHeaderButtonWidth(confirmText);
 
-  const confirmButtonNode = Platform.OS === 'web' && promptChanged && !showingCsvTab ? (
-    <PlatformPopover
-      title="Regenerate explanation?"
-      message="Editing the topic or clarification will regenerate the explanation for this deck."
-      confirmStyle
-      doneLabel={confirmText}
-      fallbackHeight={160}
-      maxWidth={300}
-      placement="below"
-      onDone={() => { void submitDeckForm(); }}
-      onCancel={() => {}}
-      anchorDisplay="flex"
-      trigger={(actions) => (
-        <TouchableOpacity
-          onPress={actions.togglePopover}
-          disabled={confirmDisabled}
-          style={{ paddingVertical: 8, paddingLeft: 16, paddingRight: 0, alignSelf: 'flex-end' }}
-          activeOpacity={0.7}
-        >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: confirmDisabled ? colors.foreground_secondary : colors.primary }}>
-            {confirmText}
-          </Text>
-        </TouchableOpacity>
-      )}
+  const confirmButtonNode = promptChanged && !showingCsvTab ? (
+    <PlatformButton
+      text={confirmText}
+      onPress={() => { void submitDeckForm(); }}
+      disabled={confirmDisabled}
+      variant="glass"
+      color={Platform.OS === 'ios' ? colors.foreground : colors.primary}
+      backgroundColor={Platform.OS === 'ios' ? colors.background_warm : undefined}
+      disabledColor={colors.foreground_secondary}
+      style={{ width: confirmButtonWidth, height: 36, alignItems: 'center', justifyContent: 'center' }}
+      fontSize={16}
+      fontWeight="semibold"
+      horizontalPadding={14}
+      verticalPadding={7}
+      cornerRadius={18}
+      confirmationTitle="Regenerate explanation?"
+      confirmationMessage="This will regenerate the explanation for this deck."
+      confirmationActionText="Regenerate and Save"
     />
   ) : undefined;
 

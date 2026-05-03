@@ -19,6 +19,10 @@ class PlatformButtonView: ExpoView {
   private var cornerRadius: CGFloat?
   private var contentAlignment = "center"
   private var explicitAccessibilityLabel: String?
+  private var confirmationTitle: String?
+  private var confirmationMessage: String?
+  private var confirmationActionText: String?
+  private var confirmationDestructive = false
 
   private lazy var button: UIButton = {
     let btn = UIButton(type: .system)
@@ -119,9 +123,95 @@ class PlatformButtonView: ExpoView {
     refreshConfiguration()
   }
 
+  func updateConfirmationTitle(_ title: String?) {
+    confirmationTitle = title
+  }
+
+  func updateConfirmationMessage(_ message: String?) {
+    confirmationMessage = message
+  }
+
+  func updateConfirmationActionText(_ actionText: String?) {
+    confirmationActionText = actionText
+  }
+
+  func updateConfirmationDestructive(_ destructive: Bool) {
+    confirmationDestructive = destructive
+  }
+
   @objc private func handlePress() {
     guard !isButtonDisabled else { return }
+    if shouldPresentConfirmation {
+      presentConfirmation()
+      return
+    }
     onButtonPress()
+  }
+
+  private var shouldPresentConfirmation: Bool {
+    guard let actionText = confirmationActionText?.trimmingCharacters(in: .whitespacesAndNewlines), !actionText.isEmpty else {
+      return false
+    }
+    return !(confirmationTitle?.isEmpty ?? true) || !(confirmationMessage?.isEmpty ?? true)
+  }
+
+  private func presentConfirmation() {
+    guard let actionText = confirmationActionText?.trimmingCharacters(in: .whitespacesAndNewlines), !actionText.isEmpty else {
+      onButtonPress()
+      return
+    }
+
+    let alert = UIAlertController(
+      title: confirmationTitle,
+      message: confirmationMessage,
+      preferredStyle: .actionSheet
+    )
+    alert.addAction(UIAlertAction(
+      title: actionText,
+      style: confirmationDestructive ? .destructive : .default
+    ) { [weak self] _ in
+      self?.onButtonPress()
+    })
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+    if let popover = alert.popoverPresentationController {
+      if #available(iOS 16.0, *) {
+        popover.sourceItem = button
+      } else {
+        popover.sourceView = button
+        popover.sourceRect = button.bounds
+      }
+    }
+
+    guard let presenter = nearestPresentingViewController() else {
+      onButtonPress()
+      return
+    }
+    presenter.present(alert, animated: true)
+  }
+
+  private func nearestPresentingViewController() -> UIViewController? {
+    var responder: UIResponder? = self
+    while let current = responder {
+      if let viewController = current as? UIViewController {
+        return topViewController(from: viewController)
+      }
+      responder = current.next
+    }
+    return topViewController(from: window?.rootViewController)
+  }
+
+  private func topViewController(from viewController: UIViewController?) -> UIViewController? {
+    if let presented = viewController?.presentedViewController {
+      return topViewController(from: presented)
+    }
+    if let navigationController = viewController as? UINavigationController {
+      return topViewController(from: navigationController.visibleViewController)
+    }
+    if let tabBarController = viewController as? UITabBarController {
+      return topViewController(from: tabBarController.selectedViewController)
+    }
+    return viewController
   }
 
   private func refreshConfiguration() {

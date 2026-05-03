@@ -66,6 +66,22 @@ public class PlatformButtonModule: Module {
       Prop("accessibilityLabel") { (view: PlatformButtonView, label: String?) in
         view.updateAccessibilityLabel(label)
       }
+
+      Prop("confirmationTitle") { (view: PlatformButtonView, title: String?) in
+        view.updateConfirmationTitle(title)
+      }
+
+      Prop("confirmationMessage") { (view: PlatformButtonView, message: String?) in
+        view.updateConfirmationMessage(message)
+      }
+
+      Prop("confirmationActionText") { (view: PlatformButtonView, actionText: String?) in
+        view.updateConfirmationActionText(actionText)
+      }
+
+      Prop("confirmationDestructive") { (view: PlatformButtonView, destructive: Bool?) in
+        view.updateConfirmationDestructive(destructive ?? false)
+      }
     }
   }
 }
