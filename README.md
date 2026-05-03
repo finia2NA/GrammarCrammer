@@ -1,40 +1,197 @@
 # PatternDeck
 
-PatternDeck is an AI-assisted grammar study app for language learners. You pick a grammar topic, the app generates a tailored lesson, turns it into practice cards, judges your free-text answers, and schedules the topic for review later.
+PatternDeck is an AI-assisted grammar study app designed for language learners who need more than memorization. It generates structured lessons, turns them into adaptive practice, evaluates free-text answers, and schedules review over time.
 
-The project started from a simple idea: grammar study is awkward in traditional flashcard tools because each topic needs explanation, variation, and feedback, not just memorization. PatternDeck was built to make that workflow feel native to the product instead of bolted on, with long-form explanations, adaptive practice, saved study history, notifications, analytics, and cost-aware AI infrastructure around the core loop.
+The system was built to make grammar study feel native to the product rather than bolted onto flashcards, combining long-form explanations, feedback loops, and cost-aware AI infrastructure.
+
+---
 
 ## What It Does
 
-- Generates topic-specific grammar explanations with examples, tables, and clarification-aware coverage.
-- Turns those explanations into practice cards instead of relying on static prewritten decks.
-- Judges learner answers in real time and gives follow-up feedback when something is wrong.
-- Supports chat about the current card, plus tap-to-explore word hints during study.
-- Saves decks into a nested collection tree so learners can organize topics and study whole groups together.
-- Uses spaced repetition for saved decks, combining self-rating with AI feedback to schedule the next review.
-- Supports both quick one-off study sessions and longer-term deck building.
-- Imports large batches of decks from CSV, including optional prewritten explanations.
+- Generates grammar explanations with examples, tables, and contextual coverage  
+- Converts explanations into dynamic practice cards  
+- Evaluates free-text answers with AI and provides feedback  
+- Supports in-session chat and word-level hints  
+- Organizes decks in a hierarchical collection system  
+- Uses spaced repetition with AI + user feedback  
+- Supports both quick sessions and long-term study  
+- Imports decks via CSV with optional prewritten content  
 
-## Beyond The Core Loop
+---
 
-The app also includes the kinds of systems that make it feel like a full product rather than a single feature demo.
+## Engineering Highlights
 
-- Account workflows include email/password auth, Apple and Google sign-in support, password reset, persisted settings, and per-user study data.
-- Anthropic keys are never used directly from the client. User keys are encrypted server-side, and the app can also run on a shared central key with per-user and global monthly budget controls.
-- PostHog is integrated on both client and server for screen tracking, study-session funnels, AI generation metrics, exception capture, and cost visibility.
-- Long explanations stream into the app, while saved-deck explanation generation can also run asynchronously in the background so deck creation stays responsive.
-- Push notifications remind users when decks are due, and users can choose what time new due material should unlock each day.
-- The app uses one Expo/React Native codebase for iOS, Android, and web, and makes targeted use ofnative iOS components in places where they provide a better feel than generic cross-platform controls.
+- Designed a streaming pipeline for AI-generated explanations using Anthropic APIs to reduce perceived latency  
+- Implemented asynchronous deck generation to avoid blocking user-facing requests  
+- Built a cost-control layer with per-user and global monthly budget enforcement for AI usage  
+- Designed a relational schema supporting hierarchical collections and spaced repetition  
+- Implemented full-stack analytics (PostHog) to track user behavior, AI usage, and system performance  
+- Secured user API keys using AES-256-GCM encryption  
 
-## Tech Snapshot
+---
 
-- Client: Expo 55, React Native 0.83, Expo Router, NativeWind
-- Server: Express 5, TypeScript, Prisma, SQLite
-- AI: Anthropic Sonnet 4.6 for streamed explanations and chat, Haiku 4.5 for card generation and judging
-- Observability: PostHog client/server instrumentation, AI token and cost tracking, exception capture
+## System Architecture
 
-## Technical Details
+### Monorepo Structure
 
-Setup, environment variables, deployment notes, and system design now live in [Architecture.md](Architecture.md).
+client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma API shared/   Shared types and constants
 
-For directory-level navigation, see [client/STRUCTURE.md](client/STRUCTURE.md) and [server/STRUCTURE.md](server/STRUCTURE.md).
+---
+
+### High-Level Design
+
+1. Client handles UI: onboarding, study sessions, deck management, settings  
+2. All AI requests are routed through the server  
+3. Decks are stored in a hierarchical tree with review history and scheduling  
+4. Long-running AI tasks are processed asynchronously  
+5. Analytics and usage tracking are instrumented across client and server  
+
+---
+
+### Core Systems
+
+#### Client
+- Expo Router-based React Native app  
+- Study session UI with streaming explanations and answer evaluation  
+- Deck tree interface for nested organization  
+- Notification and scheduling controls  
+- Integrated analytics and error tracking  
+
+#### Server
+- Express API for auth, decks, AI, and notifications  
+- Prisma ORM for persistence  
+- Background job handling for deck generation  
+- API key encryption and secure storage  
+- AI proxy layer with usage tracking  
+
+---
+
+### AI Pipeline
+
+- Sonnet: explanations, chat, feedback  
+- Haiku: card generation, answer evaluation  
+- Streaming responses via SSE  
+- Each request logs:
+  - token usage  
+  - latency  
+  - estimated cost  
+  - success/failure  
+
+---
+
+## Key Engineering Decisions
+
+### Server-Side AI Routing
+- Prevents API key exposure  
+- Enables centralized cost tracking and budget enforcement  
+- Tradeoff: added latency vs direct client calls  
+
+---
+
+### Streaming via SSE
+- Simpler than WebSockets for unidirectional AI output  
+- Reduces perceived latency during explanation generation  
+- Tradeoff: limited bidirectional flexibility  
+
+---
+
+### Asynchronous Deck Generation
+- Keeps UI responsive during heavy AI tasks  
+- Improves user experience for large decks  
+- Tradeoff: requires job tracking and failure handling  
+
+---
+
+### Model Separation (Sonnet vs Haiku)
+- Haiku used for high-volume, low-cost tasks  
+- Sonnet used for quality-sensitive outputs  
+- Balances cost vs output quality  
+
+---
+
+## Failure Handling & Edge Cases
+
+- AI responses may be inconsistent → validation + fallback prompts  
+- Streaming interruptions → client supports partial responses  
+- Budget limits exceeded → requests rejected with user feedback  
+- Background job failures → retry + logging system  
+- Network/API failures → tracked via analytics for debugging  
+
+---
+
+## Data Model Overview
+
+- User: auth, settings, encrypted API key, usage  
+- Node: hierarchical collection structure  
+- Deck: topic, explanation, scheduling data  
+- DeckReview: session results and interval updates  
+- UsageLedger: AI cost tracking and enforcement  
+- NotificationSchedule / PushDevice: reminders  
+
+---
+
+## Tech Stack
+
+### Client
+- React Native (Expo)
+- Expo Router
+- NativeWind
+- PostHog analytics
+
+### Server
+- Node.js + TypeScript
+- Express
+- Prisma ORM
+- SQLite (dev)
+
+### Infrastructure
+- Anthropic API (Sonnet + Haiku)
+- PostHog (analytics + observability)
+
+---
+
+## Observability
+
+- Client: screen tracking, session events, error capture  
+- Server: AI metrics, latency, cost tracking  
+- Events include:
+  - generation time  
+  - token usage  
+  - failure rates  
+
+---
+
+## Local Development
+
+### Setup
+
+bash pnpm install cp server/.env.example server/.env cp client/.env.example client/.env pnpm db:migrate 
+
+### Run
+
+bash pnpm dev 
+
+---
+
+## Deployment
+
+Deployment is handled via SSH-based scripts in deploy/.
+
+bash pnpm setup:server pnpm ship 
+
+---
+
+## Project Focus
+
+This project explores:
+
+- AI-assisted learning systems  
+- Cost-aware LLM infrastructure  
+- Real-time feedback loops  
+- Cross-platform product architecture  
+
+---
+
+## Notes
+
+For more info, including how to get started, check out `Architecture.md`.
