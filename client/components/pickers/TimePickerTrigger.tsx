@@ -6,9 +6,11 @@ interface TimePickerTriggerProps {
   textValue?: string;
   normalizedValue?: string;
   disabled: boolean;
+  useNativeInput?: boolean;
   onTextValueChange?: (value: string) => void;
   onCommitTextValue?: () => void;
   onResetTextValue?: () => void;
+  onNativeInputChange?: (value: string) => void;
   onPress: () => void;
 }
 

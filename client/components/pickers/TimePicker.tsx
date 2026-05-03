@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { normalizeTime, splitTime } from './timeUtils';
 import { dismissPickerKeyboard, openAndroidTimePicker, useDateTimePickerModule } from './dateTimePickerPlatform';
 import { PlatformPopover } from './PlatformPopover';
@@ -11,8 +12,33 @@ interface TimePickerProps {
   disabled?: boolean;
 }
 
+function useNativeWebTimeInput() {
+  const [preferNativeInput, setPreferNativeInput] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(pointer: coarse), (hover: none)');
+    const syncPreference = () => setPreferNativeInput(mediaQuery.matches);
+    syncPreference();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncPreference);
+      return () => mediaQuery.removeEventListener('change', syncPreference);
+    }
+
+    mediaQuery.addListener(syncPreference);
+    return () => mediaQuery.removeListener(syncPreference);
+  }, []);
+
+  return preferNativeInput;
+}
+
 export function TimePicker({ value, onChange, disabled = false }: TimePickerProps) {
   const nativePickerModule = useDateTimePickerModule();
+  const preferNativeWebTimeInput = useNativeWebTimeInput();
 
   const normalizedValue = useMemo(() => normalizeTime(value), [value]);
   const { hour, minute } = splitTime(normalizedValue);
@@ -68,20 +94,32 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     setDraftMinute(String(next.getMinutes()).padStart(2, '0'));
   }
 
+  const handleNativeWebInputChange = useCallback((nextValue: string) => {
+    const normalized = normalizeTime(nextValue);
+    const { hour: nextHour, minute: nextMinute } = splitTime(normalized);
+    setTextValue(normalized);
+    setDraftHour(nextHour);
+    setDraftMinute(nextMinute);
+    onChange(normalized);
+  }, [onChange]);
+
   const triggerProps = {
     value,
     textValue,
     normalizedValue,
     disabled,
+    useNativeInput: preferNativeWebTimeInput,
     onTextValueChange: setTextValue,
     onCommitTextValue: commitTextValue,
     onResetTextValue: () => setTextValue(normalizedValue),
+    onNativeInputChange: handleNativeWebInputChange,
   };
 
   return (
     <PlatformPopover
       title="Due Time"
-      disabled={disabled}
+      // Mobile browsers handle their native time control more reliably than our custom popover.
+      disabled={disabled || preferNativeWebTimeInput}
       fallbackHeight={230}
       maxWidth={300}
       closeDelay={130}
@@ -93,6 +131,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
         <TimePickerTrigger
           {...triggerProps}
           onPress={() => {
+            if (preferNativeWebTimeInput) return;
             if (open) {
               closePopover();
               return;
