@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, Text, useColorScheme, View } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlatformButton } from '@/components/PlatformButton';
@@ -49,8 +49,10 @@ export function PlatformPopover({
   trigger,
 }: PlatformPopoverProps) {
   const colors = useColors();
+  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const confirmIconColor = colors.surface;
+  const actionButtonBackground = colors.background_warm;
+  const confirmIconColor = scheme === 'light' ? '#FFFFFF' : '#000000';
   const [open, setOpen] = useState(false);
   const sheetY = useRef(new Animated.Value(sheetHeight)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -192,13 +194,13 @@ export function PlatformPopover({
                           onPress={handleCancel}
                           variant="prominentGlass"
                           color={colors.foreground}
-                          backgroundColor={colors.surface}
-                          iconSize={20}
+                          backgroundColor={actionButtonBackground}
+                          iconSize={18}
                           accessibilityLabel="Close"
                           style={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 28,
+                            width: 48,
+                            height: 48,
+                            borderRadius: 24,
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}
@@ -215,12 +217,12 @@ export function PlatformPopover({
                           variant="prominentGlass"
                           color={confirmIconColor}
                           backgroundColor={colors.primary}
-                          iconSize={22}
+                          iconSize={20}
                           accessibilityLabel="Done"
                           style={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 28,
+                            width: 48,
+                            height: 48,
+                            borderRadius: 24,
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}

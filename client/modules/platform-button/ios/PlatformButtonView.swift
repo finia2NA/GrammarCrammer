@@ -127,9 +127,14 @@ class PlatformButtonView: ExpoView {
   private func refreshConfiguration() {
     var config = makeConfiguration()
 
+    let resolvedForegroundColor = isButtonDisabled
+      ? (disabledForegroundColor ?? UIColor.secondaryLabel)
+      : (foregroundColor ?? tintColor ?? UIColor.tintColor)
+
     if let text, !text.isEmpty {
       var attr = AttributedString(text)
       attr.font = UIFont.systemFont(ofSize: fontSize, weight: resolvedFontWeight)
+      attr.foregroundColor = resolvedForegroundColor
       config.attributedTitle = attr
     } else {
       config.title = nil
@@ -140,15 +145,12 @@ class PlatformButtonView: ExpoView {
       config.image = UIImage(
         systemName: symbolName,
         withConfiguration: UIImage.SymbolConfiguration(pointSize: iconPointSize, weight: .semibold)
-      )
+      )?.withTintColor(resolvedForegroundColor, renderingMode: .alwaysOriginal)
       config.imagePadding = text?.isEmpty == false ? 6 : 0
     } else {
       config.image = nil
     }
 
-    let resolvedForegroundColor = isButtonDisabled
-      ? (disabledForegroundColor ?? UIColor.secondaryLabel)
-      : (foregroundColor ?? tintColor ?? UIColor.tintColor)
     config.baseForegroundColor = resolvedForegroundColor
     config.imageColorTransformer = UIConfigurationColorTransformer { _ in
       resolvedForegroundColor

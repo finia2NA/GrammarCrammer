@@ -36,6 +36,7 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { isSmallScreen } = useScreenSize();
+  const useNativePlatformButtonStyle = Platform.OS === 'ios';
   const isFocused = useIsFocused();
   const { tree, loading, refreshing, refresh } = useDeckTree(isFocused);
   const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
@@ -230,16 +231,16 @@ export default function Home() {
             onPress={() => setSettingsVisible(true)}
             variant="glass"
             color={colors.foreground_secondary}
-            backgroundColor={colors.surface}
+            backgroundColor={useNativePlatformButtonStyle ? colors.surface : undefined}
             iconSize={18}
-            horizontalPadding={8}
-            verticalPadding={8}
-            cornerRadius={16}
+            horizontalPadding={useNativePlatformButtonStyle ? 10 : 8}
+            verticalPadding={useNativePlatformButtonStyle ? 10 : 8}
+            cornerRadius={useNativePlatformButtonStyle ? 20 : 16}
             accessibilityLabel="Settings"
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
+              width: useNativePlatformButtonStyle ? 40 : 34,
+              height: useNativePlatformButtonStyle ? 40 : 34,
+              borderRadius: useNativePlatformButtonStyle ? 20 : 17,
               alignItems: 'center',
               justifyContent: 'center',
             }}

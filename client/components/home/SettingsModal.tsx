@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Switch,
+  Platform,
 } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
@@ -41,6 +42,7 @@ const ConfirmButton = NeedsConfirmationButton;
 
 type KeyPreference = 'central' | 'own';
 const DEFAULT_CARD_COUNT_OPTIONS = CARD_COUNTS.filter((count) => count !== 0);
+const supportsPushNotifications = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const router = useRouter();
@@ -245,31 +247,32 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         </SettingsRow>
       </SectionCard>
 
-      {/* Notifications */}
-      <SectionCard title="Notifications">
-        <SettingsRow
-          label="Due Deck Reminders"
-          description="Send a mobile reminder when decks are ready to review"
-        >
-          <Switch
-            value={notificationsEnabled === 'on'}
-            onValueChange={handleNotificationsToggle}
-            disabled={saving || notificationSetupBusy}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.surface}
-          />
-        </SettingsRow>
-        <SettingsRow
-          label="Reminder Time"
-          description="When to notify you, separate from the due release time"
-        >
-          <TimePicker
-            value={notificationTime}
-            onChange={(next: string) => setNotificationTime(normalizeTime(next))}
-            disabled={notificationsEnabled !== 'on'}
-          />
-        </SettingsRow>
-      </SectionCard>
+      {supportsPushNotifications ? (
+        <SectionCard title="Notifications">
+          <SettingsRow
+            label="Due Deck Reminders"
+            description="Send a mobile reminder when decks are ready to review"
+          >
+            <Switch
+              value={notificationsEnabled === 'on'}
+              onValueChange={handleNotificationsToggle}
+              disabled={saving || notificationSetupBusy}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.surface}
+            />
+          </SettingsRow>
+          <SettingsRow
+            label="Reminder Time"
+            description="When to notify you, separate from the due release time"
+          >
+            <TimePicker
+              value={notificationTime}
+              onChange={(next: string) => setNotificationTime(normalizeTime(next))}
+              disabled={notificationsEnabled !== 'on'}
+            />
+          </SettingsRow>
+        </SectionCard>
+      ) : null}
 
       {/* Languages */}
       <View className="mb-5">
