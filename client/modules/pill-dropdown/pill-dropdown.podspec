@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.summary        = 'Native pill dropdown menu using UIButton + UIMenu'
   s.homepage       = 'https://github.com/example'
   s.license        = { :type => 'MIT' }
-  s.author         = 'Pattern Deck'
+  s.author         = 'PatternDeck'
   s.platform       = :ios, '15.1'
   s.source         = { :path => '.' }
   s.source_files   = 'ios/**/*.swift'

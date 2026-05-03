@@ -36,7 +36,7 @@ export function BrandLogo({
         source={logoMark}
         contentFit="contain"
         style={{ width: size, height: size }}
-        accessibilityLabel="Pattern Deck logo"
+        accessibilityLabel="PatternDeck logo"
       />
       {showWordmark && (
         <Text
@@ -47,7 +47,7 @@ export function BrandLogo({
             lineHeight: Math.round(wordmarkSize * 1.15),
           }}
         >
-          Pattern Deck
+          PatternDeck
         </Text>
       )}
     </View>

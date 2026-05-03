@@ -155,7 +155,7 @@ export default function ResetPassword() {
             <>
               <Text className="text-3xl font-bold text-primary mb-3">Password reset!</Text>
               <Text className="text-foreground-secondary text-sm leading-6">
-                Your password has been updated. Open the Pattern Deck app to sign in with your new password.
+                Your password has been updated. Open the PatternDeck app to sign in with your new password.
               </Text>
             </>
           )}

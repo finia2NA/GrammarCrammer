@@ -1,4 +1,4 @@
-# Pattern Deck
+# PatternDeck
 
 An AI-powered grammar flashcard app. You name a grammar topic, Claude generates a tailored explanation and a set of flashcards, then judges your answers in real time.
 
@@ -8,7 +8,7 @@ Anki is a truly great and extensible application. But using it for grammar study
 
 Wouldn't it be nice to have a flashcard-like app that generates a full explanation of whatever concept you want to study, and tests you on it in a more dynamic way, with changing sentences for you to solve and personalized breakdowns of what you can improve?
 
-This is the problem Pattern Deck is trying to solve.
+This is the problem PatternDeck is trying to solve.
 
 ## How it works
 
@@ -27,10 +27,10 @@ Push notifications remind you when decks are due for review.
 
 ## Architecture
 
-Pattern Deck is a **monorepo** with two packages:
+PatternDeck is a **monorepo** with two packages:
 
 ```
-Pattern Deck/
+PatternDeck/
   client/   ← React Native / Expo app (iOS, Android, Web)
   server/   ← Express + Prisma API server
   shared/   ← @patterndeck/shared: constants and types used by both
@@ -162,7 +162,7 @@ Runs the iPad layout natively on macOS. Requires macOS + Xcode.
    ```bash
    pnpm xcode   # runs expo prebuild then opens the workspace
    ```
-2. In Xcode: select the **Pattern Deck** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
+2. In Xcode: select the **PatternDeck** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
 3. Select **My Mac** in the scheme bar → **Product → Run** (⌘R)
 
 ### Android

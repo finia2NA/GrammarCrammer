@@ -2,7 +2,7 @@
 
 ## Context
 
-Pattern Deck currently runs ephemeral sessions: the user types a topic, Claude generates an explanation + cards, the user practices, and everything is discarded. This plan adds **persistent decks and collections**, turning the app into a re-learnable flashcard system where explanations are generated once and reused for future study sessions. The implementation must be FSRS-compatible so spaced repetition scheduling can be layered on afterward.
+PatternDeck currently runs ephemeral sessions: the user types a topic, Claude generates an explanation + cards, the user practices, and everything is discarded. This plan adds **persistent decks and collections**, turning the app into a re-learnable flashcard system where explanations are generated once and reused for future study sessions. The implementation must be FSRS-compatible so spaced repetition scheduling can be layered on afterward.
 
 ---
 
@@ -261,7 +261,7 @@ The home screen is redesigned from a single topic input to a deck/collection bro
 
 ```
 ┌─────────────────────────────────┐
-│  [⚙️]              Pattern Deck│  ← settings left, title right
+│  [⚙️]              PatternDeck│  ← settings left, title right
 │─────────────────────────────────│
 │                                 │
 │  ▼ JP                      [✏️] │  ← expanded collection

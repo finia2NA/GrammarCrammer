@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-time server setup for Pattern Deck
+# One-time server setup for PatternDeck
 # Run from local machine: bash deploy/setup-server.sh
 set -euo pipefail
 
@@ -39,7 +39,7 @@ ssh ${SERVER} << 'EOF'
       sed -i \
         -e 's|^DATABASE_URL=.*|DATABASE_URL="file:/home/patterndeck/data/patterndeck.db"|' \
         -e 's|^APP_URL=.*|APP_URL="https://patterndeck.richardhanss.de"|' \
-        -e 's|^EMAIL_FROM=.*|EMAIL_FROM="Pattern Deck <noreply@patterndeck.richardhanss.de>"|' \
+        -e 's|^EMAIL_FROM=.*|EMAIL_FROM="PatternDeck <noreply@patterndeck.richardhanss.de>"|' \
         /home/patterndeck/env/server.env
       ln -sf /home/patterndeck/env/server.env /home/patterndeck/app/server/.env
     fi
@@ -99,7 +99,7 @@ JWT_SECRET="$(openssl rand -base64 32)"
 ENCRYPTION_KEY="$(openssl rand -hex 32)"
 PORT=3001
 APP_URL="https://patterndeck.richardhanss.de"
-EMAIL_FROM="Pattern Deck <noreply@patterndeck.richardhanss.de>"
+EMAIL_FROM="PatternDeck <noreply@patterndeck.richardhanss.de>"
 ENVFILE
     chown patterndeck:patterndeck /home/patterndeck/app/server/.env
     chmod 600 /home/patterndeck/app/server/.env

@@ -52,7 +52,7 @@ const WelcomeCard = memo(function WelcomeCard() {
         Welcome to your{'\n'}grammar study partner
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
-        Pattern Deck is your AI-powered grammar study partner.
+        PatternDeck is your AI-powered grammar study partner.
         Tell it what you want to practise, and it will generate
         a custom set of flashcards tailored to your topic — in any
         language you choose.
@@ -91,7 +91,7 @@ const AlphaWarningCard = memo(function AlphaWarningCard() {
         Alpha version
       </Text>
       <Text className="text-foreground-secondary text-base leading-7 mb-4">
-        Pattern Deck is in early development. Future updates may reset your data, including saved decks and collections.
+        PatternDeck is in early development. Future updates may reset your data, including saved decks and collections.
       </Text>
       <Text className="text-foreground-secondary text-base leading-7">
         For now, use it to explore the concept and practise grammar freely — but don&apos;t invest time building elaborate collections just yet.

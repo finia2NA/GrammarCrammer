@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy Pattern Deck frontend + backend to VPS
+# Deploy PatternDeck frontend + backend to VPS
 # Usage: bash deploy/deploy.sh
 set -euo pipefail
 
@@ -98,7 +98,7 @@ ssh ${SERVER} << 'DEPLOY_EOF'
     sed -i \
       -e 's|^DATABASE_URL=.*|DATABASE_URL="file:/home/patterndeck/data/patterndeck.db"|' \
       -e 's|^APP_URL=.*|APP_URL="https://patterndeck.richardhanss.de"|' \
-      -e 's|^EMAIL_FROM=.*|EMAIL_FROM="Pattern Deck <noreply@patterndeck.richardhanss.de>"|' \
+      -e 's|^EMAIL_FROM=.*|EMAIL_FROM="PatternDeck <noreply@patterndeck.richardhanss.de>"|' \
       ${ENV_DIR}/server.env
   fi
 

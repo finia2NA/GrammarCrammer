@@ -1,5 +1,5 @@
 [Unit]
-Description=Pattern Deck API Server
+Description=PatternDeck API Server
 After=network.target
 
 [Service]

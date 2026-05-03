@@ -64,7 +64,7 @@ export default function Root({ children }: PropsWithChildren) {
           <div id="gc-spinner" />
           <div id="gc-loader-brand">
             <img id="gc-loader-logo" src="/logo-mark.svg" alt="" />
-            <div id="gc-loader-wordmark">Pattern Deck</div>
+            <div id="gc-loader-wordmark">PatternDeck</div>
           </div>
         </div>
         {children}

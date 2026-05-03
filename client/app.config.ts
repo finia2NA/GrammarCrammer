@@ -15,7 +15,7 @@ const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Pattern Deck',
+  name: 'PatternDeck',
   slug: 'patterndeck',
   version: '1.0.0',
   orientation: 'portrait',
@@ -41,7 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
       NSLocalNetworkUsageDescription:
-        'Pattern Deck connects to your development backend on your private Meshnet.',
+        'PatternDeck connects to your development backend on your private Meshnet.',
     },
   },
   android: {

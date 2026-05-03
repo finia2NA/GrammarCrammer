@@ -24,7 +24,7 @@ export const config = {
   centralKeyGlobalMonthlyLimit: parseFloat(process.env.CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT ?? '0'),
   resendApiKey: process.env.RESEND_API_KEY || null,
   appUrl: process.env.APP_URL || defaultAppUrl,
-  emailFrom: process.env.EMAIL_FROM || 'Pattern Deck <noreply@patterndeck.richardhanss.de>',
+  emailFrom: process.env.EMAIL_FROM || 'PatternDeck <noreply@patterndeck.richardhanss.de>',
   posthogProjectApiKey: process.env.POSTHOG_PROJECT_API_KEY || null,
   posthogHost: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
   posthogEnabled: process.env.POSTHOG_ENABLED !== '0' && !!process.env.POSTHOG_PROJECT_API_KEY,
