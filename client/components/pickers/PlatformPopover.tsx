@@ -29,8 +29,12 @@ interface PlatformPopoverProps {
   anchorDisplay?: string;
   sheetHeight?: number;
   minHeight?: number;
-  children: ReactNode;
+  children?: ReactNode;
   trigger: (actions: PlatformPopoverTriggerActions) => ReactNode;
+  confirmStyle?: boolean;
+  doneLabel?: string;
+  message?: string;
+  destructive?: boolean;
 }
 
 export function PlatformPopover({

@@ -25,6 +25,8 @@ interface PageSheetModalProps {
   onConfirm?: () => void;
   confirmDisabled?: boolean;
   confirmCloses?: boolean;
+  /** Replaces the default confirm button in the header (e.g. a PlatformPopover-wrapped button) */
+  confirmButtonNode?: ReactNode;
   children: ReactNode;
 }
 
@@ -41,6 +43,7 @@ export function PageSheetModal({
   onConfirm,
   confirmDisabled = false,
   confirmCloses = true,
+  confirmButtonNode,
   children,
 }: PageSheetModalProps) {
   const insets = useSafeAreaInsets();
@@ -129,7 +132,11 @@ export function PageSheetModal({
         {title}
       </Text>
 
-      {confirmText ? (
+      {confirmButtonNode ? (
+        <View style={[styles.headerSide, styles.headerSideRight]}>
+          {confirmButtonNode}
+        </View>
+      ) : confirmText ? (
         <TouchTarget
           onPress={handleConfirm}
           disabled={confirmDisabled}

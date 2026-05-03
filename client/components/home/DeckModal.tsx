@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, Text, TouchableOpacity } from 'react-native';
 import { PageSheetModal } from '@/components/PageSheetModal';
+import { PlatformPopover } from '@/components/pickers/PlatformPopover';
 import { AnimatedTabbed } from '@/components/AnimatedTabbed';
+import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 import { DEFAULT_LANGUAGES } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
@@ -78,6 +80,7 @@ export function DeckModal({
   const isCollection = isEdit && editNode.deck === null;
   const canUseCsvTab = !isEdit;
   const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
+  const colors = useColors();
 
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
@@ -154,24 +157,17 @@ export function DeckModal({
     }
   }
 
+  const promptChanged = isEdit && !isCollection && !!editNode?.deck && (
+    topic.trim() !== editNode.deck.topic ||
+    clarification.trim() !== (editNode.deck.clarification ?? '')
+  );
+
   function handleSubmit() {
-    const promptChanged = isEdit && !isCollection && editNode?.deck && (
-      topic.trim() !== editNode.deck.topic ||
-      clarification.trim() !== (editNode.deck.clarification ?? '')
-    );
     if (!promptChanged) {
       void submitDeckForm();
       return;
     }
-
-    const title = 'Regenerate explanation?';
-    const message = 'Editing the topic or clarification will regenerate the explanation for this deck.';
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${title}\n\n${message}`)) void submitDeckForm();
-      return;
-    }
-
-    Alert.alert(title, message, [
+    Alert.alert('Regenerate explanation?', 'Editing the topic or clarification will regenerate the explanation for this deck.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Confirm', onPress: () => { void submitDeckForm(); } },
     ]);
@@ -230,6 +226,34 @@ export function DeckModal({
   const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : submitting ? 'Saving…' : isEdit ? 'Save' : 'Create';
   const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
   const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
+
+  const confirmButtonNode = Platform.OS === 'web' && promptChanged && !showingCsvTab ? (
+    <PlatformPopover
+      title="Regenerate explanation?"
+      message="Editing the topic or clarification will regenerate the explanation for this deck."
+      confirmStyle
+      doneLabel={confirmText}
+      fallbackHeight={160}
+      maxWidth={300}
+      placement="below"
+      onDone={() => { void submitDeckForm(); }}
+      onCancel={() => {}}
+      anchorDisplay="flex"
+      trigger={(actions) => (
+        <TouchableOpacity
+          onPress={actions.togglePopover}
+          disabled={confirmDisabled}
+          style={{ paddingVertical: 8, paddingLeft: 16, paddingRight: 0, alignSelf: 'flex-end' }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 16, fontWeight: '600', color: confirmDisabled ? colors.foreground_secondary : colors.primary }}>
+            {confirmText}
+          </Text>
+        </TouchableOpacity>
+      )}
+    />
+  ) : undefined;
+
   const tabContent = activeTab === 'csv' ? (
     <DeckModalCsvTab
       collectionPath={name}
@@ -279,6 +303,7 @@ export function DeckModal({
       onConfirm={handleConfirm}
       confirmDisabled={confirmDisabled}
       confirmCloses={false}
+      confirmButtonNode={confirmButtonNode}
     >
       {canUseCsvTab && (
         <AnimatedTabbed

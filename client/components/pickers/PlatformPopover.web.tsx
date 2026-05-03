@@ -25,8 +25,16 @@ interface PlatformPopoverProps {
   onCancel?: () => void;
   repositionDeps?: unknown[];
   anchorDisplay?: CSSProperties['display'];
-  children: ReactNode;
+  children?: ReactNode;
   trigger: (actions: PlatformPopoverTriggerActions) => ReactNode;
+  /** Renders title-only header + action buttons at the bottom (confirm dialog style) */
+  confirmStyle?: boolean;
+  /** Label for the done/confirm button (default: 'Done') */
+  doneLabel?: string;
+  /** Optional message rendered below the title in confirmStyle mode */
+  message?: string;
+  /** Marks the confirm action as destructive (red button) */
+  destructive?: boolean;
 }
 
 export function PlatformPopover({
@@ -42,6 +50,10 @@ export function PlatformPopover({
   repositionDeps = [],
   anchorDisplay = 'block',
   children,
+  confirmStyle = false,
+  doneLabel = 'Done',
+  message,
+  destructive = false,
   trigger,
 }: PlatformPopoverProps) {
   const colors = useColors();
@@ -117,60 +129,113 @@ export function PlatformPopover({
             `}
           </style>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 1fr',
-              alignItems: 'center',
-              gap: 12,
-              padding: '4px 4px 2px',
-            }}
-          >
-            <button
-              type="button"
-              onClick={handleCancel}
-              style={{
-                justifySelf: 'start',
-                border: 0,
-                background: 'transparent',
-                color: colors.primary,
-                fontSize: 15,
-                cursor: 'pointer',
-                padding: '8px 4px',
-              }}
-            >
-              Cancel
-            </button>
-            <div
-              style={{
-                color: colors.foreground,
-                fontSize: 16,
-                fontWeight: 700,
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {title}
-            </div>
-            <button
-              type="button"
-              onClick={handleDone}
-              style={{
-                justifySelf: 'end',
-                border: 0,
-                background: 'transparent',
-                color: colors.primary,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: '8px 4px',
-              }}
-            >
-              Done
-            </button>
-          </div>
-
-          {children}
+          {confirmStyle ? (
+            <>
+              <div style={{ padding: '6px 4px 2px' }}>
+                <div style={{ color: colors.foreground, fontSize: 15, fontWeight: 700 }}>
+                  {title}
+                </div>
+                {message && (
+                  <div style={{ color: colors['foreground-secondary'] ?? colors.foreground, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+                    {message}
+                  </div>
+                )}
+              </div>
+              {children}
+              <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  style={{
+                    flex: 1,
+                    border: `1px solid ${colors.border}`,
+                    background: colors.surface ?? colors.background,
+                    color: colors.foreground,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '9px 12px',
+                    borderRadius: 10,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDone}
+                  style={{
+                    flex: 1,
+                    border: 0,
+                    background: destructive ? colors.error : colors.primary,
+                    color: '#fff',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '9px 12px',
+                    borderRadius: 10,
+                  }}
+                >
+                  {doneLabel}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto 1fr',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '4px 4px 2px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  style={{
+                    justifySelf: 'start',
+                    border: 0,
+                    background: 'transparent',
+                    color: colors.primary,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    padding: '8px 4px',
+                  }}
+                >
+                  Cancel
+                </button>
+                <div
+                  style={{
+                    color: colors.foreground,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {title}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDone}
+                  style={{
+                    justifySelf: 'end',
+                    border: 0,
+                    background: 'transparent',
+                    color: colors.primary,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '8px 4px',
+                  }}
+                >
+                  {doneLabel}
+                </button>
+              </div>
+              {children}
+            </>
+          )}
 
           {footer ? (
             <div
