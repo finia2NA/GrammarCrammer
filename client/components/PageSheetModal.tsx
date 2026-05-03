@@ -68,6 +68,7 @@ export function PageSheetModal({
   const confirmButtonColor = colors.primary;
   const cancelButtonWidth = estimateHeaderButtonWidth(cancelText);
   const confirmButtonWidth = confirmText ? estimateHeaderButtonWidth(confirmText) : 0;
+  const headerSideWidth = Math.max(cancelButtonWidth, confirmButtonWidth);
 
   // Internal state keeps Modal mounted while the exit animation plays on large screens.
   const [shown, setShown] = useState(false);
@@ -133,47 +134,51 @@ export function PageSheetModal({
         paddingBottom: 8,
       }}
     >
-      <PlatformButton
-        text={cancelText}
-        onPress={handleCancel}
-        variant="glass"
-        color={headerButtonColor}
-        backgroundColor={headerButtonBackground}
-        style={[styles.headerButton, { width: cancelButtonWidth, alignSelf: 'flex-start' }]}
-        textStyle={styles.cancelText}
-        fontSize={16}
-        horizontalPadding={14}
-        verticalPadding={7}
-        cornerRadius={18}
-      />
+      <View style={[styles.headerSideLeft, { width: headerSideWidth }]}>
+        <PlatformButton
+          text={cancelText}
+          onPress={handleCancel}
+          variant="glass"
+          color={headerButtonColor}
+          backgroundColor={headerButtonBackground}
+          style={[styles.headerButton, { width: cancelButtonWidth }]}
+          textStyle={styles.cancelText}
+          fontSize={16}
+          horizontalPadding={14}
+          verticalPadding={7}
+          cornerRadius={18}
+        />
+      </View>
 
       <Text className="flex-1 text-center text-foreground text-lg font-bold" numberOfLines={1}>
         {title}
       </Text>
 
       {confirmButtonNode ? (
-        <View style={[styles.headerSide, styles.headerSideRight]}>
+        <View style={[styles.headerSideRight, { width: headerSideWidth }]}>
           {confirmButtonNode}
         </View>
       ) : confirmText ? (
-        <PlatformButton
-          text={confirmText}
-          onPress={handleConfirm}
-          disabled={confirmDisabled}
-          variant="glass"
-          color={confirmButtonColor}
-          backgroundColor={headerButtonBackground}
-          disabledColor={colors.foreground_secondary}
-          style={[styles.headerButton, { width: confirmButtonWidth, alignSelf: 'flex-end' }]}
-          textStyle={styles.confirmText}
-          fontSize={16}
-          fontWeight="semibold"
-          horizontalPadding={14}
-          verticalPadding={7}
-          cornerRadius={18}
-        />
+        <View style={[styles.headerSideRight, { width: headerSideWidth }]}>
+          <PlatformButton
+            text={confirmText}
+            onPress={handleConfirm}
+            disabled={confirmDisabled}
+            variant="glass"
+            color={confirmButtonColor}
+            backgroundColor={headerButtonBackground}
+            disabledColor={colors.foreground_secondary}
+            style={[styles.headerButton, { width: confirmButtonWidth }]}
+            textStyle={styles.confirmText}
+            fontSize={16}
+            fontWeight="semibold"
+            horizontalPadding={14}
+            verticalPadding={7}
+            cornerRadius={18}
+          />
+        </View>
       ) : (
-        <View style={styles.headerSide} />
+        <View style={{ width: headerSideWidth }} />
       )}
     </View>
   );
@@ -277,8 +282,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  headerSide: {
-    width: 112,
+  headerSideLeft: {
+    alignItems: 'flex-start',
   },
   headerSideRight: {
     alignItems: 'flex-end',

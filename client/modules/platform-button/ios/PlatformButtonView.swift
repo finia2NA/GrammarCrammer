@@ -160,7 +160,7 @@ class PlatformButtonView: ExpoView {
     let actionText = confirmationActionText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let action = UIAction(
       title: actionText,
-      image: confirmationDestructive ? UIImage(systemName: "trash") : nil,
+      image: confirmationActionImage,
       attributes: confirmationDestructive ? .destructive : []
     ) { [weak self] _ in
       self?.onButtonPress()
@@ -171,10 +171,16 @@ class PlatformButtonView: ExpoView {
       .joined(separator: "\n\n")
     if #available(iOS 16.0, *) {
       let actionGroup = UIMenu(title: "", options: .displayInline, children: [action])
-      actionGroup.preferredElementSize = .medium
+      actionGroup.preferredElementSize = .large
       return UIMenu(title: headerText, children: [actionGroup])
     }
     return UIMenu(title: headerText, options: .displayInline, children: [action])
+  }
+
+  private var confirmationActionImage: UIImage? {
+    let symbolName = confirmationDestructive ? "trash" : "checkmark.circle.fill"
+    let configuration = UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
+    return UIImage(systemName: symbolName, withConfiguration: configuration)
   }
 
   private func refreshConfiguration() {
