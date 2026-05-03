@@ -1,6 +1,6 @@
 # Server Structure
 
-Express 5 + Prisma API server. Handles auth, deck/collection storage, and proxies all Anthropic API calls on behalf of the client.
+Express 5 + Prisma API server. Handles auth, deck/collection storage, spaced-repetition scheduling, push notifications, and proxies all Anthropic API calls on behalf of the client.
 
 ## Directory map
 
@@ -15,22 +15,27 @@ server/
 │   │   └── errorHandler.ts         ← Centralised Express error handler
 │   │
 │   ├── routes/
-│   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key
-│   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids
-│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, generate-explanation trigger, CSV import
+│   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key, forgot/reset-password
+│   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids, delete
+│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, review submission, generate-explanation trigger, CSV import
 │   │   ├── collections.ts          ← /api/collections — rename, move
-│   │   ├── settings.ts             ← /api/settings — generic key/value + API key management
+│   │   ├── settings.ts             ← /api/settings — generic key/value + API key management + usage-status
+│   │   ├── notifications.ts        ← /api/notifications — register/unregister push tokens
 │   │   └── claude-proxy.ts         ← /api/ai — cards, judge, explanation/stream, rejection/stream, chat/stream
 │   │
 │   ├── services/
-│   │   ├── auth.service.ts         ← Registration, login, OAuth, JWT generation
-│   │   ├── deck.service.ts         ← Deck CRUD, explanation status updates, cascading deletes
+│   │   ├── auth.service.ts         ← Registration, login, OAuth, JWT generation, password reset tokens
+│   │   ├── deck.service.ts         ← Deck CRUD, explanation status updates, cascading deletes, review submission
 │   │   ├── tree.service.ts         ← Tree queries (full tree, path, descendants)
-│   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared for unset keys
+│   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
 │   │   ├── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
-│   │   └── scheduler.service.ts   ← Per-user FIFO queue for background explanation jobs (max 5 concurrent per user)
+│   │   ├── scheduler.service.ts    ← Per-user FIFO queue for background explanation jobs (max 5 concurrent per user)
+│   │   ├── srs.service.ts          ← Spaced-repetition scheduling: interval calculation from AI + user star ratings
+│   │   ├── notification.service.ts ← Push notification delivery: find due decks, send via Expo, record delivery
+│   │   ├── email.service.ts        ← Transactional email via Resend (password reset links)
+│   │   └── analytics.service.ts    ← PostHog server-side event tracking (AI usage, errors)
 │   │
 │   ├── lib/
 │   │   ├── prisma.ts               ← Singleton Prisma client export
@@ -44,10 +49,10 @@ server/
 │       └── languageInstructions.ts ← Per-language instructions injected into prompts
 │
 ├── prisma/
-│   ├── schema.prisma               ← Database models: User, Node, Deck, Setting
+│   ├── schema.prisma               ← Database models (see schema section below)
 │   └── migrations/                 ← Prisma migration files
 │
-├── .env                            ← DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, optional OAuth IDs (not in repo)
+├── .env                            ← DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, optional keys (not in repo)
 ├── package.json
 └── tsconfig.json
 ```
@@ -62,14 +67,16 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 
 ### `/api/auth`
 
-| Method | Path             | Description                                  |
-| ------ | ---------------- | -------------------------------------------- |
-| POST   | `/register`      | Email + password registration, returns JWT   |
-| POST   | `/login`         | Email + password login, returns JWT          |
-| POST   | `/apple`         | Apple Sign In, returns JWT                   |
-| POST   | `/google`        | Google OAuth2, returns JWT                   |
-| GET    | `/me`            | Current user info + available auth methods   |
-| POST   | `/validate-key`  | Test a Claude API key, returns validity flag  |
+| Method | Path                    | Description                                  |
+| ------ | ----------------------- | -------------------------------------------- |
+| POST   | `/register`             | Email + password registration, returns JWT   |
+| POST   | `/login`                | Email + password login, returns JWT          |
+| POST   | `/apple`                | Apple Sign In, returns JWT                   |
+| POST   | `/google`               | Google OAuth2, returns JWT                   |
+| GET    | `/me`                   | Current user info + available auth methods   |
+| POST   | `/validate-key`         | Test a Claude API key, returns validity flag  |
+| POST   | `/forgot-password`      | Send password reset email via Resend          |
+| POST   | `/reset-password`       | Consume reset token, set new password         |
 
 ### `/api/tree`
 
@@ -86,9 +93,10 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | Method | Path                      | Description                                                    |
 | ------ | ------------------------- | -------------------------------------------------------------- |
 | POST   | `/`                       | Create deck from a `::` -delimited path, triggers explanation  |
-| GET    | `/:nodeId`                | Get deck data (topic, language, explanation, status, etc.)     |
+| GET    | `/:nodeId`                | Get deck data (topic, language, explanation, status, SRS fields) |
 | PATCH  | `/:nodeId`                | Update deck (name, topic, language, cardCount)                 |
 | POST   | `/:nodeId/mark-studied`   | Set lastStudiedAt to now                                       |
+| POST   | `/:nodeId/review`         | Submit post-session review (AI + user stars, recap), updates SRS interval |
 | POST   | `/import-csv`             | Bulk-import decks from CSV (multipart, max 5000 data rows)     |
 
 ### `/api/collections`
@@ -108,6 +116,13 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | DELETE | `/api-key`         | Remove Claude API key                    |
 | GET    | `/api-key/status`  | Check whether a key is currently stored  |
 | GET    | `/usage-status`    | Central key availability, user's monthly usage, limits |
+
+### `/api/notifications`
+
+| Method | Path          | Description                                      |
+| ------ | ------------- | ------------------------------------------------ |
+| POST   | `/register`   | Register an Expo push token + notification time  |
+| POST   | `/unregister` | Remove a push token                              |
 
 ### `/api/ai`
 
@@ -137,6 +152,26 @@ Owns all Anthropic API communication.
 - Every public AI function records usage via `recordUsage()` after the call completes.
 - `generateExplanationBackground(nodeId)` — fire-and-forget: generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`).
 
+### `srs.service.ts`
+Spaced-repetition scheduling logic.
+- Takes AI star rating and user star rating from a post-session review.
+- Calculates the next review interval using a simple SM-2-style algorithm.
+- Updates `dueAt` and `intervalDays` on the Deck.
+
+### `notification.service.ts`
+Push notification delivery.
+- Queries users whose `NotificationSchedule.scheduledFor` is in the past.
+- Finds decks due for review (where `dueAt <= now`).
+- Sends batched notifications via the Expo push API.
+- Records a `NotificationDelivery` row (keyed on `userId + studyDayKey`) to prevent duplicate sends.
+
+### `email.service.ts`
+Transactional email via the Resend API.
+- Currently used for password reset: generates a time-limited token, stores its hash in `PasswordResetToken`, and sends the link.
+
+### `analytics.service.ts`
+Server-side PostHog event tracking. Fires events for AI usage, errors, and user actions to allow monitoring without exposing raw usage data to the client.
+
 ### `usage.service.ts`
 Manages cost tracking and spending limits for the central API key.
 - `recordUsage()` — atomically inserts a ledger row and updates the monthly summary in a transaction.
@@ -148,7 +183,7 @@ Manages cost tracking and spending limits for the central API key.
 Encrypts and decrypts Claude API keys using AES-256-GCM with a per-user deterministic IV derived from `userId`. Keys are never stored in plaintext.
 
 ### `auth.service.ts`
-Handles user creation, `bcryptjs` password hashing, JWT signing (7-day expiry), and OAuth user lookup/creation (Apple + Google).
+Handles user creation, `bcryptjs` password hashing, JWT signing (7-day expiry), OAuth user lookup/creation (Apple + Google), and password reset token management.
 
 ### `tree.service.ts`
 Manages the hierarchical Node tree. Nodes can be collections (have children) or leaves (have a Deck attached). Provides full tree retrieval (recursive nesting), breadcrumb paths, and subtree descendant queries.
@@ -158,7 +193,7 @@ Manages the hierarchical Node tree. Nodes can be collections (have children) or 
 ```
 User
   id            UUID PK
-  email         unique
+  email         unique (optional — OAuth-only users may have none)
   passwordHash
   appleId       unique (OAuth)
   googleId      unique (OAuth)
@@ -167,6 +202,16 @@ User
   settings[]    → Setting
   usageLedger[] → UsageLedger
   usageSummaries[] → MonthlyUsageSummary
+  passwordResetToken? → PasswordResetToken
+  pushDevices[] → PushDevice
+  notificationSchedule? → NotificationSchedule
+  notificationDeliveries[] → NotificationDelivery
+
+PasswordResetToken
+  id            UUID PK
+  userId        unique FK → User
+  tokenHash     (bcrypt hash of the emailed token)
+  expiresAt
 
 Node  (tree structure, one per collection or deck)
   id            UUID PK
@@ -180,15 +225,49 @@ Node  (tree structure, one per collection or deck)
 Deck  (leaf data, attached 1-to-1 to a Node)
   nodeId        UUID PK = FK → Node
   topic
+  clarification (optional freeform context for card generation)
   language
   explanation   (full Markdown, optional)
   explanationStatus  pending | generating | ready | error
   cardCount     (default 10)
   lastStudiedAt (optional)
+  dueAt         (SRS next review date, optional)
+  intervalDays  (SRS current interval, default 1)
+  reviews[]     → DeckReview
+
+DeckReview  (SRS review record per session)
+  id              UUID PK
+  deckId          FK → Deck
+  studiedAt
+  aiStars         (1–5, Claude's assessment)
+  userStars       (1–5, self-reported)
+  aiRecap         (brief feedback string)
+  intervalApplied (interval set at the time of this review)
 
 Setting  (arbitrary key-value per user)
   userId + key  composite PK
   value
+
+PushDevice
+  id            UUID PK
+  userId        FK → User
+  expoPushToken unique
+  platform      ("ios" | "android")
+  disabledAt    (set when Expo reports the token as invalid)
+  lastError
+
+NotificationSchedule  (one row per user, their preferred reminder time)
+  userId        PK FK → User
+  scheduledFor  (next DateTime the notification should fire)
+  notificationTime (HH:MM local time)
+  timezone
+
+NotificationDelivery  (audit trail, prevents duplicate sends)
+  id            UUID PK
+  userId        FK → User
+  studyDayKey   (e.g. "2026-05-03")
+  dueDeckCount
+  @@unique([userId, studyDayKey])
 
 UsageLedger  (append-only audit trail)
   id            UUID PK
@@ -209,6 +288,7 @@ MonthlyUsageSummary  (denormalized running totals for fast limit checks)
 
 | Variable                          | Required | Description                                      |
 | --------------------------------- | -------- | ------------------------------------------------ |
+| `DATABASE_URL`                    | Yes      | Prisma DB URL (e.g. `file:./dev.db`)             |
 | `JWT_SECRET`                      | Yes      | Secret for signing/verifying JWTs                |
 | `ENCRYPTION_KEY`                  | Yes      | 32-byte hex key for AES-256-GCM API key storage  |
 | `APPLE_CLIENT_ID`                 | No       | Apple Sign In client ID                          |
@@ -216,5 +296,7 @@ MonthlyUsageSummary  (denormalized running totals for fast limit checks)
 | `CENTRAL_API_KEY`                 | No       | Shared Anthropic API key for all users           |
 | `CENTRAL_KEY_USER_MONTHLY_LIMIT`  | No       | Per-user monthly spend limit in USD (default 0)  |
 | `CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT`| No       | Global monthly spend limit in USD (default 0)    |
-
-`DATABASE_URL` goes in the server root `.env` (e.g. `file:./dev.db` for SQLite locally, absolute path in production).
+| `RESEND_API_KEY`                  | No       | Resend API key for password reset emails         |
+| `EMAIL_FROM`                      | No       | Sender address for transactional emails          |
+| `POSTHOG_API_KEY`                 | No       | PostHog project API key for server-side analytics|
+| `PORT`                            | No       | HTTP port (default 3001)                         |

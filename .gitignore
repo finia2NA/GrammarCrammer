@@ -54,6 +54,7 @@ server/prisma/*.db-journal
 
 # My things
 .claude/
+AGENTS.md
 .vscode/
 learnings/
 .codesight/

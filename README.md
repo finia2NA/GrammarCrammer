@@ -13,14 +13,17 @@ This is the problem Pattern Deck is trying to solve.
 ## How it works
 
 1. **Enter a topic** — anything from "Japanese conditional forms" to "Spanish subjunctive".
-2. **Study your tailor-made explanation**: - The application generates a custom explanation of your chosen topic, covering the topic in detail, including conjugation tables and many examples.
-3. **Test your knowledge** — Apply what you learned by correctly using what you learned. Each card gives you an English sentence; you type the target-language version.
+2. **Study your tailor-made explanation**: The application generates a custom explanation of your chosen topic, covering it in detail with conjugation tables and many examples.
+3. **Test your knowledge** — Apply what you learned. Each card gives you an English sentence; you type the target-language version.
 4. **Get instant feedback** — Claude judges your answer. Correct answers are confirmed with a brief note. Wrong answers get a detailed Markdown explanation of what went wrong and what the correct form demonstrates. Wrong cards cycle back to the end of the stack.
-5. **Finish the stack** — the session ends when every card has been answered correctly.
+5. **Rate your session** — After finishing a deck, rate how well you felt you knew the material. Claude also gives its own assessment. Together these feed a spaced-repetition algorithm that schedules the deck for review.
+6. **Finish the stack** — the session ends when every card has been answered correctly.
 
 Cards are generated after the explanation is complete, so they cover all the grammar patterns in the reference — not just the headline topic.
 
 You can also **save decks** to a hierarchical collection tree for later review, and study multiple decks together by selecting a parent collection.
+
+Push notifications remind you when decks are due for review.
 
 ## Architecture
 
@@ -30,6 +33,7 @@ Pattern Deck is a **monorepo** with two packages:
 Pattern Deck/
   client/   ← React Native / Expo app (iOS, Android, Web)
   server/   ← Express + Prisma API server
+  shared/   ← @patterndeck/shared: constants and types used by both
 ```
 
 All AI calls go through the server — the client never calls the Anthropic API directly. This keeps your API key secure (encrypted server-side) and enables server-side features like background explanation generation.
@@ -69,6 +73,18 @@ PORT=3001                           # optional, defaults to 3001
 # Optional: for social auth
 APPLE_CLIENT_ID=""
 GOOGLE_CLIENT_ID=""
+
+# Optional: central API key (shared for all users)
+CENTRAL_API_KEY=""
+CENTRAL_KEY_USER_MONTHLY_LIMIT=""   # USD, default 0
+CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT="" # USD, default 0
+
+# Optional: email (password reset via Resend)
+RESEND_API_KEY=""
+EMAIL_FROM=""
+
+# Optional: analytics
+POSTHOG_API_KEY=""
 ```
 
 **`client/.env`:**
@@ -89,9 +105,11 @@ pnpm db:migrate
 ### 4. Start development
 
 ```bash
-pnpm dev        # server + Expo (choose platform in terminal)
-pnpm dev:web    # server + web client
-pnpm dev:ios    # server + iOS simulator
+pnpm dev          # server + Expo (choose platform in terminal)
+pnpm dev:web      # server + web client
+pnpm dev:ios      # server + iOS simulator
+pnpm dev:ios:fast # server + already-installed iOS dev build
+pnpm dev:android  # server + Android emulator
 ```
 
 The server runs on port **3001**; the Expo dev server on its default port.
@@ -114,9 +132,25 @@ Requires macOS with Xcode installed.
 pnpm dev:ios
 ```
 
-To run on a physical device, run `npx expo prebuild && open ios/*.xcworkspace` from the `client/` directory, then select your device in Xcode's scheme bar and hit Run.
+For faster simulator rebuilds after dependencies are installed, skip the dependency installation phase:
 
-> **Note:** after adding any new native package, re-run `pod install` from `client/ios/` before building in Xcode.
+```bash
+pnpm ios:fast
+```
+
+After the simulator app has been built once, the fastest loop is:
+
+```bash
+pnpm dev:ios:fast
+```
+
+To run on a physical device, run `npx expo prebuild && open ios/*.xcworkspace` from the `client/` directory, then select your device in Xcode's scheme bar and hit Run. Or use:
+
+```bash
+pnpm ios:phone   # launches on connected physical iOS device
+```
+
+> **Note:** after adding any new native package, re-run `pnpm pods` before building in Xcode.
 
 ### macOS (via Mac Catalyst)
 
@@ -124,43 +158,36 @@ Runs the iPad layout natively on macOS. Requires macOS + Xcode.
 
 **One-time Xcode setup:**
 
-1. From `client/`, generate the native project:
+1. From the repo root, generate the native project:
    ```bash
-   npx expo prebuild --platform ios
+   pnpm xcode   # runs expo prebuild then opens the workspace
    ```
-2. Open the workspace:
-   ```bash
-   open ios/*.xcworkspace
-   ```
-3. In Xcode: select the **Pattern Deck** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
-4. Select **My Mac** in the scheme bar → **Product → Run** (⌘R)
+2. In Xcode: select the **Pattern Deck** target → **General** → **Supported Destinations** → **+** → add **My Mac (Designed for iPad)**
+3. Select **My Mac** in the scheme bar → **Product → Run** (⌘R)
 
 ### Android
 
-> Android is not actively supported as of right now. While the Architecture supports it, due to me not wanting to test the app on 3 platforms for every change i make, this platform may break at any point until we get to a 1.0. In fact, it might be broken right now! :D
-
 ```bash
-# from client/
-npx expo run:android
+pnpm dev:android         # emulator
+pnpm dev:android:phone   # connected physical device
 ```
 
-For Android push notifications, create or open the Firebase project used by the
-Expo project, add an Android app with package name `de.richardhanss.patterndeck`,
-download `google-services.json`, and place it at `client/google-services.json`.
-The private FCM v1 service-account JSON is only needed when uploading push
-credentials to EAS with `eas credentials`; do not commit that private key.
+> Android support is functional but not as actively tested as iOS/web. Push notifications on Android require a Firebase project — see below.
+
+For Android push notifications, create or open the Firebase project used by the Expo project, add an Android app with package name `de.richardhanss.patterndeck`, download `google-services.json`, and place it at `client/google-services.json`. The private FCM v1 service-account JSON is only needed when uploading push credentials to EAS with `eas credentials`; do not commit that private key.
 
 ---
 
 ## Deployment
-In the deploy/ directory, there are some scripts that I used to deploy on my server. This is not dockerized as it is a pretty resource-limited deployment, and (as of right now) not intended for easy use by others. At the very least, you will have to change the hostname of the server to what you have in your ssh config, as well as the URL the client uses to connect to the server. When this thing is out of alpha, I may put a bit more effort into making deployment easier for others.
 
-When you have set up the scripts so they work for you, run
+The `deploy/` directory contains scripts for deploying to a Linux server via SSH. See the scripts for required configuration (hostname, URLs, etc.).
 
 ```bash
 pnpm setup:server   # one-time: installs Node, pnpm, creates user, nginx, systemd, .env
 pnpm ship           # builds frontend + backend, deploys both to server
 ```
+
+---
 
 ## Tech stack
 
@@ -172,6 +199,8 @@ pnpm ship           # builds frontend + backend, deploys both to server
 | Navigation     | Expo Router (file-based)         |
 | Styling        | NativeWind v4 (Tailwind CSS)     |
 | Auth storage   | AsyncStorage (JWT token only)    |
+| Analytics      | PostHog                          |
+| Notifications  | Expo Push Notifications          |
 
 ### Server
 
@@ -183,6 +212,8 @@ pnpm ship           # builds frontend + backend, deploys both to server
 | Auth           | JWT + bcryptjs                   |
 | OAuth          | Apple Sign In, Google OAuth2     |
 | Encryption     | AES-256-GCM (API key at rest)    |
+| Email          | Resend (password reset)          |
+| Analytics      | PostHog                          |
 
 ### AI
 

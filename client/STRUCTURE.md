@@ -7,39 +7,97 @@ React Native / Expo app. Communicates with the server via `lib/api.ts` — no di
 ```
 client/
 ├── app/                        ← Expo Router pages (file-based routing)
-│   ├── _layout.tsx             ← Root layout: global CSS, theme vars, KeyboardProvider, Stack nav
+│   ├── +html.tsx               ← HTML shell for web export
+│   ├── _layout.tsx             ← Root layout: global CSS, theme vars, analytics, KeyboardProvider, Stack nav
 │   ├── index.tsx               ← Auth guard: checks JWT → /onboarding or /home
-│   ├── onboarding.tsx          ← 5-step carousel: welcome, how-it-works, alpha warning, sign-up, API key
+│   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, alpha warning, sign-up, API key
 │   ├── home.tsx                ← Main screen: deck tree, quick study input, modals
-│   └── session.tsx             ← Study session: card loop, explanation overlay, chat
+│   ├── session.tsx             ← Study session: card loop, explanation overlay, chat, SRS rating
+│   └── reset-password.tsx      ← Password reset flow (token from email link)
 │
 ├── components/
 │   ├── home/
-│   │   ├── DeckTree.tsx        ← Renders hierarchical collections/decks from the server tree
-│   │   ├── DeckModal.tsx       ← Create / edit deck form
-│   │   └── SettingsModal.tsx   ← Card sort order, API key management
+│   │   ├── DeckTree.tsx                    ← Renders hierarchical collections/decks from the server tree
+│   │   ├── DeckModal.tsx                   ← Tabbed create/edit deck modal (wraps tabs below)
+│   │   ├── DeckModalCreateTab.tsx          ← Manual deck creation form
+│   │   ├── DeckModalCsvTab.tsx             ← CSV bulk-import tab
+│   │   ├── DeckModalSharedCreationFields.tsx ← Shared form fields (topic, language, card count)
+│   │   ├── CsvFileDropZone.tsx / .web.tsx  ← File upload drop zone (platform-split)
+│   │   ├── SettingsModal.tsx               ← Card sort order, API key management, usage
+│   │   ├── AddApiKeyForm.tsx               ← Claude API key entry form
+│   │   ├── UsageBar.tsx                    ← Monthly cost usage visualization
+│   │   ├── DueIndicator.tsx                ← SRS due-date badge on deck items
+│   │   ├── LanguagePicker.tsx              ← Language selection dropdown
+│   │   ├── SectionCard.tsx                 ← Styled section container card
+│   │   └── SettingsRow.tsx                 ← Single settings row layout
+│   │
 │   ├── session/
-│   │   ├── FlashcardDeck.tsx   ← Card-by-card UI (prompt + answer input)
-│   │   ├── ExplanationOverlay.tsx ← 習得 mode full-screen explanation
-│   │   ├── ExplanationPanel.tsx   ← Side-panel reference during practice
-│   │   ├── GrammarMarkdown.tsx ← Renders server-streamed Markdown explanations
-│   │   └── CardChat.tsx        ← In-session chat about the current card
-│   └── PillDropdown.tsx        ← Generic pill-style dropdown (language, card count, etc.)
+│   │   ├── FlashcardDeck.tsx               ← Card-by-card UI (prompt + answer input)
+│   │   ├── SessionTopBar.tsx               ← Study session header (progress, close)
+│   │   ├── SessionCompleteScreen.tsx       ← Session-finished screen
+│   │   ├── DeckRatingCard.tsx              ← Post-session SRS rating UI (user + AI stars)
+│   │   ├── ExplanationOverlay.tsx          ← Full-screen explanation view
+│   │   ├── ExplanationPanel.tsx            ← Side-panel reference during practice
+│   │   ├── GrammarMarkdown.tsx             ← Renders server-streamed Markdown explanations
+│   │   ├── CardChat.tsx                    ← In-session chat about the current card
+│   │   ├── ClickableEnglishSentence.tsx    ← Tappable English prompt with word lookup
+│   │   └── FuriganaText.tsx               ← Japanese furigana renderer
+│   │
+│   ├── onboarding/
+│   │   ├── AccountCard.tsx                 ← Account creation step (email/password or OAuth)
+│   │   ├── ApiKeyCard.tsx                  ← API key entry + validation step
+│   │   └── ForgotPasswordCard.tsx          ← Forgot-password flow within onboarding
+│   │
+│   ├── pickers/                            ← Platform-aware date/time picker subsystem
+│   │   ├── DatePicker.tsx / TimePicker.tsx ← Public-facing picker components
+│   │   ├── DatePickerContent.tsx / .web.tsx
+│   │   ├── DatePickerTrigger.tsx / .web.tsx
+│   │   ├── TimePickerContent.tsx / .web.tsx
+│   │   ├── TimePickerTrigger.tsx / .web.tsx
+│   │   ├── PlatformPopover.tsx / .web.tsx  ← iOS sheet vs web popover
+│   │   ├── dateTimePickerPlatform.ts / .web.ts
+│   │   ├── dateUtils.ts / timeUtils.ts     ← Formatting helpers
+│   │   └── useWebPopoverPosition.ts        ← Web popover anchor positioning
+│   │
+│   ├── AnimatedCollapsible.tsx             ← Collapsible section with height animation
+│   ├── AnimatedTabbed.tsx                  ← Animated tab switcher
+│   ├── BrandLogo.tsx                       ← App logo (light/dark variant)
+│   ├── Icon.tsx / Icon.ios.tsx / Icon.types.ts ← Cross-platform icon system
+│   ├── NeedsConfirmationButton.tsx         ← Two-tap confirmation button
+│   ├── OnboardingBackground.tsx            ← Decorative onboarding background
+│   ├── PageSheetModal.tsx                  ← Bottom-sheet style modal container
+│   ├── PageSheetScrollContext.ts           ← Scroll state context for sheet modals
+│   ├── PillDropdown.tsx / .ios.tsx / .web.tsx ← Generic pill-style dropdown (platform-split)
+│   ├── PullDownCard.tsx                    ← Card with pull-down dismiss gesture
+│   ├── RainbowButton.tsx                   ← Accent-gradient button
+│   └── TouchTarget.tsx                     ← Minimum-size touch target wrapper
 │
 ├── hooks/
 │   ├── useDeckTree.ts          ← Fetches and caches the full deck tree from server
 │   ├── useSessionLoader.ts     ← Loads explanation + cards for a quick-study session
-│   └── useMultiDeckSession.ts  ← Assembles a multi-deck session from a collection
+│   ├── useSessionCards.ts      ← Card state management during an active session
+│   ├── useMultiDeckSession.ts  ← Assembles a multi-deck session from a collection
+│   ├── useScreenSize.ts        ← Responsive breakpoint / screen dimension hook
+│   ├── use-color-scheme.ts / .web.ts ← Platform-specific color scheme detection
+│   ├── use-theme-color.ts      ← Resolves a theme token to a concrete color value
+│   └── state/
+│       └── persistent/
+│           ├── useSettings.ts  ← Hook for reading/writing persisted user settings
+│           └── settingsStore.ts ← Zustand-style settings store (language, sort order, etc.)
 │
 ├── lib/
 │   ├── api.ts                  ← All HTTP calls to the server (auth, tree, decks, AI)
+│   ├── analytics.tsx           ← PostHog provider + event helpers
+│   ├── format.ts               ← Date/number formatting utilities
+│   ├── notifications.ts        ← Expo push token registration + permission request
+│   ├── platformAlert.ts        ← Platform-aware alert (native Alert vs web confirm)
 │   ├── storage.ts              ← AsyncStorage wrapper (getAuthToken / setAuthToken / clearAuthToken)
 │   └── types.ts                ← Shared TypeScript types (Card, TreeNode, DeckData, ChatMessage)
 │
 ├── constants/
 │   ├── theme.ts                ← Dark / light colour palettes
 │   ├── session.ts              ← Re-exports from @patterndeck/shared (languages, card count options)
-│   ├── prompts.ts              ← AI system prompts (kept in client for reference; sent via server)
+│   ├── prompts.ts              ← AI system prompts (client-side reference; sent via server)
 │   └── languageInstructions.ts ← Per-language instructions injected into prompts
 │
 ├── modules/
@@ -58,41 +116,46 @@ Constants and types shared between client and server live in `shared/` at the re
 ## Key files to know
 
 ### `app/_layout.tsx`
-Root of the app. Imports `global.css` (NativeWind), sets CSS variable theme tokens for light/dark mode, wraps everything in `KeyboardProvider`, and declares the Stack navigator.
+Root of the app. Imports `global.css` (NativeWind), sets CSS variable theme tokens for light/dark mode, wraps everything in the PostHog analytics provider and `KeyboardProvider`, and declares the Stack navigator.
 
 ### `app/index.tsx`
 Acts as the auth guard. On mount it reads the stored JWT from AsyncStorage, validates it against `GET /api/auth/me`, and redirects to `/onboarding` (no valid auth) or `/home` (authenticated).
 
 ### `app/onboarding.tsx`
-Five-card swipe carousel:
+Multi-step swipe carousel using individual card components from `components/onboarding/`:
 1. Welcome
 2. How it works
 3. Alpha warning (data loss disclaimer)
-4. Account creation (email + password, or Apple/Google)
-5. Claude API key entry + validation
+4. Account creation (`AccountCard` — email + password, or Apple/Google; includes forgot-password via `ForgotPasswordCard`)
+5. Claude API key entry + validation (`ApiKeyCard`)
 
 ### `app/home.tsx`
 Main hub. Contains:
 - **Quick study** — topic input, language picker, card count → launches `/session`
 - **Deck tree** — renders `DeckTree.tsx`, supports create / edit / delete / rename / move
-- **Settings modal** — sort order, API key status
+- **Settings modal** — sort order, API key status, usage bar
 
 ### `app/session.tsx`
 Handles two modes:
 - **QuickSession** — one-off topic entered on the home screen
 - **DeckSession** — saved deck or collection (fetches descendant deck IDs, loads all cards)
 
-Both modes share `SessionUI`: explanation overlay, card loop (`FlashcardDeck`), chat panel (`CardChat`).
+Both modes share `SessionUI`: explanation overlay, card loop (`FlashcardDeck`), chat panel (`CardChat`), and post-session rating (`DeckRatingCard` → `SessionCompleteScreen`). Ratings feed the SRS scheduler on the server.
+
+### `app/reset-password.tsx`
+Handles the deep-link from a password reset email. Reads the token from the URL, lets the user set a new password, and redirects to onboarding on success.
 
 ### `lib/api.ts`
 The single place all server communication happens. Uses environment-aware base URL: production web uses relative `/api` (same origin via nginx), native production uses `extra.productionBackendBaseUrl`, and dev uses the configured host/port from `app.config.ts` → `extra`. Exports typed functions for every endpoint group:
 - `register`, `login`, `loginWithApple`, `loginWithGoogle`, `getMe`, `validateApiKey`
+- `requestPasswordReset`, `resetPassword`
 - `setApiKey`, `deleteApiKey`, `getApiKeyStatus`
 - `getTree`, `getNode`, `getNodePath`, `getDescendantDeckIds`, `deleteNode`
-- `createDeckFromPath`, `getDeck`, `updateDeck`, `markStudied`
+- `createDeckFromPath`, `getDeck`, `updateDeck`, `markStudied`, `submitDeckReview`
 - `getSetting`, `setSetting`
 - `generateExplanation` (SSE), `explainRejection` (SSE), `chatAboutCard` (SSE)
 - `generateCards`, `judgeAnswer`
+- `registerPushToken`, `unregisterPushToken`
 
 SSE endpoints return an async generator consumed via `streamSSE()`.
 
@@ -101,7 +164,7 @@ Core types shared across the client:
 ```typescript
 Card            { id, english, targetLanguage, sentenceContext?, notes? }
 TreeNode        { id, parentId, name, sortOrder, deck, children[] }
-DeckData        { nodeId, topic, language, explanation, explanationStatus, cardCount, lastStudiedAt }
+DeckData        { nodeId, topic, language, explanation, explanationStatus, cardCount, lastStudiedAt, dueAt, intervalDays }
 ChatMessage     { role, content }
 ```
 
