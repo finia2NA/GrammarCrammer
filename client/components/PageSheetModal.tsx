@@ -12,9 +12,9 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenSize } from '@/hooks/useScreenSize';
-import { darkThemeVars, lightThemeVars } from '@/constants/theme';
-import { TouchTarget } from '@/components/TouchTarget';
+import { dark, darkThemeVars, light, lightThemeVars } from '@/constants/theme';
 import { PageSheetScrollContext } from '@/components/PageSheetScrollContext';
+import { PlatformButton } from '@/components/PlatformButton';
 
 interface PageSheetModalProps {
   visible: boolean;
@@ -59,6 +59,10 @@ export function PageSheetModal({
   }, []);
 
   const themeVars = scheme === 'dark' ? darkThemeVars : lightThemeVars;
+  const colors = scheme === 'dark' ? dark : light;
+  const headerButtonBackground = scheme === 'dark' ? '#000000' : '#FFFFFF';
+  const cancelButtonWidth = estimateHeaderButtonWidth(cancelText);
+  const confirmButtonWidth = confirmText ? estimateHeaderButtonWidth(confirmText) : 0;
 
   // Internal state keeps Modal mounted while the exit animation plays on large screens.
   const [shown, setShown] = useState(false);
@@ -124,9 +128,19 @@ export function PageSheetModal({
         paddingBottom: 8,
       }}
     >
-      <TouchTarget onPress={handleCancel} style={[styles.headerSide, styles.headerTargetLeft]}>
-        <Text className="text-primary text-base">{cancelText}</Text>
-      </TouchTarget>
+      <PlatformButton
+        text={cancelText}
+        onPress={handleCancel}
+        variant="glass"
+        color={colors.primary}
+        backgroundColor={headerButtonBackground}
+        style={[styles.headerButton, { width: cancelButtonWidth, alignSelf: 'flex-start' }]}
+        textStyle={styles.cancelText}
+        fontSize={16}
+        horizontalPadding={14}
+        verticalPadding={7}
+        cornerRadius={18}
+      />
 
       <Text className="flex-1 text-center text-foreground text-lg font-bold" numberOfLines={1}>
         {title}
@@ -137,15 +151,22 @@ export function PageSheetModal({
           {confirmButtonNode}
         </View>
       ) : confirmText ? (
-        <TouchTarget
+        <PlatformButton
+          text={confirmText}
           onPress={handleConfirm}
           disabled={confirmDisabled}
-          style={[styles.headerSide, styles.headerSideRight, styles.headerTargetRight]}
-        >
-          <Text className={`text-base font-semibold ${confirmDisabled ? 'text-foreground-secondary' : 'text-primary'}`}>
-            {confirmText}
-          </Text>
-        </TouchTarget>
+          variant="glass"
+          color={colors.primary}
+          backgroundColor={headerButtonBackground}
+          disabledColor={colors.foreground_secondary}
+          style={[styles.headerButton, { width: confirmButtonWidth, alignSelf: 'flex-end' }]}
+          textStyle={styles.confirmText}
+          fontSize={16}
+          fontWeight="semibold"
+          horizontalPadding={14}
+          verticalPadding={7}
+          cornerRadius={18}
+        />
       ) : (
         <View style={styles.headerSide} />
       )}
@@ -244,20 +265,26 @@ const styles = StyleSheet.create({
   bodyScroll: {
     flex: 1,
   },
+  cancelText: {
+    fontSize: 16,
+  },
+  confirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   headerSide: {
-    width: 92,
+    width: 112,
   },
   headerSideRight: {
     alignItems: 'flex-end',
   },
-  headerTargetLeft: {
-    paddingVertical: 8,
-    paddingRight: 16,
-    paddingLeft: 0,
-  },
-  headerTargetRight: {
-    paddingVertical: 8,
-    paddingLeft: 16,
-    paddingRight: 0,
+  headerButton: {
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
+
+function estimateHeaderButtonWidth(label: string) {
+  return Math.max(88, Math.min(132, label.length * 9 + 48));
+}

@@ -1,8 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '@/components/Icon';
+import { PlatformButton } from '@/components/PlatformButton';
 import { PullDownCard } from '@/components/PullDownCard';
 import { useColors } from '@/constants/theme';
 
@@ -50,6 +50,7 @@ export function PlatformPopover({
 }: PlatformPopoverProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const confirmIconColor = colors.surface;
   const [open, setOpen] = useState(false);
   const sheetY = useRef(new Animated.Value(sheetHeight)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -186,28 +187,44 @@ export function PlatformPopover({
                     >
                       {pullDownHandle}
                       <View className="flex-row items-center justify-between mb-4">
-                        <TouchableOpacity
+                        <PlatformButton
+                          icon="close"
                           onPress={handleCancel}
-                          activeOpacity={0.85}
-                          className="w-14 h-14 rounded-full items-center justify-center"
-                          style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' }}
-                        >
-                          <Icon name="close" size={26} color={colors.foreground} />
-                        </TouchableOpacity>
+                          variant="prominentGlass"
+                          color={colors.foreground}
+                          backgroundColor={colors.surface}
+                          iconSize={20}
+                          accessibilityLabel="Close"
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 28,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        />
                         <Text
                           className="text-foreground font-bold"
                           style={{ fontSize: 16 }}
                         >
                           {title}
                         </Text>
-                        <TouchableOpacity
+                        <PlatformButton
+                          icon="check"
                           onPress={handleDone}
-                          activeOpacity={0.9}
-                          className="w-14 h-14 rounded-full items-center justify-center"
-                          style={{ backgroundColor: colors.primary, borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' }}
-                        >
-                          <Icon name="check" size={30} color={colors.primary_foreground} />
-                        </TouchableOpacity>
+                          variant="prominentGlass"
+                          color={confirmIconColor}
+                          backgroundColor={colors.primary}
+                          iconSize={22}
+                          accessibilityLabel="Done"
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 28,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        />
                       </View>
 
                       {children}

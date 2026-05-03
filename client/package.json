@@ -48,6 +48,7 @@
     "expo-web-browser": "~55.0.14",
     "nativewind": "^4.1.23",
     "pill-dropdown": "file:./modules/pill-dropdown",
+    "platform-button": "file:./modules/platform-button",
     "posthog-react-native": "^4.43.13",
     "react": "19.2.0",
     "react-day-picker": "^9.14.0",

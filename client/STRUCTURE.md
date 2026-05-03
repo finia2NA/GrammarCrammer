@@ -67,6 +67,7 @@ client/
 │   ├── OnboardingBackground.tsx            ← Decorative onboarding background
 │   ├── PageSheetModal.tsx                  ← Bottom-sheet style modal container
 │   ├── PageSheetScrollContext.ts           ← Scroll state context for sheet modals
+│   ├── PlatformButton.tsx / .ios.tsx       ← Button wrapper (native UIButton on iOS, RN touchable elsewhere)
 │   ├── PillDropdown.tsx / .ios.tsx / .web.tsx ← Generic pill-style dropdown (platform-split)
 │   ├── PullDownCard.tsx                    ← Card with pull-down dismiss gesture
 │   ├── RainbowButton.tsx                   ← Accent-gradient button
@@ -101,7 +102,8 @@ client/
 │   └── languageInstructions.ts ← Per-language instructions injected into prompts
 │
 ├── modules/
-│   └── pill-dropdown/          ← Custom native module (iOS + web implementations)
+│   ├── pill-dropdown/          ← Custom native dropdown module (iOS + web implementations)
+│   └── platform-button/        ← Custom native iOS UIButton module
 │
 └── assets/
     └── images/                 ← App icon, splash screen, etc.

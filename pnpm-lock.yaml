@@ -113,6 +113,9 @@ importers:
       pill-dropdown:
         specifier: file:./modules/pill-dropdown
         version: file:client/modules/pill-dropdown
+      platform-button:
+        specifier: file:./modules/platform-button
+        version: file:client/modules/platform-button
       posthog-react-native:
         specifier: ^4.43.13
         version: 4.43.13(@react-native-async-storage/async-storage@2.2.0(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)))(@react-navigation/native@7.1.33(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(expo-application@55.0.14(expo@55.0.17))(expo-device@55.0.15(expo@55.0.17))(expo-file-system@55.0.17(expo@55.0.17)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)))(expo-localization@55.0.13(expo@55.0.17)(react@19.2.0))(react-native-safe-area-context@5.6.2(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))
@@ -4236,6 +4239,9 @@ packages:
 
   pkg-types@2.3.0:
     resolution: {integrity: sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig==}
+
+  platform-button@file:client/modules/platform-button:
+    resolution: {directory: client/modules/platform-button, type: directory}
 
   plist@3.1.0:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}
@@ -10064,6 +10070,8 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.0.8
       pathe: 2.0.3
+
+  platform-button@file:client/modules/platform-button: {}
 
   plist@3.1.0:
     dependencies:

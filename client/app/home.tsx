@@ -11,7 +11,7 @@ import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
 import { DeckModal, type DeckFormData, type CsvImportData } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
-import { Icon } from '@/components/Icon';
+import { PlatformButton } from '@/components/PlatformButton';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   createDeckFromPath,
@@ -225,9 +225,25 @@ export default function Home() {
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
           <BrandLogo size={34} wordmarkSize={20} />
-          <TouchableOpacity onPress={() => setSettingsVisible(true)} className="w-10 h-10 items-center justify-center">
-            <Icon name="settings" size={22} color={colors.foreground_secondary} />
-          </TouchableOpacity>
+          <PlatformButton
+            icon="settings"
+            onPress={() => setSettingsVisible(true)}
+            variant="glass"
+            color={colors.foreground_secondary}
+            backgroundColor={colors.surface}
+            iconSize={18}
+            horizontalPadding={8}
+            verticalPadding={8}
+            cornerRadius={16}
+            accessibilityLabel="Settings"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          />
         </View>
 
         {/* Deck tree */}
