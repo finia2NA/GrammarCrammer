@@ -160,5 +160,3 @@ The repo includes SSH-oriented deployment scripts in `deploy/`.
 
 - `pnpm setup:server`: one-time Linux server bootstrap
 - `pnpm ship`: build and deploy the client and server
-
-Deployment details are intentionally light here because the scripts in `deploy/` are the source of truth.

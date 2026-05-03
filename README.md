@@ -99,7 +99,7 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### Asynchronous Deck Generation
 - Keeps UI responsive during heavy AI tasks  
-- Improves user experience for large decks  
+- Improves user experience for large collections  
 - Tradeoff: requires job tracking and failure handling  
 
 ---
@@ -114,8 +114,7 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 ## Failure Handling & Edge Cases
 
 - AI responses may be inconsistent → validation + fallback prompts  
-- Streaming interruptions → client supports partial responses  
-- Budget limits exceeded → requests rejected with user feedback  
+- Budget limits exceeded → requests rejected
 - Background job failures → retry + logging system  
 - Network/API failures → tracked via analytics for debugging  
 
@@ -167,11 +166,12 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### Setup
 
-bash pnpm install cp server/.env.example server/.env cp client/.env.example client/.env pnpm db:migrate 
+`pnpm install cp server/.env.example server/.env cp client/.env.example client/.env pnpm db:migrate`
 
 ### Run
 
-bash pnpm dev 
+`pnpm backend`
+`pnpm start`
 
 ---
 
@@ -179,7 +179,7 @@ bash pnpm dev
 
 Deployment is handled via SSH-based scripts in deploy/.
 
-bash pnpm setup:server pnpm ship 
+`./deploy/deploy.sh`
 
 ---
 
