@@ -165,14 +165,16 @@ class PlatformButtonView: ExpoView {
     ) { [weak self] _ in
       self?.onButtonPress()
     }
+    let headerText = [confirmationTitle, confirmationMessage]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+      .joined(separator: "\n\n")
     if #available(iOS 16.0, *) {
-      return UIMenu(
-        title: confirmationTitle ?? "",
-        subtitle: confirmationMessage,
-        children: [action]
-      )
+      let actionGroup = UIMenu(title: "", options: .displayInline, children: [action])
+      actionGroup.preferredElementSize = .medium
+      return UIMenu(title: headerText, children: [actionGroup])
     }
-    return UIMenu(title: confirmationTitle ?? "", children: [action])
+    return UIMenu(title: headerText, options: .displayInline, children: [action])
   }
 
   private func refreshConfiguration() {

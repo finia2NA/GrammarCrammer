@@ -231,7 +231,7 @@ export function DeckModal({
       onPress={() => { void submitDeckForm(); }}
       disabled={confirmDisabled}
       variant="glass"
-      color={Platform.OS === 'ios' ? colors.foreground : colors.primary}
+      color={colors.primary}
       backgroundColor={Platform.OS === 'ios' ? colors.background_warm : undefined}
       disabledColor={colors.foreground_secondary}
       style={{ width: confirmButtonWidth, height: 36, alignItems: 'center', justifyContent: 'center' }}

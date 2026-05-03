@@ -65,6 +65,7 @@ export function PageSheetModal({
     ? (scheme === 'dark' ? colors.background_muted : colors.background_warm)
     : undefined;
   const headerButtonColor = Platform.OS === 'ios' ? colors.foreground : colors.primary;
+  const confirmButtonColor = colors.primary;
   const cancelButtonWidth = estimateHeaderButtonWidth(cancelText);
   const confirmButtonWidth = confirmText ? estimateHeaderButtonWidth(confirmText) : 0;
 
@@ -160,7 +161,7 @@ export function PageSheetModal({
           onPress={handleConfirm}
           disabled={confirmDisabled}
           variant="glass"
-          color={headerButtonColor}
+          color={confirmButtonColor}
           backgroundColor={headerButtonBackground}
           disabledColor={colors.foreground_secondary}
           style={[styles.headerButton, { width: confirmButtonWidth, alignSelf: 'flex-end' }]}
