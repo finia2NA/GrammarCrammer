@@ -79,6 +79,8 @@ model DeckReview {
   userStars       Int
   aiRecap         String
   intervalApplied Float
+  correctCount    Int?
+  totalCount      Int?
 
   deck Deck @relation(fields: [deckId], references: [nodeId], onDelete: Cascade)
 }

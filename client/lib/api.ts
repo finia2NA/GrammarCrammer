@@ -214,8 +214,13 @@ export async function getApiKeyStatus() {
 
 // ─── Tree ─────────────────────────────────────────────────────────────────────
 
+export interface TreeResponse {
+  tree: TreeNode[];
+  newDecksStartedToday: number;
+}
+
 export async function getTree(signal?: AbortSignal) {
-  return request<TreeNode[]>('/tree', { signal });
+  return request<TreeResponse>('/tree', { signal });
 }
 
 export async function getNode(id: string) {
@@ -472,11 +477,39 @@ export async function submitDeckReview(
   aiRecap: string,
   studyMode: 'scheduled' | 'early' = 'scheduled',
   studySessionId?: string,
+  correctCount?: number,
+  totalCount?: number,
 ) {
   return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
     method: 'POST',
-    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode, studySessionId }),
+    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount }),
   });
+}
+
+// ─── Review History ─────────────────────────────────────────────────────────
+
+export interface DeckReviewRecord {
+  id: string;
+  deckId: string;
+  studiedAt: string;
+  aiStars: number;
+  userStars: number;
+  aiRecap: string;
+  intervalApplied: number;
+  correctCount: number | null;
+  totalCount: number | null;
+}
+
+export interface CollectionReviewRecord extends DeckReviewRecord {
+  deckName: string;
+}
+
+export async function getDeckReviews(nodeId: string) {
+  return request<{ reviews: DeckReviewRecord[] }>(`/decks/${nodeId}/reviews`);
+}
+
+export async function getCollectionReviews(nodeId: string) {
+  return request<{ decks: { id: string; name: string }[]; reviews: CollectionReviewRecord[] }>(`/tree/${nodeId}/reviews`);
 }
 
 // ─── AI (streaming via SSE) ──────────────────────────────────────────────────

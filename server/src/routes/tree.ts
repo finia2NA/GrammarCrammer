@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getTree, getNode, getNodePath, getDescendantDeckIds, getExportRows } from '../services/tree.service.js';
+import { getTree, getNode, getNodePath, getDescendantDeckIds, getExportRows, getCollectionReviews } from '../services/tree.service.js';
+import { getNewDecksStartedToday } from '../services/deck.service.js';
 
 export const treeRouter = Router();
 
@@ -8,8 +9,11 @@ treeRouter.use(requireAuth);
 
 treeRouter.get('/', async (req, res, next) => {
   try {
-    const tree = await getTree(req.userId!);
-    res.json(tree);
+    const [tree, newDecksStartedToday] = await Promise.all([
+      getTree(req.userId!),
+      getNewDecksStartedToday(req.userId!),
+    ]);
+    res.json({ tree, newDecksStartedToday });
   } catch (e) { next(e); }
 });
 
@@ -32,6 +36,13 @@ treeRouter.get('/:id/descendant-deck-ids', async (req, res, next) => {
   try {
     const deckIds = await getDescendantDeckIds(req.userId!, req.params.id);
     res.json({ deckIds });
+  } catch (e) { next(e); }
+});
+
+treeRouter.get('/:id/reviews', async (req, res, next) => {
+  try {
+    const result = await getCollectionReviews(req.userId!, req.params.id);
+    res.json(result);
   } catch (e) { next(e); }
 });
 

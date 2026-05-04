@@ -7,8 +7,11 @@ import {
   calculateNextReview,
   computeIntervalDaysForDueDate,
   dueDateStringToDueAt,
+  getCurrentStudyDayKey,
   isDueNow,
   resolveDueAt,
+  zonedDateTimeToUtc,
+  type SrsConfig,
   type StudyMode,
 } from './srs.service.js';
 
@@ -359,6 +362,8 @@ export async function saveDeckReview(
   aiStars: number,
   aiRecap: string,
   studyMode: StudyMode,
+  correctCount?: number,
+  totalCount?: number,
 ): Promise<{ dueAt: number; nextIntervalDays: number }> {
   const deck = await prisma.deck.findFirst({
     where: { nodeId, node: { userId } },
@@ -395,9 +400,68 @@ export async function saveDeckReview(
         userStars,
         aiRecap,
         intervalApplied: nextIntervalDays,
+        correctCount: correctCount ?? null,
+        totalCount: totalCount ?? null,
       },
     }),
   ]);
 
   return { dueAt: dueAt.getTime(), nextIntervalDays };
+}
+
+export async function getNewDecksStartedToday(userId: string): Promise<number> {
+  const [dailyDueTime, reviewTimezone] = await Promise.all([
+    getSetting(userId, 'daily_due_time'),
+    getSetting(userId, 'review_timezone'),
+  ]);
+  const config = buildSrsConfig(dailyDueTime, reviewTimezone);
+  const { start, end } = getStudyDayBounds(config);
+
+  const reviewsToday = await prisma.deckReview.findMany({
+    where: {
+      studiedAt: { gte: start, lt: end },
+      deck: { node: { userId } },
+    },
+    select: { deckId: true },
+    distinct: ['deckId'],
+  });
+
+  const deckIdsStudiedToday = reviewsToday.map(r => r.deckId);
+  if (deckIdsStudiedToday.length === 0) return 0;
+
+  const priorReviews = await prisma.deckReview.findMany({
+    where: {
+      deckId: { in: deckIdsStudiedToday },
+      studiedAt: { lt: start },
+    },
+    select: { deckId: true },
+    distinct: ['deckId'],
+  });
+  const decksWithPriorReviews = new Set(priorReviews.map(r => r.deckId));
+  return deckIdsStudiedToday.filter(id => !decksWithPriorReviews.has(id)).length;
+}
+
+export async function getDeckReviews(userId: string, nodeId: string) {
+  await prisma.node.findFirstOrThrow({
+    where: { id: nodeId, userId },
+  });
+  return prisma.deckReview.findMany({
+    where: { deckId: nodeId },
+    orderBy: { studiedAt: 'desc' },
+  });
+}
+
+function getStudyDayBounds(config: SrsConfig, now = new Date()) {
+  const todayKey = getCurrentStudyDayKey(config, now);
+  const [yearStr, monthStr, dayStr] = todayKey.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const [hourStr, minuteStr] = config.dailyDueTime.split(':');
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  const start = zonedDateTimeToUtc(year, month, day, hour, minute, config.reviewTimezone);
+  const nextDay = new Date(Date.UTC(year, month - 1, day) + 86_400_000);
+  const end = zonedDateTimeToUtc(nextDay.getUTCFullYear(), nextDay.getUTCMonth() + 1, nextDay.getUTCDate(), hour, minute, config.reviewTimezone);
+  return { start, end };
 }

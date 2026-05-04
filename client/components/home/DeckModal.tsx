@@ -69,6 +69,7 @@ export interface DeckFormData {
   cardCount: CardCount;
   dueDate: string;
   explanation?: string;
+  pendingReset?: boolean;
 }
 
 export interface CsvImportData {
@@ -111,12 +112,14 @@ export function DeckModal({
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
   const [submitting, setSubmitting] = useState(false);
+  const [pendingReset, setPendingReset] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setActiveTab('create');
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
+      setPendingReset(false);
       if (isEdit && editNode) {
         setName(editNodePath ?? editNode.name);
         if (editNode.deck) {
@@ -165,6 +168,7 @@ export function DeckModal({
         cardCount,
         dueDate: dueDate.trim(),
         explanation,
+        pendingReset,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'An error occurred.';
@@ -234,7 +238,13 @@ export function DeckModal({
     ? 'Import CSV'
     : isCollection ? 'Edit Collection' : isEdit ? 'Edit Deck' : 'New Deck';
 
-  const confirmText = showingCsvTab ? (isImporting ? 'Importing…' : 'Import') : submitting ? 'Saving…' : isEdit ? 'Save' : 'Create';
+  const confirmText = showingCsvTab
+    ? (isImporting ? 'Importing…' : 'Import')
+    : submitting
+      ? 'Saving…'
+      : isEdit
+        ? (pendingReset ? 'Save & Reset' : 'Save')
+        : 'Create';
   const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
   const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
 
@@ -256,7 +266,7 @@ export function DeckModal({
       isEdit={isEdit}
       onDelete={onDelete}
       onExport={isEdit ? handleExport : undefined}
-      onResetSchedule={onResetSchedule}
+      onResetPending={onResetSchedule ? () => setPendingReset(true) : undefined}
       editNodeId={editNode?.id}
       dueDate={dueDate}
       onDueDateChange={setDueDate}

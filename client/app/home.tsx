@@ -11,6 +11,7 @@ import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
 import { DeckModal, type DeckFormData, type CsvImportData } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
+import { ReviewHistoryModal } from '@/components/home/ReviewHistoryModal';
 import { PlatformButton } from '@/components/PlatformButton';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
@@ -25,11 +26,12 @@ import {
   resetDeckToNeverStudied,
   setDeckDueDate,
   syncReviewTimezone,
+  getSetting,
 } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
-import { platformAlert, platformConfirm } from '@/lib/platformAlert';
 import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
 import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
+import { getLocalSetting } from '@/hooks/state/persistent/settingsStore';
 
 export default function Home() {
   const router = useRouter();
@@ -38,8 +40,9 @@ export default function Home() {
   const { isSmallScreen } = useScreenSize();
   const useNativePlatformButtonStyle = Platform.OS === 'ios';
   const isFocused = useIsFocused();
-  const { tree, loading, refreshing, refresh } = useDeckTree(isFocused);
+  const { tree, loading, refreshing, newDecksStartedToday, refresh } = useDeckTree(isFocused);
   const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
+  const newDecksPerDayLimit = parseInt(getLocalSetting('new_decks_per_day') ?? '1', 10) || 1;
 
   // Quick-study state
   const [topic, setTopic] = useState('');
@@ -53,6 +56,16 @@ export default function Home() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [editNode, setEditNode] = useState<TreeNode | null>(null);
   const [editNodePathStr, setEditNodePathStr] = useState('');
+
+  // History modal state
+  const [historyNode, setHistoryNode] = useState<TreeNode | null>(null);
+  const [historyShowActions, setHistoryShowActions] = useState(false);
+  const [historyStudyContext, setHistoryStudyContext] = useState<{
+    nodeId: string;
+    studyMode: 'scheduled' | 'early';
+    deckIds?: string[];
+    notStartedDeckIds?: string[];
+  } | null>(null);
 
   useEffect(() => {
     hydrateSettings().catch(() => {});
@@ -94,8 +107,10 @@ export default function Home() {
         return;
       }
 
-      const confirmed = await platformConfirm('Deck not due', 'This deck is not due yet. Study it anyway?');
-      if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early' });
+      // Not due — open history with action buttons
+      setHistoryNode(node);
+      setHistoryShowActions(true);
+      setHistoryStudyContext({ nodeId: node.id, studyMode: 'early' });
       return;
     }
 
@@ -113,18 +128,23 @@ export default function Home() {
       queue.push(...current.children);
     }
 
+    const maxDecksRaw = await getSetting('max_decks_per_session');
+    const maxDecks = Math.max(1, parseInt(maxDecksRaw ?? '3', 10) || 3);
+
     if (dueDeckIds.length > 0) {
-      startStudy({ nodeId: node.id, studyMode: 'scheduled', deckIds: dueDeckIds });
+      startStudy({ nodeId: node.id, studyMode: 'scheduled', deckIds: dueDeckIds.slice(0, maxDecks) });
       return;
     }
 
-    if (notStartedDeckIds.length === 0) {
-      platformAlert('Nothing to study', 'No due decks (or not-yet-started decks) are available in this collection right now.');
-      return;
-    }
-
-    const confirmed = await platformConfirm('No decks due', 'No decks in this collection are due. Study not-yet-started decks anyway?');
-    if (confirmed) startStudy({ nodeId: node.id, studyMode: 'early', deckIds: notStartedDeckIds });
+    // No due decks — open history with action buttons
+    setHistoryNode(node);
+    setHistoryShowActions(true);
+    setHistoryStudyContext({
+      nodeId: node.id,
+      studyMode: 'early',
+      deckIds: notStartedDeckIds.slice(0, maxDecks),
+      notStartedDeckIds,
+    });
   }, [router]);
 
   const handleEdit = useCallback(async (node: TreeNode) => {
@@ -138,6 +158,48 @@ export default function Home() {
     setEditNode(nodeForEdit);
     setDeckModalVisible(true);
   }, []);
+
+  const handleHistory = useCallback((node: TreeNode) => {
+    setHistoryNode(node);
+    setHistoryShowActions(false);
+    setHistoryStudyContext(null);
+  }, []);
+
+  const closeHistory = useCallback(() => {
+    setHistoryNode(null);
+    setHistoryShowActions(false);
+    setHistoryStudyContext(null);
+  }, []);
+
+  const handleStudyAnyway = useCallback(() => {
+    if (!historyStudyContext) return;
+    closeHistory();
+    router.push({
+      pathname: '/session',
+      params: {
+        nodeId: historyStudyContext.nodeId,
+        studyMode: historyStudyContext.studyMode,
+        ...(historyStudyContext.deckIds ? { deckIds: historyStudyContext.deckIds.join(',') } : {}),
+      },
+    });
+  }, [historyStudyContext, closeHistory, router]);
+
+  const handleStartNewDeck = useCallback(() => {
+    if (!historyStudyContext?.notStartedDeckIds?.length && !historyNode?.deck) return;
+    closeHistory();
+    const deckId = historyNode?.deck
+      ? historyNode.id
+      : historyStudyContext!.notStartedDeckIds![0];
+    if (!deckId) return;
+    router.push({
+      pathname: '/session',
+      params: {
+        nodeId: historyStudyContext?.nodeId ?? deckId,
+        studyMode: 'early',
+        deckIds: deckId,
+      },
+    });
+  }, [historyStudyContext, historyNode, closeHistory, router]);
 
   const handleCreate = useCallback(() => {
     setEditNode(null);
@@ -164,7 +226,9 @@ export default function Home() {
             explanation: data.explanation,
           });
 
-          if (data.dueDate.length > 0) {
+          if (data.pendingReset) {
+            await resetDeckToNeverStudied(editNode.id);
+          } else if (data.dueDate.length > 0) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate)) {
               throw new Error('Use YYYY-MM-DD format for due date.');
             }
@@ -280,7 +344,7 @@ export default function Home() {
                   <Text className="text-foreground-muted text-xs">Updating…</Text>
                 </View>
               )}
-              <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} />
+              <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} onHistory={handleHistory} />
             </>
           )}
         </View>
@@ -368,13 +432,33 @@ export default function Home() {
         onSubmit={handleSubmit}
         onCsvImport={handleCsvImport}
         onDelete={editNode ? handleDelete : undefined}
-        onResetSchedule={editNode?.deck ? async (nodeId) => { await resetDeckToNeverStudied(nodeId); refresh(); } : undefined}
+        onResetSchedule={editNode?.deck ? async () => {} : undefined}
         editNode={editNode}
         editNodePath={editNodePathStr}
       />
       <SettingsModal
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
+      />
+      <ReviewHistoryModal
+        visible={historyNode !== null}
+        node={historyNode}
+        onClose={closeHistory}
+        showActions={historyShowActions}
+        onStudyAnyway={
+          historyStudyContext && historyNode?.deck?.dueAt != null
+            ? handleStudyAnyway
+            : undefined
+        }
+        onStartNewDeck={
+          historyStudyContext && (
+            historyNode?.deck?.dueAt == null ||
+            (historyStudyContext.notStartedDeckIds?.length ?? 0) > 0
+          )
+            ? handleStartNewDeck
+            : undefined
+        }
+        newDeckLimitReached={newDecksStartedToday >= newDecksPerDayLimit}
       />
     </View>
   );

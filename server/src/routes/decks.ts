@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
-import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview, updateDeckSchedule } from '../services/deck.service.js';
+import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview, updateDeckSchedule, getDeckReviews } from '../services/deck.service.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { enqueueExplanation } from '../services/scheduler.service.js';
 import { capture } from '../services/analytics.service.js';
@@ -314,7 +314,7 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
 
 decksRouter.post('/:nodeId/review', async (req, res, next) => {
   try {
-    const { userStars, aiStars, aiRecap, studyMode, studySessionId } = req.body;
+    const { userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount } = req.body;
     if (!userStars || aiStars === undefined || aiRecap === undefined || aiRecap === null) {
       throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
     }
@@ -322,7 +322,9 @@ decksRouter.post('/:nodeId/review', async (req, res, next) => {
     const stars = Math.max(1, Math.min(5, Math.round(Number(userStars)))) as 1 | 2 | 3 | 4 | 5;
     const deck = await getDeck(req.userId!, req.params.nodeId);
     const dueAgeHours = deck?.dueAt ? Math.max(0, Date.now() - deck.dueAt) / 36e5 : null;
-    const result = await saveDeckReview(req.userId!, req.params.nodeId, stars, Number(aiStars), String(aiRecap), resolvedStudyMode);
+    const parsedCorrectCount = correctCount != null ? Math.max(0, Math.round(Number(correctCount))) : undefined;
+    const parsedTotalCount = totalCount != null ? Math.max(0, Math.round(Number(totalCount))) : undefined;
+    const result = await saveDeckReview(req.userId!, req.params.nodeId, stars, Number(aiStars), String(aiRecap), resolvedStudyMode, parsedCorrectCount, parsedTotalCount);
     capture(req.userId!, 'deck_review_submitted', {
       deck_id: req.params.nodeId,
       app_session_id: req.appSessionId,
@@ -341,6 +343,13 @@ decksRouter.post('/:nodeId/review', async (req, res, next) => {
       due_bucket: dueAgeHours === null ? 'not_started' : dueAgeHours >= 24 * 7 ? 'week_plus' : dueAgeHours >= 24 ? 'day_plus' : dueAgeHours > 0 ? 'same_day' : 'not_due',
     });
     res.json(result);
+  } catch (e) { next(e); }
+});
+
+decksRouter.get('/:nodeId/reviews', async (req, res, next) => {
+  try {
+    const reviews = await getDeckReviews(req.userId!, req.params.nodeId);
+    res.json({ reviews });
   } catch (e) { next(e); }
 });
 

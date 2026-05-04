@@ -28,6 +28,7 @@ client/
 │   │   ├── UsageBar.tsx                    ← Monthly cost usage visualization
 │   │   ├── DueIndicator.tsx                ← SRS due-date badge on deck items
 │   │   ├── LanguagePicker.tsx              ← Language selection dropdown
+│   │   ├── ReviewHistoryModal.tsx           ← Review history with charts, table, and study action buttons
 │   │   ├── SectionCard.tsx                 ← Styled section container card
 │   │   └── SettingsRow.tsx                 ← Single settings row layout
 │   │

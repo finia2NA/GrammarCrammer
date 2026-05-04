@@ -11,7 +11,8 @@ export type SemanticIcon =
   | 'hourglass'
   | 'warning'
   | 'clock'
-  | 'not-started';
+  | 'not-started'
+  | 'history';
 
 export const SF_SYMBOL_MAP: Record<SemanticIcon, string> = {
   'settings': 'gear',
@@ -25,6 +26,7 @@ export const SF_SYMBOL_MAP: Record<SemanticIcon, string> = {
   'warning': 'exclamationmark.triangle',
   'clock': 'clock',
   'not-started': 'sparkles',
+  'history': 'chart.bar',
 };
 
 export interface IconProps {

@@ -223,3 +223,25 @@ export async function getDescendantDeckIds(userId: string, nodeId: string): Prom
 
   return deckIds;
 }
+
+export async function getCollectionReviews(userId: string, nodeId: string) {
+  const deckIds = await getDescendantDeckIds(userId, nodeId);
+  if (deckIds.length === 0) return { decks: [], reviews: [] };
+
+  const [reviews, nodes] = await Promise.all([
+    prisma.deckReview.findMany({
+      where: { deckId: { in: deckIds } },
+      orderBy: { studiedAt: 'desc' },
+    }),
+    prisma.node.findMany({
+      where: { id: { in: deckIds }, userId },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  const deckMap = Object.fromEntries(nodes.map(n => [n.id, n.name]));
+  return {
+    decks: nodes.map(n => ({ id: n.id, name: n.name })),
+    reviews: reviews.map(r => ({ ...r, deckName: deckMap[r.deckId] ?? 'Unknown' })),
+  };
+}

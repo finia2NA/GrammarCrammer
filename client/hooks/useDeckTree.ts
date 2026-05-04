@@ -6,18 +6,23 @@ export function useDeckTree(active: boolean): {
   tree: TreeNode[];
   loading: boolean;
   refreshing: boolean;
+  newDecksStartedToday: number;
   refresh: () => Promise<void>;
 } {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [newDecksStartedToday, setNewDecksStartedToday] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const manualRef = useRef(false);
 
   const doFetch = useCallback(async (signal?: AbortSignal) => {
     try {
       const result = await getTree(signal);
-      if (!signal?.aborted) setTree(result);
+      if (!signal?.aborted) {
+        setTree(result.tree);
+        setNewDecksStartedToday(result.newDecksStartedToday);
+      }
     } catch {
       console.error('Failed to fetch deck tree');
     } finally {
@@ -57,5 +62,5 @@ export function useDeckTree(active: boolean): {
     };
   }, [active, doFetch]);
 
-  return { tree, loading, refreshing, refresh };
+  return { tree, loading, refreshing, newDecksStartedToday, refresh };
 }

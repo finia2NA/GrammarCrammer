@@ -13,6 +13,7 @@ const IONICONS_MAP: Record<SemanticIcon, string> = {
   'warning':        'warning-outline',
   'clock':          'time-outline',
   'not-started':    'sparkles-outline',
+  'history':        'bar-chart-outline',
 };
 
 export function Icon({ name, size = 18, color, style }: IconProps) {

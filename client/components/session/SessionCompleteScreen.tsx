@@ -85,10 +85,12 @@ export function SessionCompleteScreen({
     if (!isQuickStudy) {
       setSubmitting(true);
       try {
-        await Promise.all(deckGroupEntries.map(async ([deckId]) => {
+        await Promise.all(deckGroupEntries.map(async ([deckId, attempts]) => {
           const draft = deckReviewDrafts[deckId];
           if (!draft) throw new Error('Still generating deck ratings. Please wait a moment and try again.');
-          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode, studySessionId);
+          const correctCount = attempts.filter(a => a.answers.length === 1).length;
+          const totalCount = attempts.length;
+          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode, studySessionId, correctCount, totalCount);
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not save your deck reviews. Please try again.';

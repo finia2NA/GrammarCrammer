@@ -54,6 +54,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
+  const [maxDecksPerSession, setMaxDecksPerSession] = useState(3);
+  const [newDecksPerDay, setNewDecksPerDay] = useState(1);
   const [dailyDueTime, setDailyDueTime] = useState('01:00');
   const [notificationsEnabled, setNotificationsEnabled] = useState<'on' | 'off'>('off');
   const [notificationTime, setNotificationTime] = useState('09:00');
@@ -87,6 +89,10 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
       const n = settings.default_card_count ? parseInt(settings.default_card_count, 10) : 10;
       setDefaultCardCount(CARD_COUNTS.includes(n as CardCount) && n !== 0 ? n as CardCount : 10);
+      const m = settings.max_decks_per_session ? parseInt(settings.max_decks_per_session, 10) : 3;
+      setMaxDecksPerSession([1, 2, 3, 5, 10].includes(m) ? m : 3);
+      const nd = settings.new_decks_per_day ? parseInt(settings.new_decks_per_day, 10) : 1;
+      setNewDecksPerDay([1, 2, 3, 5, 999].includes(nd) ? nd : 1);
       setDailyDueTime(normalizeTime(settings.daily_due_time));
       setNotificationsEnabled(settings.notifications_enabled === 'on' ? 'on' : 'off');
       setNotificationTime(normalizeTime(settings.notification_time ?? '09:00'));
@@ -136,6 +142,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       judge_with_explanation: judgeWithExplanation,
       feedback_brevity: feedbackBrevity,
       default_card_count: String(defaultCardCount),
+      max_decks_per_session: String(maxDecksPerSession),
+      new_decks_per_day: String(newDecksPerDay),
       daily_due_time: normalizeTime(dailyDueTime),
       notifications_enabled: notificationsEnabled,
       notification_time: normalizeTime(notificationTime),
@@ -259,6 +267,28 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             options={DEFAULT_CARD_COUNT_OPTIONS}
             onChange={setDefaultCardCount}
             formatLabel={formatCardCount}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Max Decks per Session"
+          description="Limit how many decks are studied at once from a collection"
+        >
+          <PillDropdown
+            value={maxDecksPerSession}
+            options={[1, 2, 3, 5, 10] as const}
+            onChange={setMaxDecksPerSession}
+            formatLabel={(v: number) => String(v)}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="New Decks per Day"
+          description="How many never-studied decks to start each day"
+        >
+          <PillDropdown
+            value={newDecksPerDay}
+            options={[1, 2, 3, 5, 999] as const}
+            onChange={setNewDecksPerDay}
+            formatLabel={(v: number) => v >= 999 ? '∞' : String(v)}
           />
         </SettingsRow>
         <SettingsRow

@@ -11,9 +11,10 @@ interface DeckTreeProps {
   tree: TreeNode[];
   onStudy: (node: TreeNode) => void;
   onEdit: (node: TreeNode) => void;
+  onHistory: (node: TreeNode) => void;
 }
 
-export function DeckTree({ tree, onStudy, onEdit }: DeckTreeProps) {
+export function DeckTree({ tree, onStudy, onEdit, onHistory }: DeckTreeProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
@@ -60,6 +61,7 @@ export function DeckTree({ tree, onStudy, onEdit }: DeckTreeProps) {
           onToggle={toggleCollapsed}
           onStudy={onStudy}
           onEdit={onEdit}
+          onHistory={onHistory}
         />
       ))}
     </View>
@@ -75,9 +77,10 @@ interface TreeRowProps {
   onToggle: (id: string) => void;
   onStudy: (node: TreeNode) => void;
   onEdit: (node: TreeNode) => void;
+  onHistory: (node: TreeNode) => void;
 }
 
-function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeRowProps) {
+function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHistory }: TreeRowProps) {
   const isCollection = node.deck === null;
   const expanded = !collapsedIds.has(node.id);
   const colors = useColors();
@@ -117,8 +120,21 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
         {/* Due indicator (deck rows only) */}
         {!isCollection && node.deck && <DueIndicator dueAt={node.deck.dueAt ?? null} isDue={node.deck.isDue ?? false} />}
 
-        {/* Explanation generating spinner + edit button */}
+        {/* Explanation generating spinner */}
         {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
+
+        {/* History button — show for studied decks and collections with children */}
+        {(!isCollection && node.deck?.dueAt != null || isCollection && node.children.length > 0) && (
+          <TouchableOpacity
+            className="w-10 h-10 items-center justify-center"
+            onPress={() => onHistory(node)}
+            activeOpacity={0.6}
+          >
+            <Icon name="history" size={14} color={colors.foreground_secondary} />
+          </TouchableOpacity>
+        )}
+
+        {/* Edit button */}
         <TouchableOpacity
           className="w-10 h-10 items-center justify-center"
           onPress={() => onEdit(node)}
@@ -141,6 +157,7 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit }: TreeR
                 onToggle={onToggle}
                 onStudy={onStudy}
                 onEdit={onEdit}
+                onHistory={onHistory}
               />
             ))}
           </View>

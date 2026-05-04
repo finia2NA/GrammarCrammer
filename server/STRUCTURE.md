@@ -82,10 +82,11 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 
 | Method | Path                           | Description                                        |
 | ------ | ------------------------------ | -------------------------------------------------- |
-| GET    | `/`                            | Full deck tree for the current user (nested)       |
+| GET    | `/`                            | Full deck tree + newDecksStartedToday count        |
 | GET    | `/:id`                         | Single node (with deck data if leaf)               |
 | GET    | `/:id/path`                    | Breadcrumb path string (e.g. "JP > N5 > Conditionals") |
 | GET    | `/:id/descendant-deck-ids`     | All deck node IDs under a collection               |
+| GET    | `/:id/reviews`                 | Review history for all descendant decks            |
 | DELETE | `/:id`                         | Delete node (cascades to children and deck)        |
 
 ### `/api/decks`
@@ -96,7 +97,8 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | GET    | `/:nodeId`                | Get deck data (topic, language, explanation, status, SRS fields) |
 | PATCH  | `/:nodeId`                | Update deck (name, topic, language, cardCount)                 |
 | POST   | `/:nodeId/mark-studied`   | Set lastStudiedAt to now                                       |
-| POST   | `/:nodeId/review`         | Submit post-session review (AI + user stars, recap), updates SRS interval |
+| POST   | `/:nodeId/review`         | Submit post-session review (AI + user stars, recap, correctCount, totalCount), updates SRS interval |
+| GET    | `/:nodeId/reviews`        | Get all review history records for a deck          |
 | POST   | `/import-csv`             | Bulk-import decks from CSV (multipart, max 5000 data rows)     |
 
 ### `/api/collections`
@@ -243,6 +245,8 @@ DeckReview  (SRS review record per session)
   userStars       (1–5, self-reported)
   aiRecap         (brief feedback string)
   intervalApplied (interval set at the time of this review)
+  correctCount    Int? (cards correct on first try, nullable for old records)
+  totalCount      Int? (total cards in session, nullable for old records)
 
 Setting  (arbitrary key-value per user)
   userId + key  composite PK

@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
@@ -13,7 +13,7 @@ interface DeckModalCreateTabProps {
   isEdit: boolean;
   onDelete?: () => void;
   onExport?: () => void;
-  onResetSchedule?: (nodeId: string) => Promise<void>;
+  onResetPending?: () => void;
   editNodeId?: string;
   dueDate: string;
   onDueDateChange: (value: string) => void;
@@ -38,7 +38,7 @@ export function DeckModalCreateTab({
   isEdit,
   onDelete,
   onExport,
-  onResetSchedule,
+  onResetPending,
   editNodeId,
   dueDate,
   onDueDateChange,
@@ -70,38 +70,9 @@ export function DeckModalCreateTab({
     }
   }
 
-  async function handleResetSchedule() {
-    if (!editNodeId || !onResetSchedule) return;
-    try {
-      await onResetSchedule(editNodeId);
-      onDueDateChange('');
-      if (Platform.OS === 'web') window.alert('Deck reset to never studied.');
-      else Alert.alert('Reset complete', 'Deck reset to never studied.');
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Could not reset deck.';
-      if (Platform.OS === 'web') window.alert(message);
-      else Alert.alert('Reset failed', message);
-    }
-  }
-
-  function confirmResetSchedule() {
-    if (Platform.OS === 'web') {
-      void handleResetSchedule();
-      return;
-    }
-
-    Alert.alert(
-      'Reset schedule?',
-      'This deck will return to never studied.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => { void handleResetSchedule(); },
-        },
-      ],
-    );
+  function handleResetSchedule() {
+    onResetPending?.();
+    onDueDateChange('');
   }
 
   return (
@@ -207,18 +178,18 @@ export function DeckModalCreateTab({
             placeholder="Pick due date"
             popoverPlacement="above"
             popoverTitle="Due Date"
-            popoverFooter={onResetSchedule ? (
+            popoverFooter={onResetPending ? (
               <NeedsConfirmationButton
                 label="Reset to Never Studied"
                 confirmLabel="Tap again to reset"
-                onConfirm={() => { void handleResetSchedule(); }}
+                onConfirm={handleResetSchedule}
                 destructive
               />
             ) : undefined}
-            androidNeutralButton={onResetSchedule ? {
+            androidNeutralButton={onResetPending ? {
               label: 'Reset',
               textColor: colors.error,
-              onPress: confirmResetSchedule,
+              onPress: handleResetSchedule,
             } : undefined}
           />
         </View>

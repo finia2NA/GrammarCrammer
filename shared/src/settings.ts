@@ -11,4 +11,6 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   review_timezone: 'UTC',
   notifications_enabled: 'off',
   notification_time: '09:00',
+  max_decks_per_session: '3',
+  new_decks_per_day: '1',
 };
