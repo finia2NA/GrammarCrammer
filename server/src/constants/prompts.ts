@@ -45,9 +45,9 @@ You have already given the learner this grammar explanation:
 ${explanation}
 ---
 
-Generate exactly ${count} flashcard pairs that cover ALL grammar patterns mentioned in the
-explanation above. Distribute the cards as evenly as possible across every distinct pattern —
-do not skip any. Each card has an English sentence the learner must translate into ${language}.
+Generate exactly ${count} flashcard pairs that cover the grammar patterns mentioned in the
+explanation above. Distribute the cards as evenly as possible across every distinct pattern.
+Each card has an English sentence the learner must translate into ${language}.
 The correct ${language} translation should unambiguously require the specific grammar point
 being practised — avoid sentences where a different construction would be equally natural.
 
@@ -117,12 +117,12 @@ You are evaluating a language-learning practice session for the topic "${topic}"
 Here is the student's performance card-by-card:
 ${cardSummary}
 
-Rate the student's overall performance from 1 to 5 stars:
+Rate the student's overall performance from 1 to 5 stars. Rate according to their performance on "${topic}"
 - 1 star: Struggled significantly — many wrong attempts on most cards
-- 2 stars: Below average — frequent mistakes, needed multiple tries
-- 3 stars: Average — a mix of correct first attempts and retries
-- 4 stars: Good — mostly correct on first attempt with few mistakes
-- 5 stars: Excellent — correct first attempt on nearly all cards
+- 2 stars: Below average — 50/50 correct and incorrect, needed multiple tries
+- 3 stars: Average — mostly correct first attempts and retries
+- 4 stars: Good — correct on first attempt on almost all cards with few mistakes, quickly recovered in retries
+- 5 stars: Excellent — correct first attempt all cards
 
 Write a brief 1–2 sentence recap explaining the rating, highlighting what went well or what to review.
 Be direct and encouraging. Speak in second person ("you").`;
@@ -139,7 +139,7 @@ Given an English sentence, its correct ${language} translation, and one English 
   • Kana that follow a kanji reading continue as plain text in the same group: 食[た]べる (べる is plain kana, not annotated)
   • Insert a space before a kanji group when the preceding kana should NOT be included in that ruby span. This scopes the furigana correctly — わたし 全然[ぜんぜん] 大丈夫[だいじょうぶ] renders furigana only above 全然 and 大丈夫, not above わたし. Without the space the preceding kana would wrongly be pulled into the ruby span.
   • For Latin-script languages (Spanish, French, German, etc.) with_annotation equals infinitive exactly, with no brackets.
-- word_type: the grammatical category in language-appropriate terminology. Examples for Japanese: "noun", "い-adjective", "な-adjective", "一段 verb", "五段 verb", "する verb", "adverb", "particle". For European languages: "noun", "verb", "adjective", "adverb", "preposition".`;
+- word_type: the grammatical category in language-appropriate terminology. Examples for Japanese: "noun", "い-adjective", "な-adjective", "一段 verb", "五段 verb", "する verb", "adverb", "particle". For European languages: "noun", "verb", "adjective", "adverb", "preposition", etc.`;
 
 export const CARD_CHAT_PROMPT = (
   language: string,
@@ -150,7 +150,7 @@ export const CARD_CHAT_PROMPT = (
   sentenceContext?: string,
   explanation?: string,
 ) => `\
-You are a friendly ${language} language tutor. The student just ${wasCorrect ? 'correctly' : 'incorrectly'} answered a flashcard.
+You are a friendly ${language} language tutor. The student just answered a flashcard.
 ${explanation ? `\nGrammar reference the student is studying:\n---\n${explanation}\n---\n` : ''}
 Card details:
 - English prompt: "${english}"
@@ -159,4 +159,5 @@ Card details:
 
 Answer the student's questions about this card. Explain grammar, vocabulary, nuance, or anything they ask.
 Be concise (2–5 sentences per reply). Use ${language} examples where helpful.
+The Flashcard "Correct" Answer is probably correct, but if the student asks about a specific part of their answer, you can evaluate that in detail and explain any mistakes or nuances.
 Speak in second person — address them as "you".${explanationLanguageBlock(language)}`;

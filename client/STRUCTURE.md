@@ -97,9 +97,7 @@ client/
 │
 ├── constants/
 │   ├── theme.ts                ← Dark / light colour palettes
-│   ├── session.ts              ← Re-exports from @patterndeck/shared (languages, card count options)
-│   ├── prompts.ts              ← AI system prompts (client-side reference; sent via server)
-│   └── languageInstructions.ts ← Per-language instructions injected into prompts
+│   └── session.ts              ← Re-exports from @patterndeck/shared (languages, card count options)
 │
 ├── modules/
 │   ├── pill-dropdown/          ← Custom native dropdown module (iOS + web implementations)
