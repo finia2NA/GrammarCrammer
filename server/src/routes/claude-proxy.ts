@@ -161,12 +161,22 @@ claudeProxyRouter.post('/chat/stream', async (req, res, next) => {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, language, wasCorrect, and messages are required.');
     }
     logAI(req.userId!, 'chat', 'sonnet');
-    const systemPrompt = CARD_CHAT_PROMPT(
-      language, card.english, card.targetLanguage,
-      userAnswer, wasCorrect, card.sentenceContext, explanation,
-    );
+    const systemPrompt = CARD_CHAT_PROMPT(language);
+    const cardContext = {
+      english: card.english,
+      targetLanguage: card.targetLanguage,
+      userAnswer,
+      wasCorrect,
+      ...(card.sentenceContext ? { sentenceContext: card.sentenceContext } : {}),
+      ...(explanation ? { explanation } : {}),
+    };
+    const messagesWithContext = [
+      { role: 'user', content: JSON.stringify(cardContext) },
+      { role: 'assistant', content: 'Got it. What would you like to know about this card?' },
+      ...messages,
+    ];
     const ctx = analyticsContext(req.body, { appSessionId: req.appSessionId, language: String(language) });
-    await streamChat(req, res, req.userId!, systemPrompt, messages, {
+    await streamChat(req, res, req.userId!, systemPrompt, messagesWithContext, {
       ...ctx,
       traceId: ctx.traceId ?? (ctx.studySessionId ? `chat:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.turnIndex ?? 0}` : undefined),
     });

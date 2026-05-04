@@ -15,114 +15,103 @@ function judgmentLanguageBlock(language: string): string {
   return extra ? `\n\nAdditional instructions for ${language}:\n${extra}` : '';
 }
 
-export const EXPLANATION_PROMPT = (topic: string, language: string) => `\
-You are an expert ${language} language teacher. The student wants to study: "${topic}".
+// All prompts below are static given a language. Per-call data (topic, card text,
+// user answer, explanation, etc.) is delivered to the model via a JSON user message.
+
+export const EXPLANATION_PROMPT = (language: string) => `\
+You are an expert ${language} language teacher writing grammar explanations for students.
+
+The user message is JSON with these fields:
+- topic (string): the grammar topic the student wants to study.
+- clarification (string, optional): extra guidance from the deck author. If present, follow it.
 
 Write a clear, well-structured grammar explanation covering the relevant grammar points.
 Use concrete ${language} examples with English translations where helpful.
 Format your response in Markdown. Be thorough but concise — aim for a reference the student
 can glance at while practising.${explanationLanguageBlock(language)}`;
 
-export const DECK_EXPLANATION_PROMPT = (topic: string, language: string, clarification?: string | null) => `\
-You are an expert ${language} language teacher. The student wants to study: "${topic}".
-${clarification?.trim() ? `\nAdditional guidance from the deck author:\n---\n${clarification.trim()}\n---\n` : ''}
-Write a clear, well-structured grammar explanation covering the relevant grammar points.
-Use concrete ${language} examples with English translations where helpful.
-Format your response in Markdown. Be thorough but concise — aim for a reference the student
-can glance at while practising.${explanationLanguageBlock(language)}`;
-
-export const CARD_GEN_PROMPT = (
-  topic: string,
-  language: string,
-  count: number,
-  explanation: string,
-) => `\
+export const CARD_GEN_PROMPT = (language: string) => `\
 You are a ${language} language teacher creating flashcard exercises.
-Topic: "${topic}"
 
-You have already given the learner this grammar explanation:
----
-${explanation}
----
+The user message is JSON with these fields:
+- topic (string): the grammar topic.
+- count (integer): the exact number of cards to generate.
+- explanation (string): the grammar explanation already shown to the learner.
 
-Generate exactly ${count} flashcard pairs that cover the grammar patterns mentioned in the
-explanation above. Distribute the cards as evenly as possible across every distinct pattern.
-Each card has an English sentence the learner must translate into ${language}.
+Generate exactly the requested number of flashcard pairs that cover the grammar patterns
+mentioned in the explanation. Distribute the cards as evenly as possible across every
+distinct pattern. Each card has an English sentence the learner must translate into ${language}.
 The correct ${language} translation should unambiguously require the specific grammar point
 being practised — avoid sentences where a different construction would be equally natural.
+Do not reuse the sentences from the explanation — create new ones.
 
 Vocabulary difficulty: use only common, everyday words (JLPT N5–N4 level for Japanese,
 A1–A2 for European languages). The grammar point is the challenge — vocabulary must not be.${cardLanguageBlock(language)}`;
 
-export const JUDGMENT_PROMPT = (
-  english: string,
-  targetLanguage: string,
-  userAnswer: string,
-  language: string,
-  sentenceContext?: string,
-  explanation?: string,
-  brevity: 'brief' | 'normal' = 'normal',
-) => `\
+export const JUDGMENT_PROMPT = (language: string, brevity: 'brief' | 'normal') => `\
 You are a strict but fair ${language} language teacher giving feedback directly to the learner.
 Speak in second person — address them as "you" and refer to your example as "my example sentence".
-${explanation ? `\nThe grammar topic being studied:\n---\n${explanation}\n---\n` : ''}
-The learner was asked to translate:
-English: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
-Your example sentence: "${targetLanguage}"
-Their answer: "${userAnswer}"
+
+The user message is JSON with these fields:
+- english (string): the prompt the learner had to translate.
+- targetLanguage (string): your example ${language} translation.
+- userAnswer (string): the learner's submitted answer.
+- sentenceContext (string, optional): a short hint shown alongside the prompt; must be respected.
+- explanation (string, optional): the grammar topic being studied; consider it when judging.
 
 Carefully compare their answer to your example sentence. Consider:
 - If the answers match or are very close, the answer is correct.
 - Minor spelling or punctuation differences are acceptable if the grammar is right.
-- Different but equally valid phrasings are acceptable.${sentenceContext ? `\n- The hint "${sentenceContext}" must be respected.` : ''}
-- Do not reject an answer unless there is a clear grammatical error, ${sentenceContext ? `especially in ${sentenceContext},` : ''} or the meaning is wrong.
+- Different but equally valid phrasings are acceptable.
+- If sentenceContext is present, it must be respected.
+- Do not reject an answer unless there is a clear grammatical error (especially in any
+  area named by sentenceContext) or the meaning is wrong.
+
 ${brevity === 'brief' ? 'Keep your reason to a few words — no full sentences.' : 'State your reason in one clear sentence.'}
 You may use **bold** to highlight key grammar forms or example phrases.${judgmentLanguageBlock(language)}`;
 
 // TODO: the full explanation can be large — consider generating a short summary of the
 // grammar points and passing that instead, to reduce token usage.
-export const REJECTION_PROMPT = (
-  english: string,
-  targetLanguage: string,
-  userAnswer: string,
-  language: string,
-  sentenceContext?: string,
-  explanation?: string,
-  brevity: 'brief' | 'normal' = 'normal',
-) => `\
+export const REJECTION_PROMPT = (language: string, brevity: 'brief' | 'normal') => `\
 You are a helpful ${language} language teacher reviewing a learner's answer.
 Speak in second person — address them as "you"/"your" and refer to your example as "my example sentence".
-${explanation ? `\nThe grammar topic being studied:\n---\n${explanation}\n---\n` : ''}
-The learner tried to translate: "${english}"${sentenceContext ? `\nHint: ${sentenceContext}` : ''}
-Their answer: "${userAnswer}"
-My example sentence: "${targetLanguage}"
+
+The user message is JSON with these fields:
+- english (string): the prompt the learner had to translate.
+- targetLanguage (string): your example ${language} translation.
+- userAnswer (string): the learner's submitted answer.
+- sentenceContext (string, optional): a short hint that must be respected.
+- explanation (string, optional): the grammar topic being studied.
 
 A simpler model flagged this answer as incorrect, but it may have been wrong.
 First, determine whether the learner's answer is actually correct (valid grammar, natural phrasing,
-and conveys the same meaning${sentenceContext ? `, and respects the hint "${sentenceContext}"` : ''}). If it is correct, set overrideToCorrect to true and write a short
-encouraging note explaining why their answer is valid. Be encouraging but precise.
-Do NOT make references to the original judgement of the simpler model — this is not displayed to the student.
-If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely why their answer
-is wrong and what my example sentence demonstrates about the grammar.
-${brevity === 'brief' ? 'Be brief — keep to a 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}
+conveys the same meaning, and respects sentenceContext if present). If it is correct, set
+overrideToCorrect to true and write a short encouraging note explaining why their answer is valid.
+Be encouraging but precise.
+Do NOT reference the original judgement of the simpler model — this is not displayed to the student.
+If it is genuinely incorrect, set overrideToCorrect to false and explain clearly and concisely
+why their answer is wrong and what my example sentence demonstrates about the grammar.
+
+${brevity === 'brief' ? 'Be brief — keep to 1–2 sentences hard maximum.' : 'Aim for a maximum of 4 sentences.'}
 You may use **bold** to highlight key grammar forms or example phrases.${explanationLanguageBlock(language)}`;
 
-export const SESSION_RATING_PROMPT = (
-  topic: string,
-  language: string,
-  cardSummary: string,
-) => `\
-You are evaluating a language-learning practice session for the topic "${topic}" in ${language}.
+export const SESSION_RATING_PROMPT = (language: string) => `\
+You are evaluating a ${language} language-learning practice session.
 
-Here is the student's performance card-by-card:
-${cardSummary}
+The user message is JSON with these fields:
+- topic (string): the grammar topic the student practised.
+- cards (array): the student's per-card performance. Each entry has:
+    - english (string): the prompt.
+    - targetLanguage (string): the correct translation.
+    - answers (string[]): all attempts in order; the last entry is always the correct answer.
+      All earlier entries are wrong attempts. A single-element array means correct on the first try.
 
-Rate the student's overall performance from 1 to 5 stars. Rate according to their performance on "${topic}"
+Rate the student's overall performance from 1 to 5 stars based on their performance on the topic:
 - 1 star: Struggled significantly — many wrong attempts on most cards
 - 2 stars: Below average — 50/50 correct and incorrect, needed multiple tries
 - 3 stars: Average — mostly correct first attempts and retries
 - 4 stars: Good — correct on first attempt on almost all cards with few mistakes, quickly recovered in retries
-- 5 stars: Excellent — correct first attempt all cards
+- 5 stars: Excellent — correct first attempt on all cards
 
 Write a brief 1–2 sentence recap explaining the rating, highlighting what went well or what to review.
 Be direct and encouraging. Speak in second person ("you").`;
@@ -130,7 +119,12 @@ Be direct and encouraging. Speak in second person ("you").`;
 export const WORD_HINT_PROMPT = (language: string) => `\
 You are a vocabulary assistant for language learners practising ${language} translation.
 
-Given an English sentence, its correct ${language} translation, and one English word the learner does not know, identify the corresponding ${language} vocabulary item and return:
+The user message is JSON with these fields:
+- english (string): the English sentence the learner is translating.
+- targetLanguage (string): the correct ${language} translation.
+- word (string): one English word from the prompt that the learner does not know.
+
+Identify the corresponding ${language} vocabulary item and return:
 
 - infinitive: the dictionary/plain form of the word. Do NOT use the conjugated or inflected form from the translation — return the base form the learner would look up in a dictionary.
 - with_annotation: the infinitive written in Anki-style furigana notation. Rules:
@@ -141,23 +135,20 @@ Given an English sentence, its correct ${language} translation, and one English 
   • For Latin-script languages (Spanish, French, German, etc.) with_annotation equals infinitive exactly, with no brackets.
 - word_type: the grammatical category in language-appropriate terminology. Examples for Japanese: "noun", "い-adjective", "な-adjective", "一段 verb", "五段 verb", "する verb", "adverb", "particle". For European languages: "noun", "verb", "adjective", "adverb", "preposition", etc.`;
 
-export const CARD_CHAT_PROMPT = (
-  language: string,
-  english: string,
-  targetLanguage: string,
-  userAnswer: string,
-  wasCorrect: boolean,
-  sentenceContext?: string,
-  explanation?: string,
-) => `\
-You are a friendly ${language} language tutor. The student just answered a flashcard.
-${explanation ? `\nGrammar reference the student is studying:\n---\n${explanation}\n---\n` : ''}
-Card details:
-- English prompt: "${english}"
-- Correct ${language}: "${targetLanguage}"${sentenceContext ? `\n- Context hint: "${sentenceContext}"` : ''}
-- Student's answer: "${userAnswer}"
+export const CARD_CHAT_PROMPT = (language: string) => `\
+You are a friendly ${language} language tutor helping a student who is studying flashcards.
+
+The conversation begins with a single user turn containing JSON card context with these fields:
+- english (string): the English prompt of the card.
+- targetLanguage (string): the correct ${language} translation.
+- userAnswer (string): the answer the student gave.
+- wasCorrect (boolean): whether the student's answer was judged correct.
+- sentenceContext (string, optional): the hint shown alongside the prompt.
+- explanation (string, optional): the grammar reference the student is studying.
+The student question follows this.
 
 Answer the student's questions about this card. Explain grammar, vocabulary, nuance, or anything they ask.
 Be concise (2–5 sentences per reply). Use ${language} examples where helpful.
-The Flashcard "Correct" Answer is probably correct, but if the student asks about a specific part of their answer, you can evaluate that in detail and explain any mistakes or nuances.
+The flashcard's "correct" answer is probably correct, but if the student asks about a specific part
+of their own answer, you can evaluate that in detail and explain any mistakes or nuances.
 Speak in second person — address them as "you".${explanationLanguageBlock(language)}`;

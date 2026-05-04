@@ -11,7 +11,6 @@ import { AppError } from '../middleware/errorHandler.js';
 import { capture, captureAiGeneration, captureException, type AiAnalyticsContext } from './analytics.service.js';
 import {
   EXPLANATION_PROMPT,
-  DECK_EXPLANATION_PROMPT,
   CARD_GEN_PROMPT,
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
@@ -345,8 +344,8 @@ async function runExplanation(userId: string, deckId: string, version: number): 
   try {
     const { cost } = await callTextStream(
       apiKey, SONNET,
-      DECK_EXPLANATION_PROMPT(deck.topic, deck.language, deck.clarification),
-      [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
+      EXPLANATION_PROMPT(deck.language),
+      [{ role: 'user', content: JSON.stringify({ topic: deck.topic, ...(deck.clarification?.trim() ? { clarification: deck.clarification.trim() } : {}) }) }],
       4096,
       (chunk) => { fullText += chunk; },
       undefined,
@@ -397,8 +396,8 @@ export async function streamExplanation(req: Request, res: Response, userId: str
   try {
     const { wasTruncated, cost } = await callTextStream(
       apiKey, SONNET,
-      DECK_EXPLANATION_PROMPT(deck.topic, deck.language, deck.clarification),
-      [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
+      EXPLANATION_PROMPT(deck.language),
+      [{ role: 'user', content: JSON.stringify({ topic: deck.topic, ...(deck.clarification?.trim() ? { clarification: deck.clarification.trim() } : {}) }) }],
       4096,
       (chunk) => {
         fullText += chunk;
@@ -437,8 +436,8 @@ export async function generateCards(userId: string, topic: string, language: str
 
   const { result, cost } = await callTool<{ cards: Omit<Card, 'id'>[] }>(
     apiKey, HAIKU,
-    CARD_GEN_PROMPT(topic, language, count, explanation),
-    'Generate the flashcards now.',
+    CARD_GEN_PROMPT(language),
+    JSON.stringify({ topic, count, explanation }),
     'generate_flashcards',
     'Output the requested flashcard pairs.',
     {
@@ -510,13 +509,19 @@ export async function generateCards(userId: string, topic: string, language: str
 export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal', analyticsContext?: AiAnalyticsContext) {
   const { apiKey, source } = await resolveApiKey(userId);
 
-  const prompt = JUDGMENT_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation, brevity);
-  if (DEBUG_AI) console.log('[AI:judge prompt]\n', prompt);
+  const userPayload = {
+    english: card.english,
+    targetLanguage: card.targetLanguage,
+    userAnswer,
+    ...(card.sentenceContext ? { sentenceContext: card.sentenceContext } : {}),
+    ...(explanation ? { explanation } : {}),
+  };
+  if (DEBUG_AI) console.log('[AI:judge payload]\n', JSON.stringify(userPayload));
 
   const { result, cost } = await callTool<{ reason: string; correct: boolean }>(
     apiKey, HAIKU,
-    prompt,
-    'Judge the answer.',
+    JUDGMENT_PROMPT(language, brevity),
+    JSON.stringify(userPayload),
     'submit_judgment',
     brevity === 'brief'
       ? 'Submit whether the student answer is correct with a very short reason (a few words).'
@@ -548,13 +553,19 @@ export async function reviewRejection(
 ) {
   const { apiKey, source } = await resolveApiKey(userId);
 
-  const prompt = REJECTION_PROMPT(card.english, card.targetLanguage, userAnswer, language, card.sentenceContext, explanation, brevity);
-  if (DEBUG_AI) console.log('[AI:rejection prompt]\n', prompt);
+  const userPayload = {
+    english: card.english,
+    targetLanguage: card.targetLanguage,
+    userAnswer,
+    ...(card.sentenceContext ? { sentenceContext: card.sentenceContext } : {}),
+    ...(explanation ? { explanation } : {}),
+  };
+  if (DEBUG_AI) console.log('[AI:rejection payload]\n', JSON.stringify(userPayload));
 
   const { result, cost } = await callTool<{ explanation: string; overrideToCorrect: boolean }>(
     apiKey, SONNET,
-    prompt,
-    'Review the learner\'s answer.',
+    REJECTION_PROMPT(language, brevity),
+    JSON.stringify(userPayload),
     'submit_review',
     'Submit the review of the learner\'s answer, including whether to override the rejection.',
     {
@@ -629,23 +640,16 @@ export async function rateSession(
 ): Promise<{ stars: number; recap: string; cost: number }> {
   const { apiKey, source } = await resolveApiKey(userId);
 
-  const cardSummary = cards.map((c, i) => {
-    const answers = Array.isArray(c.answers) ? c.answers : [];
-    const wrongAnswers = answers.slice(0, -1);
-    const correctAnswer = answers[answers.length - 1] ?? c.targetLanguage;
-    const attemptLines = wrongAnswers.map(a => `    ✗ "${a}"`).join('\n');
-    return [
-      `Card ${i + 1}: "${c.english}" → correct: "${c.targetLanguage}"`,
-      wrongAnswers.length > 0
-        ? `  Wrong attempts (${wrongAnswers.length}):\n${attemptLines}\n  ✓ "${correctAnswer}"`
-        : `  ✓ "${correctAnswer}" (first try)`,
-    ].join('\n');
-  }).join('\n\n');
+  const normalizedCards = cards.map(c => ({
+    english: c.english,
+    targetLanguage: c.targetLanguage,
+    answers: Array.isArray(c.answers) && c.answers.length > 0 ? c.answers : [c.targetLanguage],
+  }));
 
   const { result, cost } = await callTool<{ stars: number; recap: string }>(
     apiKey, HAIKU,
-    SESSION_RATING_PROMPT(topic, language, cardSummary),
-    'Rate this study session.',
+    SESSION_RATING_PROMPT(language),
+    JSON.stringify({ topic, cards: normalizedCards }),
     'rate_session',
     'Submit a star rating and short recap for the student\'s session performance.',
     {
@@ -686,7 +690,7 @@ export async function generateWordHint(
   const { result, cost } = await callTool<{ infinitive: string; with_annotation: string; word_type: string }>(
     apiKey, HAIKU,
     WORD_HINT_PROMPT(language),
-    `The learner is translating this English sentence into ${language}:\n"${english}"\n\nThe correct ${language} translation is:\n"${targetLanguage}"\n\nThe learner does not know the ${language} word for the English word: "${word}"\n\nIdentify the corresponding ${language} vocabulary item and return its dictionary form with annotation and word type.`,
+    JSON.stringify({ english, targetLanguage, word }),
     'provide_word_hint',
     'Provide the dictionary form, furigana annotation, and grammatical category for the requested word.',
     {
@@ -724,8 +728,8 @@ export async function streamExplanationGeneric(
   try {
     const { wasTruncated, cost } = await callTextStream(
       apiKey, SONNET,
-      EXPLANATION_PROMPT(topic, language),
-      [{ role: 'user', content: 'Please explain the grammar topic for my study session.' }],
+      EXPLANATION_PROMPT(language),
+      [{ role: 'user', content: JSON.stringify({ topic }) }],
       4096,
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
