@@ -126,20 +126,14 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHisto
         {/* Explanation generating spinner */}
         {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
 
-        {/* History button — spacer when not applicable keeps edit button aligned */}
-        {(!isCollection && node.deck?.dueAt != null) || (isCollection && node.children.length > 0)
-          ? (
-            <TouchableOpacity
-              className="w-10 h-10 items-center justify-center"
-              onPress={() => onHistory(node)}
-              activeOpacity={0.6}
-            >
-              <Icon name="clock" size={15} color={colors.foreground_secondary} />
-            </TouchableOpacity>
-          ) : (
-            <View className="w-10" />
-          )
-        }
+        {/* History button */}
+        <TouchableOpacity
+          className="w-10 h-10 items-center justify-center"
+          onPress={() => onHistory(node)}
+          activeOpacity={0.6}
+        >
+          <Icon name="clock" size={15} color={colors.foreground_secondary} />
+        </TouchableOpacity>
 
         {/* Edit button */}
         <TouchableOpacity
