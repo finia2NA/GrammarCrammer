@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TextInput, Platform } from 'react-native';
 import { judgeAnswer, explainRejection, explainSentence, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
-import type { AnalyticsContext, Card, CardPhase, DeckCard, ChatMessage, CardAttempt, WordHint } from '@/lib/types';
+import { DID_NOT_KNOW_ANSWER, type AnalyticsContext, type Card, type CardPhase, type DeckCard, type ChatMessage, type CardAttempt, type WordHint } from '@/lib/types';
 import { analytics } from '@/lib/analytics';
 
 interface UseSessionCardsParams {
@@ -83,6 +83,7 @@ export function useSessionCards({
 
     // Empty answer = learner doesn't know; skip judging and just explain the sentence
     if (!trimmed) {
+      setSubmittedAnswer('');
       setCardPhase('wrong_explaining');
       try {
         const result = await explainSentence(current, language, explanation, currentCardContext(current));
@@ -177,7 +178,9 @@ export function useSessionCards({
       feedback_brevity: feedbackBrevity,
       judge_with_explanation: judgeWithExplanation,
     });
-    if (!wasSkipped) {
+    if (wasSkipped) {
+      cardWrongAnswers.current.set(current.id, [...prev, DID_NOT_KNOW_ANSWER]);
+    } else {
       cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
     }
     setCards((prev: any[]) => [...prev.slice(1), prev[0]]);

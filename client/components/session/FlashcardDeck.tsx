@@ -178,7 +178,7 @@ export function FlashcardDeck({
               {wasSkipped ? (
                 <>
                   <Text className="text-foreground-secondary text-lg">→</Text>
-                  <Text className="text-foreground-secondary font-semibold">Here's the answer</Text>
+                  <Text className="text-foreground-secondary font-semibold">Here is the answer</Text>
                 </>
               ) : (
                 <>

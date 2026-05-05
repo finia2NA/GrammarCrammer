@@ -1,5 +1,6 @@
 export type LoadPhase = 'explanation' | 'cards';
 export type CardPhase = 'input' | 'judging' | 'correct' | 'wrong_explaining' | 'wrong_shown';
+export const DID_NOT_KNOW_ANSWER = '(Did not know)';
 
 export interface Card {
   id: string;

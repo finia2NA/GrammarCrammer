@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { submitDeckReview } from '@/lib/api';
-import type { CardAttempt } from '@/lib/types';
+import { DID_NOT_KNOW_ANSWER, type CardAttempt } from '@/lib/types';
 import type { DeckInfo } from '@/hooks/useMultiDeckSession';
 import { DeckRatingCard, type DeckReviewDraft } from './DeckRatingCard';
 
@@ -23,7 +23,9 @@ function AttemptRow({ attempt }: { attempt: CardAttempt }) {
   return (
     <View className="gap-1 py-3 border-b border-foreground/10">
       <Text className="text-foreground text-sm font-medium">{attempt.card.english}</Text>
-      {wrongAnswers.map((wrong, i) => (
+      {wrongAnswers.map((wrong, i) => wrong === DID_NOT_KNOW_ANSWER ? (
+        <Text key={i} className="text-foreground-secondary text-xs ml-2">✗ {DID_NOT_KNOW_ANSWER}</Text>
+      ) : (
         <Text key={i} className="text-error text-xs ml-2">✗ {wrong}</Text>
       ))}
       <Text className="text-success text-xs ml-2">✓ {correctAnswer}</Text>
