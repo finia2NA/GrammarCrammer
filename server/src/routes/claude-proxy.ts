@@ -8,6 +8,7 @@ import {
   streamExplanationGeneric,
   rateSession,
   generateWordHint,
+  explainSentence,
 } from '../services/claude.service.js';
 import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -131,6 +132,23 @@ claudeProxyRouter.post('/rate-session', async (req, res, next) => {
     const result = await rateSession(req.userId!, topic, language, cards, {
       ...ctx,
       traceId: ctx.traceId ?? (ctx.studySessionId ? `session_rating:${ctx.studySessionId}:${ctx.deckId ?? 'quick'}` : undefined),
+    });
+    res.json(result);
+  } catch (e) { next(e); }
+});
+
+// Non-streaming: explain sentence (learner skipped / didn't know answer)
+claudeProxyRouter.post('/explain-sentence', async (req, res, next) => {
+  try {
+    const { card, language, explanation } = req.body;
+    if (!card || !language) {
+      throw new AppError(400, 'MISSING_FIELDS', 'card and language are required.');
+    }
+    logAI(req.userId!, 'explain-sentence', 'haiku');
+    const ctx = analyticsContext(req.body, { appSessionId: req.appSessionId, language: String(language) });
+    const result = await explainSentence(req.userId!, card, language, explanation, {
+      ...ctx,
+      traceId: ctx.traceId ?? (ctx.studySessionId ? `explain_sentence:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}` : undefined),
     });
     res.json(result);
   } catch (e) { next(e); }

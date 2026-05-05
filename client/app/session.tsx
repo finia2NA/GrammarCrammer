@@ -432,6 +432,7 @@ function SessionUI({
     submittedAnswer: session.submittedAnswer,
     feedback: session.feedback,
     wrongExplanation: session.wrongExplanation,
+    wasSkipped: session.wasSkipped,
     showHint: session.showHint,
     onToggleHint: session.toggleHint,
     onSubmitAnswer: session.handleSubmitAnswer,

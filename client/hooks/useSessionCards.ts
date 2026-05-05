@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TextInput, Platform } from 'react-native';
-import { judgeAnswer, explainRejection, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
+import { judgeAnswer, explainRejection, explainSentence, chatAboutCard, getSetting, getUsageStatus } from '@/lib/api';
 import type { AnalyticsContext, Card, CardPhase, DeckCard, ChatMessage, CardAttempt, WordHint } from '@/lib/types';
 import { analytics } from '@/lib/analytics';
 
@@ -31,6 +31,7 @@ export function useSessionCards({
   const [judgeWithExplanation, setJudgeWithExplanation] = useState(true);
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [completedCards, setCompletedCards] = useState<CardAttempt[]>([]);
+  const [wasSkipped, setWasSkipped] = useState(false);
   const [beginningTotalSpend, setBeginningTotalSpend] = useState<number | null>(null);
   const beginningSessionCostRef = useRef<number | null>(null);
   const cardWrongAnswers = useRef<Map<string, string[]>>(new Map());
@@ -76,10 +77,27 @@ export function useSessionCards({
   }, [cardPhase, showOverlay]);
 
   async function handleSubmitAnswer() {
+    if (cardPhase !== 'input') return;
     const trimmed = answer.trim();
-    if (!trimmed || cardPhase !== 'input') return;
-
     const current = cards[0];
+
+    // Empty answer = learner doesn't know; skip judging and just explain the sentence
+    if (!trimmed) {
+      setCardPhase('wrong_explaining');
+      try {
+        const result = await explainSentence(current, language, explanation, currentCardContext(current));
+        if (result.cost) addCost(result.cost);
+        setWasSkipped(true);
+        setWrongExplanation(result.explanation);
+        setCardPhase('wrong_shown');
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'API error.');
+        setCardPhase('input');
+      }
+      return;
+    }
+
+    setWasSkipped(false);
     setSubmittedAnswer(trimmed);
     setCardPhase('judging');
     const prevWrongAnswers = cardWrongAnswers.current.get(current.id) ?? [];
@@ -140,6 +158,7 @@ export function useSessionCards({
     setShowHint(false);
     setChatMessages([]);
     setChatStreaming(false);
+    setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
   }, [cards, submittedAnswer, setCards]);
@@ -152,21 +171,25 @@ export function useSessionCards({
       ...currentCardContext(current, judgment?.attemptNumber ?? prev.length + 1),
       was_correct_after_ai_judge: false,
       rejection_overridden_by_ai: false,
+      skipped: wasSkipped,
       attempt_number: judgment?.attemptNumber ?? prev.length + 1,
-      answer_length_bucket: submittedAnswer.length < 20 ? 'short' : submittedAnswer.length < 80 ? 'medium' : 'long',
+      answer_length_bucket: wasSkipped ? 'skipped' : submittedAnswer.length < 20 ? 'short' : submittedAnswer.length < 80 ? 'medium' : 'long',
       feedback_brevity: feedbackBrevity,
       judge_with_explanation: judgeWithExplanation,
     });
-    cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
+    if (!wasSkipped) {
+      cardWrongAnswers.current.set(current.id, [...prev, submittedAnswer]);
+    }
     setCards((prev: any[]) => [...prev.slice(1), prev[0]]);
     setAnswer('');
     setWrongExplanation('');
     setShowHint(false);
     setChatMessages([]);
     setChatStreaming(false);
+    setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
-  }, [cards, submittedAnswer, setCards]);
+  }, [cards, submittedAnswer, wasSkipped, setCards]);
 
   const handleOverrideWrong = useCallback(() => {
     const current = cards[0];
@@ -203,6 +226,7 @@ export function useSessionCards({
     setShowHint(false);
     setChatMessages([]);
     setChatStreaming(false);
+    setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
   }, [cards, submittedAnswer, setCards]);
@@ -275,7 +299,7 @@ export function useSessionCards({
 
   return {
     cardPhase, answer, setAnswer, submittedAnswer,
-    feedback, wrongExplanation, showHint,
+    feedback, wrongExplanation, wasSkipped, showHint,
     chatMessages, chatStreaming, vocabHintDismissSignal, setVocabHintDismissSignal,
     completedCards, beginningTotalSpend, beginningSessionCostRef,
     hintCache, inputRef,

@@ -15,6 +15,7 @@ import {
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
   SESSION_RATING_PROMPT,
+  SENTENCE_REVEAL_PROMPT,
   WORD_HINT_PROMPT,
   type PromptWithTool,
 } from '../constants/prompts.js';
@@ -619,6 +620,41 @@ export async function rateSession(
 
   await recordUsage(userId, source, 'rate-session', HAIKU, cost);
   return { stars: result.stars, recap: result.recap, cost };
+}
+
+export async function explainSentence(
+  userId: string,
+  card: Card,
+  language: string,
+  explanation?: string,
+  analyticsContext?: AiAnalyticsContext,
+): Promise<{ explanation: string; cost: number }> {
+  const { apiKey, source } = await resolveApiKey(userId);
+
+  const userPayload = {
+    english: card.english,
+    targetLanguage: card.targetLanguage,
+    ...(card.sentenceContext ? { sentenceContext: card.sentenceContext } : {}),
+    ...(explanation ? { explanation } : {}),
+  };
+  if (DEBUG_AI) console.log('[AI:explain-sentence payload]\n', JSON.stringify(userPayload));
+
+  const { result, cost } = await callTool<{ explanation: string }>(
+    apiKey, HAIKU,
+    SENTENCE_REVEAL_PROMPT(language),
+    JSON.stringify(userPayload),
+    300,
+    {
+      userId,
+      source,
+      endpoint: 'explain-sentence',
+      context: { ...analyticsContext, language: analyticsContext?.language ?? language },
+    },
+  );
+
+  if (DEBUG_AI) console.log('[AI:explain-sentence response]', JSON.stringify(result));
+  await recordUsage(userId, source, 'explain-sentence', HAIKU, cost);
+  return { explanation: result.explanation, cost };
 }
 
 export async function generateWordHint(

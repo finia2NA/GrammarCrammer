@@ -199,7 +199,7 @@ The user message is JSON with these fields:
     - answers (string[]): all attempts in order; the last entry is always the correct answer.
       All earlier entries are wrong attempts. A single-element array means correct on the first try.
 
-Rate the student's overall performance from 1 to 5 stars based on their performance on the topic:
+Rate the student's overall performance from 1 to 5 stars based on their performance ONLY on the topic:
 - 1 star: Struggled significantly — many wrong attempts on most cards
 - 2 stars: Below average — 50/50 correct and incorrect, needed multiple tries
 - 3 stars: Average — mostly correct first attempts and retries
@@ -218,6 +218,35 @@ Be direct and encouraging. Speak in second person ("you").`,
         recap: { type: 'string', description: '1–2 sentence recap of the student\'s performance.' },
       },
       required: ['stars', 'recap'],
+    },
+  },
+});
+
+export const SENTENCE_REVEAL_PROMPT = (language: string): PromptWithTool => ({
+  system: `\
+You are a helpful ${language} language teacher explaining a flashcard answer to a learner who did not know it.
+
+The user message is JSON with these fields:
+- english (string): the English sentence the learner had to translate.
+- targetLanguage (string): the correct ${language} translation.
+- sentenceContext (string, optional): a short constraint hint shown alongside the prompt.
+- explanation (string, optional): the grammar topic being studied.
+
+Explain the correct ${language} sentence to the learner:
+- Break down the key grammar points demonstrated by the sentence.
+- Note any conjugations, particles, or patterns worth remembering.
+
+Be encouraging. Address the learner as "you". Be concise — 2–4 sentences.
+You may use **bold** to highlight key grammar forms or example phrases.${explanationLanguageBlock(language)}`,
+  tool: {
+    name: 'explain_sentence',
+    description: 'Explain the correct sentence to the learner who did not know the answer.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        explanation: { type: 'string', description: 'A clear, concise explanation of the correct sentence for the learner (2–4 sentences).' },
+      },
+      required: ['explanation'],
     },
   },
 });

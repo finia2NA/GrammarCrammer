@@ -46,6 +46,7 @@ interface FlashcardDeckProps {
   wrongExplanation: string;
   showHint: boolean;
   onToggleHint: () => void;
+  wasSkipped: boolean;
   onSubmitAnswer: () => void;
   onConfirmCorrect: () => void;
   onConfirmWrong: () => void;
@@ -65,7 +66,7 @@ interface FlashcardDeckProps {
 export function FlashcardDeck({
   cards, language, cardPhase,
   answer, onChangeAnswer, submittedAnswer,
-  feedback, wrongExplanation,
+  feedback, wrongExplanation, wasSkipped,
   showHint, onToggleHint,
   onSubmitAnswer, onConfirmCorrect, onConfirmWrong, onOverrideWrong,
   inputRef, chatMessages, chatStreaming, onChatSend, deckName,
@@ -174,10 +175,19 @@ export function FlashcardDeck({
         {cardPhase === 'wrong_shown' && (
           <View className="gap-3">
             <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-error text-lg">✗</Text>
-              <Text className="text-error font-semibold">Not quite</Text>
+              {wasSkipped ? (
+                <>
+                  <Text className="text-foreground-secondary text-lg">→</Text>
+                  <Text className="text-foreground-secondary font-semibold">Here's the answer</Text>
+                </>
+              ) : (
+                <>
+                  <Text className="text-error text-lg">✗</Text>
+                  <Text className="text-error font-semibold">Not quite</Text>
+                </>
+              )}
             </View>
-            <AnswerBox answer={submittedAnswer} />
+            {!wasSkipped && <AnswerBox answer={submittedAnswer} />}
             <ExampleBox example={currentCard.targetLanguage} />
             <GrammarMarkdown>{wrongExplanation}</GrammarMarkdown>
             <TouchableOpacity
@@ -186,9 +196,11 @@ export function FlashcardDeck({
             >
               <Text className="text-primary-foreground font-semibold">Try again later →</Text>
             </TouchableOpacity>
-            <TouchTarget onPress={onOverrideWrong} style={{ alignSelf: 'flex-end' }}>
-              <Text className="text-secondary text-xs">Override to correct</Text>
-            </TouchTarget>
+            {!wasSkipped && (
+              <TouchTarget onPress={onOverrideWrong} style={{ alignSelf: 'flex-end' }}>
+                <Text className="text-secondary text-xs">Override to correct</Text>
+              </TouchTarget>
+            )}
             <CardChat messages={chatMessages} streaming={chatStreaming} onSend={onChatSend} />
           </View>
         )}

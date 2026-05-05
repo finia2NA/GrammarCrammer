@@ -119,7 +119,7 @@ export function ReviewHistoryModal({
               {newDeckLimitReached ? (
                 <Text className="text-foreground-muted">Daily limit reached.</Text>
               ) : (
-                <Text className="text-primary font-semibold" onPress={onStartNewDeck}>{clickOrTap} here to start now.</Text>
+                <Text className="text-primary font-semibold" onPress={onStartNewDeck}>{clickOrTap} here to start a new deck now.</Text>
               )}
             </Text>
           )}

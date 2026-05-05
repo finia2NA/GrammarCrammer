@@ -623,6 +623,13 @@ export async function explainRejection(card: Card, userAnswer: string, language:
   });
 }
 
+export async function explainSentence(card: Card, language: string, explanation?: string, analyticsContext?: AnalyticsContext) {
+  return request<{ explanation: string; cost: number }>('/ai/explain-sentence', {
+    method: 'POST',
+    body: JSON.stringify({ card, language, explanation, analyticsContext }),
+  });
+}
+
 export async function wordHint(
   word: string,
   english: string,

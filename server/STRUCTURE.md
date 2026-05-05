@@ -21,7 +21,7 @@ server/
 │   │   ├── collections.ts          ← /api/collections — rename, move
 │   │   ├── settings.ts             ← /api/settings — generic key/value + API key management + usage-status
 │   │   ├── notifications.ts        ← /api/notifications — register/unregister push tokens
-│   │   └── claude-proxy.ts         ← /api/ai — cards, judge, explanation/stream, rejection/stream, chat/stream
+│   │   └── claude-proxy.ts         ← /api/ai — cards, judge, explain-sentence, explanation/stream, rejection/stream, chat/stream
 │   │
 │   ├── services/
 │   │   ├── auth.service.ts         ← Registration, login, OAuth, JWT generation, password reset tokens
@@ -132,6 +132,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | ------ | ----------------------- | --------------------------------------------------------- |
 | POST   | `/cards`                | Generate flashcards for a topic (Haiku, JSON response)   |
 | POST   | `/judge`                | Judge a user's answer (Haiku, JSON response)             |
+| POST   | `/explain-sentence`     | Explain the correct sentence when learner skips (Haiku)  |
 | POST   | `/explanation/stream`   | Stream grammar explanation (Sonnet, SSE)                 |
 | POST   | `/rejection/stream`     | Stream explanation of a wrong answer (Sonnet, SSE)       |
 | POST   | `/chat/stream`          | Stream chat about the current card (Sonnet, SSE)         |
