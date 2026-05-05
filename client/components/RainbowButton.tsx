@@ -51,7 +51,7 @@ export function RainbowButton({ onPress, label }: { onPress: () => void; label: 
         {btnWidth > 0 && (
           <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: btnWidth * 4, transform: [{ translateX }] }}>
             <LinearGradient
-              colors={[...RAINBOW_TILED]}
+              colors={[...RAINBOW_TILED] as [string, string, ...string[]]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={{ flex: 1 }}

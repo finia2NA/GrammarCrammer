@@ -215,7 +215,7 @@ export function BottomSheet({
         userSelect: expanded ? 'auto' : 'none',
         WebkitUserSelect: expanded ? 'auto' : 'none',
         cursor: expanded ? 'default' : 'pointer',
-      },
+      } as object,
     }
     : {};
 

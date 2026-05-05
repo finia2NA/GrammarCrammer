@@ -26,6 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'de.richardhanss.patterndeck',
+    // @ts-expect-error deploymentTarget is valid but missing from Expo's type definitions
     deploymentTarget: '26.0',
     icon: {
       light: './assets/images/icon.png',
@@ -51,6 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
+    // @ts-expect-error edgeToEdgeEnabled is valid but missing from Expo's type definitions
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: 'de.richardhanss.patterndeck',

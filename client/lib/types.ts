@@ -58,6 +58,7 @@ export interface WordHint {
 }
 
 export interface AnalyticsContext {
+  appSessionId?: string;
   studySessionId?: string;
   deckId?: string;
   deckName?: string;
