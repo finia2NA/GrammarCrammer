@@ -15,7 +15,11 @@ export function DueIndicator({ dueAt, isDue }: { dueAt: number | null; isDue: bo
     );
   }
 
-  const diffDays = Math.round((dueAt - Date.now()) / 86400000);
+  const dueDate = new Date(dueAt);
+  const now = new Date();
+  const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).getTime();
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const diffDays = Math.round((dueMidnight - nowMidnight) / 86400000);
 
   const color = isDue ? colors.error : colors.success;
   const icon = isDue ? 'clock' : 'check';

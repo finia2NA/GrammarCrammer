@@ -75,6 +75,7 @@ model DeckReview {
   id              String   @id @default(uuid())
   deckId          String
   studiedAt       DateTime @default(now())
+  eventType       String   @default("review")
   aiStars         Int
   userStars       Int
   aiRecap         String

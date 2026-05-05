@@ -320,10 +320,22 @@ export async function updateDeckSchedule(
   if (!node?.deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
   if (action.action === 'reset_never_studied') {
-    await prisma.deck.update({
-      where: { nodeId },
-      data: { dueAt: null, intervalDays: 1 },
-    });
+    await prisma.$transaction([
+      prisma.deck.update({
+        where: { nodeId },
+        data: { dueAt: null, intervalDays: 1 },
+      }),
+      prisma.deckReview.create({
+        data: {
+          deckId: nodeId,
+          eventType: 'reset',
+          aiStars: 0,
+          userStars: 0,
+          aiRecap: '',
+          intervalApplied: 1,
+        },
+      }),
+    ]);
     return;
   }
 
@@ -359,6 +371,16 @@ export async function updateDeckSchedule(
     await tx.deck.update({
       where: { nodeId },
       data: { dueAt, intervalDays },
+    });
+    await tx.deckReview.create({
+      data: {
+        deckId: nodeId,
+        eventType: 'schedule_change',
+        aiStars: 0,
+        userStars: 0,
+        aiRecap: dueDate,
+        intervalApplied: intervalDays,
+      },
     });
   });
 }

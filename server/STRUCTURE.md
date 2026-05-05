@@ -238,13 +238,14 @@ Deck  (leaf data, attached 1-to-1 to a Node)
   intervalDays  (SRS current interval, default 1)
   reviews[]     → DeckReview
 
-DeckReview  (SRS review record per session)
+DeckReview  (SRS review record per session OR schedule change)
   id              UUID PK
   deckId          FK → Deck
   studiedAt
-  aiStars         (1–5, Claude's assessment)
-  userStars       (1–5, self-reported)
-  aiRecap         (brief feedback string)
+  eventType       "review" | "schedule_change" (default "review")
+  aiStars         (1–5, Claude's assessment; 0 for schedule_change)
+  userStars       (1–5, self-reported; 0 for schedule_change)
+  aiRecap         (brief feedback string; target YYYY-MM-DD for schedule_change)
   intervalApplied (interval set at the time of this review)
   correctCount    Int? (cards correct on first try, nullable for old records)
   totalCount      Int? (total cards in session, nullable for old records)

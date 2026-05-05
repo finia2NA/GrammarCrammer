@@ -492,6 +492,7 @@ export interface DeckReviewRecord {
   id: string;
   deckId: string;
   studiedAt: string;
+  eventType: string;
   aiStars: number;
   userStars: number;
   aiRecap: string;

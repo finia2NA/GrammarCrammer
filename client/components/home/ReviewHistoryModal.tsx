@@ -38,31 +38,37 @@ export function ReviewHistoryModal({
   const colors = useColors();
   const isCollection = node ? node.deck === null : false;
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [deckReviews, setDeckReviews] = useState<DeckReviewRecord[]>([]);
   const [collectionReviews, setCollectionReviews] = useState<CollectionReviewRecord[]>([]);
   const [collectionDecks, setCollectionDecks] = useState<{ id: string; name: string }[]>([]);
 
-  useEffect(() => {
-    if (!visible || !node) return;
-    setLoading(true);
-    setDeckReviews([]);
-    setCollectionReviews([]);
-    setCollectionDecks([]);
+  const fetchReviews = (nodeId: string, initial: boolean) => {
+    if (initial) { setLoading(true); setDeckReviews([]); setCollectionReviews([]); setCollectionDecks([]); }
+    else setRefreshing(true);
 
     if (isCollection) {
-      getCollectionReviews(node.id).then(result => {
+      getCollectionReviews(nodeId).then(result => {
         setCollectionReviews(result.reviews);
         setCollectionDecks(result.decks);
-      }).catch(() => { }).finally(() => setLoading(false));
+      }).catch(() => { }).finally(() => { setLoading(false); setRefreshing(false); });
     } else {
-      getDeckReviews(node.id).then(result => {
+      getDeckReviews(nodeId).then(result => {
         setDeckReviews(result.reviews);
-      }).catch(() => { }).finally(() => setLoading(false));
+      }).catch(() => { }).finally(() => { setLoading(false); setRefreshing(false); });
     }
+  };
+
+  useEffect(() => {
+    if (!visible || !node) return;
+    fetchReviews(node.id, true);
   }, [visible, node, isCollection]);
 
+  const reloadReviews = () => { if (node) fetchReviews(node.id, false); };
+
   const reviews = isCollection ? collectionReviews : deckReviews;
-  const chronological = useMemo(() => [...reviews].reverse(), [reviews]);
+  const studyReviews = useMemo(() => reviews.filter(r => r.eventType === 'review' || r.eventType == null), [reviews]);
+  const chronological = useMemo(() => [...studyReviews].reverse(), [studyReviews]);
   const title = node ? (isCollection ? node.name : node.name) : 'Review History';
 
   return (
@@ -88,7 +94,7 @@ export function ReviewHistoryModal({
           <HeaderStats
             node={node}
             isCollection={isCollection}
-            reviews={reviews}
+            reviews={studyReviews}
             collectionDecks={collectionDecks}
           />
 
@@ -97,6 +103,7 @@ export function ReviewHistoryModal({
             <RescheduleSection
               node={node}
               onScheduleChanged={onScheduleChanged}
+              onReviewsChanged={reloadReviews}
             />
           )}
 
@@ -113,6 +120,7 @@ export function ReviewHistoryModal({
           <ReviewTable
             reviews={reviews}
             isCollection={isCollection}
+            refreshing={refreshing}
           />
         </>
       )}
@@ -147,9 +155,11 @@ export function ReviewHistoryModal({
 function RescheduleSection({
   node,
   onScheduleChanged,
+  onReviewsChanged,
 }: {
   node: TreeNode;
   onScheduleChanged?: () => void;
+  onReviewsChanged?: () => void;
 }) {
   const colors = useColors();
   const [dueDate, setDueDateState] = useState(
@@ -165,12 +175,14 @@ function RescheduleSection({
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
     await setDeckDueDate(node.id, value);
     onScheduleChanged?.();
+    onReviewsChanged?.();
   }
 
   async function handleReset() {
     setDueDateState('');
     await resetDeckToNeverStudied(node.id);
     onScheduleChanged?.();
+    onReviewsChanged?.();
   }
 
   return (
@@ -433,9 +445,11 @@ function pageItems(current: number, total: number): (number | '...')[] {
 function ReviewTable({
   reviews,
   isCollection,
+  refreshing = false,
 }: {
   reviews: (DeckReviewRecord | CollectionReviewRecord)[];
   isCollection: boolean;
+  refreshing?: boolean;
 }) {
   const colors = useColors();
   const [page, setPage] = useState(0);
@@ -454,32 +468,53 @@ function ReviewTable({
           <Text className="text-foreground-secondary text-xs font-medium text-right" style={{ width: 55 }}>Interval</Text>
         </View>
 
-        {visible.map((review, i) => (
-          <View
-            key={review.id}
-            className={`flex-row items-center px-4 py-2.5 ${i < visible.length - 1 ? 'border-b border-foreground/5' : ''}`}
-          >
-            <Text className="text-foreground text-xs" style={{ width: 70 }}>
-              {formatShortDate(new Date(review.studiedAt))}
-            </Text>
-            {isCollection && (
-              <Text className="text-foreground text-xs flex-1" numberOfLines={1}>
-                {(review as CollectionReviewRecord).deckName}
-              </Text>
-            )}
-            <Text className="text-foreground text-xs text-center" style={{ width: 40 }}>
-              {renderStars(review.userStars)}
-            </Text>
-            <Text className="text-foreground text-xs text-center" style={{ width: 55 }}>
-              {review.correctCount != null && review.totalCount != null
-                ? `${review.correctCount}/${review.totalCount}`
-                : '-'}
-            </Text>
-            <Text className="text-foreground-secondary text-xs text-right" style={{ width: 55 }}>
-              {Math.round(review.intervalApplied * 10) / 10}d
-            </Text>
+        {refreshing && page === 0 && (
+          <View className="flex-row items-center px-4 py-2.5 border-b border-foreground/5 gap-2">
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text className="text-foreground-secondary text-xs italic">Updating…</Text>
           </View>
-        ))}
+        )}
+        {visible.map((review, i) => {
+          const isScheduleChange = review.eventType === 'schedule_change';
+          return (
+            <View
+              key={review.id}
+              className={`flex-row items-center px-4 py-2.5 ${i < visible.length - 1 ? 'border-b border-foreground/5' : ''}`}
+            >
+              <Text className="text-foreground text-xs" style={{ width: 70 }}>
+                {formatShortDate(new Date(review.studiedAt))}
+              </Text>
+              {isCollection && (
+                <Text className="text-foreground text-xs flex-1" numberOfLines={1}>
+                  {(review as CollectionReviewRecord).deckName}
+                </Text>
+              )}
+              {isScheduleChange ? (
+                <Text className="text-foreground-secondary text-xs flex-1 italic" numberOfLines={1}>
+                  rescheduled → {review.aiRecap}
+                </Text>
+              ) : review.eventType === 'reset' ? (
+                <Text className="text-foreground-secondary text-xs flex-1 italic" numberOfLines={1}>
+                  reset to never studied
+                </Text>
+              ) : (
+                <>
+                  <Text className="text-foreground text-xs text-center" style={{ width: 40 }}>
+                    {renderStars(review.userStars)}
+                  </Text>
+                  <Text className="text-foreground text-xs text-center" style={{ width: 55 }}>
+                    {review.correctCount != null && review.totalCount != null
+                      ? `${review.correctCount}/${review.totalCount}`
+                      : '-'}
+                  </Text>
+                  <Text className="text-foreground-secondary text-xs text-right" style={{ width: 55 }}>
+                    {Math.round(review.intervalApplied * 10) / 10}d
+                  </Text>
+                </>
+              )}
+            </View>
+          );
+        })}
       </View>
 
       {totalPages > 1 && (
