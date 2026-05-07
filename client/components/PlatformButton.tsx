@@ -90,6 +90,7 @@ export function PlatformButton({
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const resolvedColor = disabled ? disabledColor : color;
+  const resolvedBackground = disabled ? undefined : backgroundColor;
   const shouldConfirm = !!confirmationActionText && (!!confirmationTitle || !!confirmationMessage);
 
   function handlePress() {
@@ -147,7 +148,7 @@ export function PlatformButton({
         disabled={disabled}
         accessibilityLabel={accessibilityLabel ?? text}
         style={[
-          backgroundColor ? { backgroundColor } : undefined,
+          resolvedBackground ? { backgroundColor: resolvedBackground } : undefined,
           horizontalPadding !== undefined ? { paddingHorizontal: horizontalPadding } : undefined,
           verticalPadding !== undefined ? { paddingVertical: verticalPadding } : undefined,
           cornerRadius !== undefined ? { borderRadius: cornerRadius } : undefined,

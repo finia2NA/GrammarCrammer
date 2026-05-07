@@ -13,6 +13,7 @@ interface IosPickerOptions {
 interface IosDatePickerOptions extends IosPickerOptions {
   resetButton?: {
     label: string;
+    armedLabel?: string;
     textColor?: string;
     onPress: () => void;
   };
@@ -61,6 +62,7 @@ export function openIosDatePicker(
     sheetBackgroundColor: options.sheetBackgroundColor,
     panelBackgroundColor: options.panelBackgroundColor,
     resetText: options.resetButton?.label,
+    resetArmedText: options.resetButton?.armedLabel,
     resetTextColor: options.resetButton?.textColor,
   }).then((result) => {
     if (result.action === 'confirmed' && result.value) {

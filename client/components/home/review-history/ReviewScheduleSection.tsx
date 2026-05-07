@@ -63,7 +63,13 @@ export function ReviewScheduleSection({
           />
         }
         androidNeutralButton={{
-          label: t('common.reset'),
+          label: t('picker.resetToNeverStudied'),
+          textColor: colors.error,
+          onPress: handleReset,
+        }}
+        iosResetButtonProps={{
+          label: t('picker.resetToNeverStudied'),
+          armedLabel: t('picker.tapAgainReset'),
           textColor: colors.error,
           onPress: handleReset,
         }}

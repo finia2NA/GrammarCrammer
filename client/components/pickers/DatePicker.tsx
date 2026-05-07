@@ -20,6 +20,12 @@ interface DatePickerProps {
     textColor?: string;
     onPress: () => void;
   };
+  iosResetButtonProps?: {
+    label: string;
+    armedLabel?: string;
+    textColor?: string;
+    onPress: () => void;
+  };
 }
 
 export function DatePicker({
@@ -31,6 +37,7 @@ export function DatePicker({
   popoverTitle,
   popoverFooter,
   androidNeutralButton,
+  iosResetButtonProps,
 }: DatePickerProps) {
   const colors = useColors();
   const { t } = useI18n();
@@ -73,10 +80,11 @@ export function DatePicker({
       accentColor: colors.primary,
       sheetBackgroundColor: colors.background,
       panelBackgroundColor: colors.surface,
-      resetButton: androidNeutralButton ? {
-        label: androidNeutralButton.label,
-        textColor: androidNeutralButton.textColor,
-        onPress: androidNeutralButton.onPress,
+      resetButton: iosResetButtonProps ? {
+        label: iosResetButtonProps.label,
+        armedLabel: iosResetButtonProps.armedLabel,
+        textColor: iosResetButtonProps.textColor,
+        onPress: iosResetButtonProps.onPress,
       } : undefined,
     })) {
       return;
@@ -85,7 +93,7 @@ export function DatePicker({
     setDraftDate(selectedDate);
     setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
     openPopover();
-  }, [androidNeutralButton, colors.background, colors.primary, colors.surface, disabled, displayTitle, nativePickerModule, onChange, selectedDate, t]);
+  }, [androidNeutralButton, colors.background, colors.primary, colors.surface, disabled, displayTitle, iosResetButtonProps, nativePickerModule, onChange, selectedDate, t]);
 
   function handleDone() {
     if (draftDate) onChange(formatLocalDateToYmd(draftDate));

@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Platform, Pressable, Text, useColorScheme, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlatformButton } from '@/components/PlatformButton';
@@ -50,9 +50,7 @@ export function PlatformPopover({
   trigger,
 }: PlatformPopoverProps) {
   const colors = useColors();
-  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const confirmIconColor = scheme === 'light' ? '#FFFFFF' : '#000000';
   const [open, setOpen] = useState(false);
   const sheetY = useRef(new Animated.Value(sheetHeight)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -192,62 +190,44 @@ export function PlatformPopover({
                     >
                       {pullDownHandle}
                       <View className="flex-row items-center justify-between mb-4">
-                        <GlassView
-                          glassEffectStyle="prominent"
-                          colorScheme="auto"
+                        <PlatformButton
+                          icon="close"
+                          onPress={handleCancel}
+                          variant="prominentGlass"
+                          color={colors.foreground}
+                          backgroundColor={colors.background_warm}
+                          iconSize={18}
+                          accessibilityLabel="Close"
                           style={{
                             width: 48,
                             height: 48,
                             borderRadius: 24,
-                            overflow: 'hidden',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
-                        >
-                          <PlatformButton
-                            icon="close"
-                            onPress={handleCancel}
-                            variant="prominentGlass"
-                            color={colors.foreground}
-                            iconSize={18}
-                            accessibilityLabel="Close"
-                            style={{
-                              width: 48,
-                              height: 48,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          />
-                        </GlassView>
+                        />
                         <Text
                           className="text-foreground font-bold"
                           style={{ fontSize: 16 }}
                         >
                           {title}
                         </Text>
-                        <GlassView
-                          glassEffectStyle="prominent"
-                          colorScheme="auto"
+                        <PlatformButton
+                          icon="check"
+                          onPress={handleDone}
+                          variant="prominentGlass"
+                          color={colors.primary}
+                          backgroundColor={colors.primary}
+                          iconSize={20}
+                          accessibilityLabel="Done"
                           style={{
                             width: 48,
                             height: 48,
                             borderRadius: 24,
-                            overflow: 'hidden',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
-                        >
-                          <PlatformButton
-                            icon="check"
-                            onPress={handleDone}
-                            variant="prominentGlass"
-                            color={confirmIconColor}
-                            iconSize={20}
-                            accessibilityLabel="Done"
-                            style={{
-                              width: 48,
-                              height: 48,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          />
-                        </GlassView>
+                        />
                       </View>
 
                       {children}

@@ -36,6 +36,7 @@ public class NativeDateTimePickerModule: Module {
         let sheetBackgroundColor = (options["sheetBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let panelBackgroundColor = (options["panelBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let resetText = options["resetText"] as? String
+        let resetArmedText = options["resetArmedText"] as? String
         let resetTextColor = (options["resetTextColor"] as? String).flatMap(UIColor.pdFromHex)
 
         let presenter = NativeDateTimePickerPresenter(
@@ -50,6 +51,7 @@ public class NativeDateTimePickerModule: Module {
           sheetBackgroundColor: sheetBackgroundColor,
           panelBackgroundColor: panelBackgroundColor,
           resetText: resetText,
+          resetArmedText: resetArmedText,
           resetTextColor: resetTextColor
         ) { result in
           self.activePresenter = nil
@@ -85,6 +87,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
     sheetBackgroundColor: UIColor?,
     panelBackgroundColor: UIColor?,
     resetText: String?,
+    resetArmedText: String?,
     resetTextColor: UIColor?,
     completion: @escaping ([String: Any]) -> Void
   ) {
@@ -101,6 +104,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
       sheetBackgroundColor: sheetBackgroundColor,
       panelBackgroundColor: panelBackgroundColor,
       resetText: resetText,
+      resetArmedText: resetArmedText,
       resetTextColor: resetTextColor
     )
     super.init()
@@ -172,8 +176,12 @@ private final class NativeDateTimePickerViewController: UIViewController {
   private let sheetBackgroundColor: UIColor?
   private let panelBackgroundColor: UIColor?
   private let resetText: String?
+  private let resetArmedText: String?
   private let resetTextColor: UIColor?
   private let picker = UIDatePicker()
+  private var resetButton: UIButton?
+  private var resetArmed = false
+  private var resetTimer: Timer?
 
   init(
     mode: NativeDateTimePickerMode,
@@ -187,6 +195,7 @@ private final class NativeDateTimePickerViewController: UIViewController {
     sheetBackgroundColor: UIColor?,
     panelBackgroundColor: UIColor?,
     resetText: String?,
+    resetArmedText: String?,
     resetTextColor: UIColor?
   ) {
     self.pickerMode = mode
@@ -200,6 +209,7 @@ private final class NativeDateTimePickerViewController: UIViewController {
     self.sheetBackgroundColor = sheetBackgroundColor
     self.panelBackgroundColor = panelBackgroundColor
     self.resetText = resetText
+    self.resetArmedText = resetArmedText
     self.resetTextColor = resetTextColor
     super.init(nibName: nil, bundle: nil)
   }
@@ -371,6 +381,7 @@ private final class NativeDateTimePickerViewController: UIViewController {
     button.layer.borderWidth = 1
     button.layer.cornerCurve = .continuous
     button.addTarget(self, action: #selector(resetPressed), for: .touchUpInside)
+    self.resetButton = button
     return button
   }
 
@@ -422,7 +433,21 @@ private final class NativeDateTimePickerViewController: UIViewController {
   }
 
   @objc private func resetPressed() {
-    onReset?()
+    if resetArmed {
+      resetTimer?.invalidate()
+      resetTimer = nil
+      resetArmed = false
+      onReset?()
+    } else {
+      resetArmed = true
+      let armedText = resetArmedText ?? resetText ?? ""
+      resetButton?.setTitle(armedText, for: .normal)
+      resetTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+        self?.resetArmed = false
+        let normalText = self?.resetText ?? ""
+        self?.resetButton?.setTitle(normalText, for: .normal)
+      }
+    }
   }
 }
 
