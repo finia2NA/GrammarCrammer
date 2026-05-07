@@ -9,7 +9,6 @@ import {
   Pressable,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import pluralize from 'pluralize';
 import { useRouter } from 'expo-router';
 import { CARD_ORDER_OPTIONS, JUDGE_WITH_EXPLANATION_OPTIONS, FEEDBACK_BREVITY_OPTIONS, KEY_PREFERENCE_OPTIONS, MAX_DECKS_OPTIONS, NEW_DECKS_OPTIONS, UNLIMITED_NEW_DECKS } from '@patterndeck/shared';
 import { useColors } from '@/constants/theme';
@@ -19,7 +18,7 @@ import { deleteApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, s
 import type { UsageStatus } from '@/lib/api';
 import { getSettingsSnapshot, resetLocalSettings } from '@/hooks/state/persistent/settingsStore';
 import { PillDropdown } from '@/components/PillDropdown';
-import { CARD_COUNTS, DEFAULT_LANGUAGES, formatCardCount, UI_LOCALES } from '@/constants/session';
+import { CARD_COUNTS, DEFAULT_LANGUAGES, UI_LOCALES } from '@/constants/session';
 import type { CardCount, UiLocale } from '@/constants/session';
 import { LanguagePicker } from '@/components/home/LanguagePicker';
 import { PageSheetModal } from '@/components/PageSheetModal';
@@ -35,7 +34,7 @@ import { UsageBar } from './UsageBar';
 import { AddApiKeyForm } from './AddApiKeyForm';
 import { formatCost } from '@/lib/format';
 import { analytics } from '@/lib/analytics';
-import { resolveUiLocale, useI18n } from '@/lib/i18n';
+import { formatUnitCount, resolveUiLocale, useI18n } from '@/lib/i18n';
 
 type CardOrder = 'sequential' | 'shuffled';
 type KeyPreference = 'central' | 'own';
@@ -231,13 +230,13 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <PillDropdown value={feedbackBrevity} options={FEEDBACK_BREVITY_OPTIONS} onChange={setFeedbackBrevity} formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? t('settings.brief') : t('settings.normal')} />
         </SettingsRow>
         <SettingsRow label={t('settings.defaultCards')} description={t('settings.defaultCardsDescription')}>
-          <PillDropdown value={defaultCardCount} options={DEFAULT_CARD_COUNT_OPTIONS} onChange={setDefaultCardCount} formatLabel={formatCardCount} />
+          <PillDropdown value={defaultCardCount} options={DEFAULT_CARD_COUNT_OPTIONS} onChange={setDefaultCardCount} formatLabel={(v: CardCount) => formatUnitCount(t, v, 'card', { zeroKey: 'common.inherit' })} />
         </SettingsRow>
         <SettingsRow label={t('settings.maxDecks')} description={t('settings.maxDecksDescription')}>
-          <PillDropdown value={maxDecksPerSession} options={MAX_DECKS_OPTIONS} onChange={setMaxDecksPerSession} formatLabel={(v: number) => pluralize('deck', v, true)} />
+          <PillDropdown value={maxDecksPerSession} options={MAX_DECKS_OPTIONS} onChange={setMaxDecksPerSession} formatLabel={(v: number) => formatUnitCount(t, v, 'deck')} />
         </SettingsRow>
         <SettingsRow label={t('settings.newDecks')} description={t('settings.newDecksDescription')}>
-          <PillDropdown value={newDecksPerDay} options={NEW_DECKS_OPTIONS} onChange={setNewDecksPerDay} formatLabel={(v: number) => v >= UNLIMITED_NEW_DECKS ? '∞ decks' : pluralize('deck', v, true)} />
+          <PillDropdown value={newDecksPerDay} options={NEW_DECKS_OPTIONS} onChange={setNewDecksPerDay} formatLabel={(v: number) => formatUnitCount(t, v, 'deck', { infiniteAt: UNLIMITED_NEW_DECKS })} />
         </SettingsRow>
         <SettingsRow label={t('settings.dailyDueTime')} description={t('settings.dailyDueTimeDescription')}>
           <TimePicker value={dailyDueTime} onChange={(next: string) => setDailyDueTime(normalizeTime(next))} />

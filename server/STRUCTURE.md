@@ -59,7 +59,7 @@ server/
 
 ## Shared package (`@patterndeck/shared`)
 
-Constants shared with the client (language lists, UI locales, setting defaults, card count options) live in `shared/` at the repo root and are imported as `@patterndeck/shared`. In dev, `tsx` consumes the TypeScript source directly via the `"source"` export condition — no pre-build needed. For production (`pnpm build:server`), the shared package is compiled first automatically (`pnpm build:shared && tsc`).
+Constants shared with the client (language lists, UI locales, setting defaults, card count options) live in `shared/` at the repo root and are imported as `@patterndeck/shared`. UI locales currently support English (`en`), German (`de`), and Japanese (`ja`). In dev, `tsx` consumes the TypeScript source directly via the `"source"` export condition — no pre-build needed. For production (`pnpm build:server`), the shared package is compiled first automatically (`pnpm build:shared && tsc`).
 
 ## Routes reference
 

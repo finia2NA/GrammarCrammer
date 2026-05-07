@@ -150,7 +150,8 @@ export function PageSheetModal({
           style={[styles.headerButton, { width: cancelButtonWidth }]}
           textStyle={styles.cancelText}
           fontSize={16}
-          horizontalPadding={14}
+          contentAlignment="left"
+          horizontalPadding={0}
           verticalPadding={7}
           cornerRadius={18}
         />
@@ -174,7 +175,8 @@ export function PageSheetModal({
             textStyle={styles.confirmText}
             fontSize={16}
             fontWeight="semibold"
-            horizontalPadding={14}
+            contentAlignment="right"
+            horizontalPadding={0}
             verticalPadding={7}
             cornerRadius={18}
             confirmationTitle={confirmConfirmationTitle}
@@ -307,10 +309,12 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 16,
+    textAlign: 'left',
   },
   confirmText: {
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'right',
   },
   headerSideLeft: {
     alignItems: 'flex-start',
@@ -326,5 +330,8 @@ const styles = StyleSheet.create({
 });
 
 function estimateHeaderButtonWidth(label: string) {
-  return Math.max(88, Math.min(132, label.length * 9 + 48));
+  const estimatedTextWidth = Array.from(label).reduce((width, char) => (
+    width + (/[^\u0000-\u00ff]/.test(char) ? 16 : 9)
+  ), 0);
+  return Math.max(88, Math.min(148, estimatedTextWidth + 48));
 }

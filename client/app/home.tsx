@@ -4,7 +4,7 @@ import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { PillDropdown } from '@/components/PillDropdown';
-import { DEFAULT_LANGUAGES, CARD_COUNTS, formatCardCount } from '@/constants/session';
+import { DEFAULT_LANGUAGES, CARD_COUNTS } from '@/constants/session';
 import type { Language, CardCount } from '@/constants/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
@@ -27,7 +27,7 @@ import {
 import type { TreeNode } from '@/lib/types';
 import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
 import { getLocalSetting } from '@/hooks/state/persistent/settingsStore';
-import { useI18n } from '@/lib/i18n';
+import { formatUnitCount, useI18n } from '@/lib/i18n';
 
 export default function Home() {
   const router = useRouter();
@@ -231,7 +231,7 @@ export default function Home() {
     } catch (e) {
       alert(e instanceof Error ? e.message : t('common.errorGeneric'));
     }
-  }, [editNode, editNodePathStr, refresh]);
+  }, [editNode, editNodePathStr, refresh, t]);
 
   const handleCsvImport = useCallback(async (data: CsvImportData) => {
     const result = await importDecksFromCsv(
@@ -355,7 +355,7 @@ export default function Home() {
                 value={cardCount}
                 options={CARD_COUNTS}
                 onChange={setCardCount}
-                formatLabel={formatCardCount}
+                formatLabel={(v: CardCount) => formatUnitCount(t, v, 'card', { zeroKey: 'common.inherit' })}
               />
             </View>
             <TextInput

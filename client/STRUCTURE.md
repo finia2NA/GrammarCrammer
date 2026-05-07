@@ -111,7 +111,7 @@ client/
 
 ## Shared package (`@patterndeck/shared`)
 
-Constants and types shared between client and server live in `shared/` at the repo root and are imported as `@patterndeck/shared`. The client re-exports everything through `constants/session.ts` so existing import paths don't change. UI locale constants currently support English (`en`) and German (`de`).
+Constants and types shared between client and server live in `shared/` at the repo root and are imported as `@patterndeck/shared`. The client re-exports everything through `constants/session.ts` so existing import paths don't change. UI locale constants currently support English (`en`), German (`de`), and Japanese (`ja`).
 
 `metro.config.js` has a custom `resolveRequest` hook that remaps `.js` imports to `.ts` — this is needed because TypeScript's NodeNext module resolution requires `.js` extensions in source files, but Metro takes them literally and can't find the `.ts` files otherwise. The alternative would be using `"moduleResolution": "bundler"` in shared's tsconfig (no extensions required), but that would need a separate build step for production.
 

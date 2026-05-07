@@ -8,8 +8,8 @@ import { sendPasswordResetEmail } from './email.service.js';
 
 const JWT_EXPIRY = '7d';
 
-function normalizeUiLanguage(value: string | undefined): 'en' | 'de' | null {
-  return value === 'en' || value === 'de' ? value : null;
+function normalizeUiLanguage(value: string | undefined): 'en' | 'de' | 'ja' | null {
+  return value === 'en' || value === 'de' || value === 'ja' ? value : null;
 }
 
 async function createUiLanguageSetting(userId: string, uiLanguage?: string) {

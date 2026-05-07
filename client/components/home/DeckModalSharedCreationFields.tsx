@@ -1,11 +1,11 @@
 import { useRef } from 'react';
 import { Text, TextInput, View, Platform } from 'react-native';
 import { PillDropdown } from '@/components/PillDropdown';
-import { CARD_COUNTS, formatCardCount } from '@/constants/session';
+import { CARD_COUNTS } from '@/constants/session';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
 import { usePageSheetScrolling } from '@/components/PageSheetScrollContext';
-import { useI18n } from '@/lib/i18n';
+import { formatUnitCount, useI18n } from '@/lib/i18n';
 
 interface SharedCreationNameFieldProps {
   label: string;
@@ -82,7 +82,7 @@ export function SharedCreationOptionsSection({
           value={cardCount}
           options={CARD_COUNTS}
           onChange={onCardCountChange}
-          formatLabel={formatCardCount}
+          formatLabel={(v: CardCount) => formatUnitCount(t, v, 'card', { zeroKey: 'common.inherit' })}
         />
       </View>
     </>
