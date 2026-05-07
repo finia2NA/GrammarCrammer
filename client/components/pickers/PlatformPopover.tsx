@@ -52,7 +52,6 @@ export function PlatformPopover({
   const colors = useColors();
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const actionButtonBackground = colors.background_warm;
   const confirmIconColor = scheme === 'light' ? '#FFFFFF' : '#000000';
   const [open, setOpen] = useState(false);
   const sheetY = useRef(new Animated.Value(sheetHeight)).current;
@@ -193,44 +192,62 @@ export function PlatformPopover({
                     >
                       {pullDownHandle}
                       <View className="flex-row items-center justify-between mb-4">
-                        <PlatformButton
-                          icon="close"
-                          onPress={handleCancel}
-                          variant="prominentGlass"
-                          color={colors.foreground}
-                          backgroundColor={actionButtonBackground}
-                          iconSize={18}
-                          accessibilityLabel="Close"
+                        <GlassView
+                          glassEffectStyle="prominent"
+                          colorScheme="auto"
                           style={{
                             width: 48,
                             height: 48,
                             borderRadius: 24,
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            overflow: 'hidden',
                           }}
-                        />
+                        >
+                          <PlatformButton
+                            icon="close"
+                            onPress={handleCancel}
+                            variant="prominentGlass"
+                            color={colors.foreground}
+                            iconSize={18}
+                            accessibilityLabel="Close"
+                            style={{
+                              width: 48,
+                              height: 48,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          />
+                        </GlassView>
                         <Text
                           className="text-foreground font-bold"
                           style={{ fontSize: 16 }}
                         >
                           {title}
                         </Text>
-                        <PlatformButton
-                          icon="check"
-                          onPress={handleDone}
-                          variant="prominentGlass"
-                          color={confirmIconColor}
-                          backgroundColor={colors.primary}
-                          iconSize={20}
-                          accessibilityLabel="Done"
+                        <GlassView
+                          glassEffectStyle="prominent"
+                          colorScheme="auto"
                           style={{
                             width: 48,
                             height: 48,
                             borderRadius: 24,
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            overflow: 'hidden',
                           }}
-                        />
+                        >
+                          <PlatformButton
+                            icon="check"
+                            onPress={handleDone}
+                            variant="prominentGlass"
+                            color={confirmIconColor}
+                            iconSize={20}
+                            accessibilityLabel="Done"
+                            style={{
+                              width: 48,
+                              height: 48,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          />
+                        </GlassView>
                       </View>
 
                       {children}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 
 import { useColors } from '@/constants/theme';
+import { useI18n } from '@/lib/i18n';
 import type { CollectionReviewRecord, DeckReviewRecord } from '@/lib/api';
 import { formatShortDate, renderStars } from './utils';
 
@@ -28,6 +29,7 @@ export function ReviewHistoryTable({
   refreshing?: boolean;
 }) {
   const colors = useColors();
+  const { t } = useI18n();
   const [page, setPage] = useState(0);
   const totalPages = Math.ceil(reviews.length / PAGE_SIZE);
   const visible = reviews.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -70,7 +72,7 @@ export function ReviewHistoryTable({
                 </Text>
               ) : review.eventType === 'reset' ? (
                 <Text className="text-foreground-secondary text-xs flex-1 italic" numberOfLines={1}>
-                  reset to never studied
+                  {t('picker.resetToNeverStudied')}
                 </Text>
               ) : (
                 <>
