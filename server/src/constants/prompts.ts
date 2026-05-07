@@ -102,6 +102,9 @@ Generate exactly the requested number of flashcard pairs. If caseTargets is pres
 For each card, compose the ${language} targetSentence first, then derive the translateFrom sentence from it.
 The targetSentence MUST be entirely in ${language}. The translateFrom sentence MUST be entirely in ${responseLanguage}.
 Do not mix ${language} words into translateFrom, and do not mix ${responseLanguage} words into targetSentence.
+Each card MUST be exactly one sentence or one short utterance for the learner to translate.
+Do NOT output explanations, labels, case names, multi-sentence scenarios, dialogues, paragraphs, or descriptions of when to say something in translateFrom or targetSentence.
+For social/register topics, make the card ask for one concrete reply only (for example, "Thank you very much."), and put the relationship or situation in sentenceContext instead of translateFrom.
 The correct ${language} targetSentence should unambiguously require the specific grammar point
 being practised — avoid source sentences where a different ${language} construction would be equally natural.
 Do not reuse the sentences from the explanation — create new ones.
@@ -126,8 +129,8 @@ Write any optional learner-facing hints in ${responseLanguage}.${cardLanguageBlo
           items: {
             type: 'object',
             properties: {
-              targetSentence: { type: 'string', description: `The correct sentence entirely in ${language}, unambiguously requiring the grammar point being practised. Compose this first. Do not include ${responseLanguage} words unless they are proper nouns or unavoidable loanwords.` },
-              translateFrom: { type: 'string', description: `The source sentence entirely in ${responseLanguage} that the learner must translate, derived from the ${language} targetSentence. Do not include ${language} words unless they are proper nouns or unavoidable loanwords.` },
+              targetSentence: { type: 'string', description: `One sentence or one short utterance entirely in ${language}, unambiguously requiring the grammar point being practised. Compose this first. Do not include explanations, labels, dialogues, or paragraphs. Do not include ${responseLanguage} words unless they are proper nouns or unavoidable loanwords.` },
+              translateFrom: { type: 'string', description: `One sentence or one short utterance entirely in ${responseLanguage} that the learner must translate, derived from the ${language} targetSentence. Do not include explanations, labels, dialogues, paragraphs, or case names. Do not include ${language} words unless they are proper nouns or unavoidable loanwords.` },
               caseKey: { type: 'string', description: 'When caseTargets are provided, echo the exact caseKey for the target case this card tests.' },
               sentenceContext: { type: 'string', description: 'A 1–3 word phrase constraining what form the answer must take (e.g. "polite speech", "past tense"). Only include when needed to rule out an otherwise equally valid phrasing, and if the context is ambiguous from translateFrom. Do NOT include obvious hints, or things that the learner should know from translateFrom. Such things belong in the hint.' },
               hint: { type: 'string', description: `A brief grammar hint shown to the learner on request. Use ${responseLanguage}. Only include when genuinely helpful.` },
@@ -166,6 +169,9 @@ Extract the smallest useful set of cases needed for good flashcard coverage:
 - Prefer 2–16 cases. Use more only when the explanation clearly requires it.
 - caseKey must be stable lower_snake_case ASCII, based on the rule category, not on an example sentence.
 - generationHint should tell a card generator exactly what kind of sentence to create for that case.
+- generationHint must describe a single translatable learner prompt, not a paragraph, explanation, dialogue, or broad scenario.
+- For discourse or social-register cases, generationHint should request one concrete utterance and put context such as relationship, setting, or formality in sentenceContext.
+- Do not create cases that only represent example headings, scenario names, cultural notes, or whole explanation sections unless they require a distinct grammar/register decision.
 - importance is a relative weight from 0.5 to 2.0, where 1.0 is normal.${responseLanguageInstruction(responseLanguage)}${caseExtractionLanguageBlock(language)}`,
   tool: {
     name: 'extract_grammar_cases',
@@ -183,7 +189,7 @@ Extract the smallest useful set of cases needed for good flashcard coverage:
               caseKey: { type: 'string', description: 'Stable lower_snake_case ASCII identifier for this case.' },
               label: { type: 'string', description: `Short learner-facing label in ${responseLanguage}.` },
               ruleSummary: { type: 'string', description: `One concise sentence in ${responseLanguage} explaining what rule or decision this case tests.` },
-              generationHint: { type: 'string', description: `Instruction in ${responseLanguage} for generating a flashcard that specifically tests this case.` },
+              generationHint: { type: 'string', description: `Instruction in ${responseLanguage} for generating one single-sentence or single-utterance flashcard that specifically tests this case. Do not request explanatory prose, labels, dialogues, or multi-sentence scenarios.` },
               importance: { type: 'number', minimum: 0.5, maximum: 2.0, description: 'Relative scheduling importance, where 1.0 is normal.' },
             },
             required: ['caseKey', 'label', 'ruleSummary', 'generationHint'],

@@ -3,6 +3,9 @@ import { useColorScheme, Appearance } from 'react-native';
 import MonacoReact, { DiffEditor } from '@monaco-editor/react';
 import { light, dark } from '@/constants/theme';
 
+const LIGHT_THEME = 'grammarCrammerLight';
+const DARK_THEME = 'grammarCrammerDark';
+
 interface MonacoEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -12,20 +15,22 @@ interface MonacoEditorProps {
   showDiff?: boolean;
 }
 
-export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, original, showDiff }: MonacoEditorProps) {
-  const colorScheme = useColorScheme();
-  const editorRef = useRef<any>(null);
+/**
+ * Custom hook to manage Monaco editor theme definition and application.
+ * Handles defining custom themes based on app theme.ts colors,
+ * and applies the correct theme when system appearance changes.
+ */
+function useMonacoTheme() {
   const monacoRef = useRef<any>(null);
-  const onChangeRef = useRef(onChange);
-  const applyingExternalValueRef = useRef(false);
-  const appliedExternalRevisionRef = useRef(externalRevision);
-  const [pinnedModified, setPinnedModified] = useState(value);
+  const themesDefinedRef = useRef(false);
 
-  const beforeMount = useCallback((monaco: any) => {
+  const defineThemes = useCallback((monaco: any) => {
     monacoRef.current = monaco;
 
-    // Define light theme
-    monaco.editor.defineTheme('grammarCrammerLight', {
+    // Define themes only once
+    if (themesDefinedRef.current) return;
+
+    monaco.editor.defineTheme(LIGHT_THEME, {
       base: 'vs',
       inherit: true,
       rules: [
@@ -50,8 +55,7 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
       }
     });
 
-    // Define dark theme
-    monaco.editor.defineTheme('grammarCrammerDark', {
+    monaco.editor.defineTheme(DARK_THEME, {
       base: 'vs-dark',
       inherit: true,
       rules: [
@@ -75,7 +79,36 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
         'editorIndentGuide.activeBackground': dark.foreground_subtle,
       }
     });
+
+    themesDefinedRef.current = true;
   }, []);
+
+  const applyTheme = useCallback(() => {
+    if (!monacoRef.current) return;
+    const scheme = Appearance.getColorScheme();
+    monacoRef.current.editor.setTheme(
+      scheme === 'dark' ? DARK_THEME : LIGHT_THEME
+    );
+  }, []);
+
+  // Listen for system appearance changes
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(applyTheme);
+    return () => subscription.remove();
+  }, [applyTheme]);
+
+  return { defineThemes, applyTheme, monacoRef };
+}
+
+export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, original, showDiff }: MonacoEditorProps) {
+  const colorScheme = useColorScheme();
+  const editorRef = useRef<any>(null);
+  const onChangeRef = useRef(onChange);
+  const applyingExternalValueRef = useRef(false);
+  const appliedExternalRevisionRef = useRef(externalRevision);
+  const [pinnedModified, setPinnedModified] = useState(value);
+
+  const { defineThemes, applyTheme } = useMonacoTheme();
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -117,14 +150,7 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
   const handleMount = (ed: any) => {
     editorRef.current = ed;
     appliedExternalRevisionRef.current = externalRevision;
-
-    // Apply theme after mount
-    if (monacoRef.current) {
-      const scheme = Appearance.getColorScheme();
-      monacoRef.current.editor.setTheme(
-        scheme === 'dark' ? 'grammarCrammerDark' : 'grammarCrammerLight'
-      );
-    }
+    applyTheme();
 
     if (ed.getValue() !== value) {
       applyingExternalValueRef.current = true;
@@ -146,14 +172,7 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
     const modifiedEditor = diffEditor.getModifiedEditor();
     editorRef.current = modifiedEditor;
     appliedExternalRevisionRef.current = externalRevision;
-
-    // Apply theme after mount
-    if (monacoRef.current) {
-      const scheme = Appearance.getColorScheme();
-      monacoRef.current.editor.setTheme(
-        scheme === 'dark' ? 'grammarCrammerDark' : 'grammarCrammerLight'
-      );
-    }
+    applyTheme();
 
     if (modifiedEditor.getValue() !== value) {
       applyingExternalValueRef.current = true;
@@ -171,30 +190,17 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
     });
   };
 
-  // Apply theme when colorScheme changes using Appearance API
-  useEffect(() => {
-    const applyTheme = () => {
-      if (monacoRef.current) {
-        const scheme = Appearance.getColorScheme();
-        monacoRef.current.editor.setTheme(
-          scheme === 'dark' ? 'grammarCrammerDark' : 'grammarCrammerLight'
-        );
-      }
-    };
-
-    // Listen for changes
-    const subscription = Appearance.addChangeListener(applyTheme);
-    return () => subscription.remove();
-  }, []);
+  const currentTheme = colorScheme === 'dark' ? DARK_THEME : LIGHT_THEME;
 
   if (showDiff && original !== undefined) {
     return (
       <DiffEditor
         height="100%"
         language="markdown"
+        theme={currentTheme}
         original={original}
         modified={pinnedModified}
-        beforeMount={beforeMount}
+        beforeMount={defineThemes}
         onMount={handleDiffMount}
         options={{
           ...commonOptions,
@@ -209,8 +215,9 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
     <MonacoReact
       height="100%"
       language="markdown"
+      theme={currentTheme}
       defaultValue={value}
-      beforeMount={beforeMount}
+      beforeMount={defineThemes}
       onMount={handleMount}
       options={commonOptions}
     />
