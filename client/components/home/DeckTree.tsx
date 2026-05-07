@@ -6,6 +6,7 @@ import { getCollapsedNodes, setCollapsedNodes } from '@/lib/storage';
 import { Icon } from '@/components/Icon';
 import { DueIndicator } from '@/components/home/DueIndicator';
 import { useColors } from '@/constants/theme';
+import { useI18n } from '@/lib/i18n';
 
 interface DeckTreeProps {
   tree: TreeNode[];
@@ -202,32 +203,31 @@ function StatusBadge({
   grammarCaseStatus?: string;
 }) {
   const colors = useColors();
+  const { t } = useI18n();
   const status = explanationStatus === 'ready' && grammarCaseStatus && grammarCaseStatus !== 'ready'
     ? grammarCaseStatus
     : explanationStatus;
-  const label = explanationStatus === 'ready' && grammarCaseStatus && grammarCaseStatus !== 'ready'
-    ? 'Case extraction'
-    : 'Explanation generation';
+  const isCaseStatus = explanationStatus === 'ready' && grammarCaseStatus && grammarCaseStatus !== 'ready';
 
   switch (status) {
     case 'generating':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6 }} title={`${label} running`}>
+        <View style={{ paddingHorizontal: 6 }} title={isCaseStatus ? t('status.caseExtractionRunning') : t('status.explanationGenerationRunning')}>
           <ActivityIndicator size={10} color={colors.primary} />
         </View>
       );
     case 'pending':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={`${label} queued`}>
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={isCaseStatus ? t('status.caseExtractionQueued') : t('status.explanationGenerationQueued')}>
           <PendingDot color={colors.primary} />
         </View>
       );
     case 'error':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={`${label} failed`}>
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={isCaseStatus ? t('status.caseExtractionFailed') : t('status.explanationGenerationFailed')}>
           <Icon name="warning" size={12} color={colors.error} />
         </View>
       );

@@ -2,8 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { getAuthToken, clearAuthToken, clearUserId, getBackendBaseUrl } from './storage';
-import { analytics } from './analytics';
-import { appSessionId } from './analytics';
+import { analytics, appSessionId } from './analytics';
 import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint, AnalyticsContext } from './types';
 import {
   areSettingsHydrated,
@@ -323,7 +322,7 @@ export interface CsvImportResult {
   createdCount: number;
   queuedCount: number;
   failedCount: number;
-  failures: Array<{ line: number; context: string; error: string }>;
+  failures: { line: number; context: string; error: string }[];
 }
 
 export async function importDecksFromCsv(
@@ -509,7 +508,7 @@ export async function submitDeckReview(
   studySessionId?: string,
   correctCount?: number,
   totalCount?: number,
-  caseAttempts?: Array<{ grammarCaseId?: string; grammarCaseKey?: string; answers: string[] }>,
+  caseAttempts?: { grammarCaseId?: string; grammarCaseKey?: string; answers: string[] }[],
 ) {
   return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
     method: 'POST',

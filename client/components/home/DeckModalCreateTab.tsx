@@ -64,6 +64,9 @@ export function DeckModalCreateTab({
   const explanationRef = useRef<TextInput>(null);
   const [explanationExpanded, setExplanationExpanded] = useState(false);
   const [casesExpanded, setCasesExpanded] = useState(false);
+  const caseCountLabel = grammarCases.length === 1
+    ? t('deck.grammarCasesCountSingular', { count: grammarCases.length })
+    : t('deck.grammarCasesCountPlural', { count: grammarCases.length });
 
   function handleScrollAwareFocus(ref: RefObject<TextInput | null>) {
     if (Platform.OS !== 'web' && isScrollingRef?.current) {
@@ -159,9 +162,9 @@ export function DeckModalCreateTab({
                 activeOpacity={0.85}
               >
                 <View className="flex-1 pr-3">
-                  <Text className="text-foreground/80 text-sm font-medium">Grammar Cases</Text>
+                  <Text className="text-foreground/80 text-sm font-medium">{t('deck.grammarCases')}</Text>
                   <Text className="text-foreground-secondary text-xs mt-1">
-                    {regenerateGrammarCases ? 'Regeneration scheduled' : `${grammarCases.length} extracted case${grammarCases.length === 1 ? '' : 's'}`}
+                    {regenerateGrammarCases ? t('deck.grammarCasesRegenerationScheduled') : caseCountLabel}
                   </Text>
                 </View>
                 <Text className="text-foreground-secondary text-sm">{casesExpanded ? '▼' : '▶'}</Text>
@@ -170,7 +173,7 @@ export function DeckModalCreateTab({
                 <View className="px-4 pb-4 gap-3">
                   {grammarCases.length === 0 ? (
                     <Text className="text-foreground-secondary text-xs leading-5">
-                      No cases have been extracted yet.
+                      {t('deck.grammarCasesEmpty')}
                     </Text>
                   ) : (
                     <View className="gap-2">
@@ -190,7 +193,7 @@ export function DeckModalCreateTab({
                       activeOpacity={0.8}
                     >
                       <Text className="text-foreground font-semibold">
-                        {regenerateGrammarCases ? 'Regeneration scheduled' : 'Regenerate cases'}
+                        {regenerateGrammarCases ? t('deck.grammarCasesRegenerationScheduled') : t('deck.grammarCasesRegenerate')}
                       </Text>
                     </TouchableOpacity>
                   )}

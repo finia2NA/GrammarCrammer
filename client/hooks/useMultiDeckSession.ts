@@ -9,8 +9,7 @@ import {
   getSetting,
   markStudied as apiMarkStudied,
 } from '@/lib/api';
-import type { Card, DeckCard, DeckData } from '@/lib/types';
-import type { AnalyticsContext } from '@/lib/types';
+import type { AnalyticsContext, DeckCard, DeckData } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
 
 interface UseMultiDeckSessionParams {

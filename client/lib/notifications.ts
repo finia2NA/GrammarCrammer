@@ -9,23 +9,26 @@ import {
   setRegisteredExpoPushToken,
 } from './storage';
 
-// Lazily required only on native to avoid expo-notifications initializing on web
-// (which would error during SSR trying to access localStorage).
-// The `!` assertions below are safe because all call sites are guarded by
-// Platform.OS checks that prevent execution on web, and on native the
-// module is initialized at module load time above.
-let Notifications: typeof import('expo-notifications') | null = null;
+type ExpoNotifications = typeof import('expo-notifications');
 
-if (Platform.OS !== 'web') {
-  Notifications = require('expo-notifications') as typeof import('expo-notifications');
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+let notificationsPromise: Promise<ExpoNotifications> | null = null;
+
+async function getNotifications(): Promise<ExpoNotifications> {
+  if (Platform.OS === 'web') {
+    throw new Error('Push notifications are only available on iOS and Android.');
+  }
+  notificationsPromise ??= import('expo-notifications').then((Notifications) => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    return Notifications;
   });
+  return notificationsPromise;
 }
 
 function getExpoProjectId(): string | null {
@@ -41,9 +44,10 @@ function getExpoProjectId(): string | null {
 
 async function configureAndroidNotificationChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications!.setNotificationChannelAsync('due-decks', {
+  const Notifications = await getNotifications();
+  await Notifications.setNotificationChannelAsync('due-decks', {
     name: 'Due decks',
-    importance: Notifications!.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#4F46E5',
   });
@@ -58,11 +62,12 @@ export async function registerCurrentPushDevice(): Promise<string> {
   }
 
   await configureAndroidNotificationChannel();
+  const Notifications = await getNotifications();
 
-  const existing = await Notifications!.getPermissionsAsync();
+  const existing = await Notifications.getPermissionsAsync();
   let finalStatus = existing.status;
   if (finalStatus !== 'granted') {
-    const requested = await Notifications!.requestPermissionsAsync();
+    const requested = await Notifications.requestPermissionsAsync();
     finalStatus = requested.status;
   }
   if (finalStatus !== 'granted') {
@@ -74,7 +79,7 @@ export async function registerCurrentPushDevice(): Promise<string> {
     throw new Error('Expo project ID is missing. Set EXPO_PUBLIC_EXPO_PROJECT_ID and rebuild the native app.');
   }
 
-  const token = (await Notifications!.getExpoPushTokenAsync({ projectId })).data;
+  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
   await registerPushDevice(token, Platform.OS);
   await setRegisteredExpoPushToken(token);
   return token;

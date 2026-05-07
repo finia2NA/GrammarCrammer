@@ -180,6 +180,10 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 `pnpm backend`
 `pnpm start`
 
+### Check
+
+`pnpm lint`
+
 ---
 
 ## Deployment

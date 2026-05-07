@@ -43,7 +43,7 @@ export function useSessionCards({
   const lastJudgmentRef = useRef<{ correct: boolean; overrideToCorrect: boolean; attemptNumber: number } | null>(null);
   const inputRef = useRef<TextInput>(null);
 
-  function currentCardContext(card: Card | DeckCard, attemptNumber?: number): AnalyticsContext {
+  const currentCardContext = useCallback((card: Card | DeckCard, attemptNumber?: number): AnalyticsContext => {
     const cardIndex = Number.isFinite(Number(card.id)) ? Number(card.id) : undefined;
     const deckId = (card as DeckCard).deckId;
     const deckInfo = deckId ? deckInfoById?.get(deckId) : undefined;
@@ -56,7 +56,7 @@ export function useSessionCards({
       cardIndex,
       attemptNumber,
     };
-  }
+  }, [analyticsContext, deckInfoById]);
 
   useEffect(() => {
     getSetting('judge_with_explanation').then(v => {
@@ -164,7 +164,7 @@ export function useSessionCards({
     setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
-  }, [cards, submittedAnswer, setCards]);
+  }, [cards, currentCardContext, feedbackBrevity, judgeWithExplanation, submittedAnswer, setCards]);
 
   const handleConfirmWrong = useCallback(() => {
     const current = cards[0];
@@ -194,7 +194,7 @@ export function useSessionCards({
     setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
-  }, [cards, submittedAnswer, wasSkipped, setCards]);
+  }, [cards, currentCardContext, feedbackBrevity, judgeWithExplanation, submittedAnswer, wasSkipped, setCards]);
 
   const handleOverrideWrong = useCallback(() => {
     const current = cards[0];
@@ -234,7 +234,7 @@ export function useSessionCards({
     setWasSkipped(false);
     lastJudgmentRef.current = null;
     setCardPhase('input');
-  }, [cards, submittedAnswer, setCards]);
+  }, [cards, currentCardContext, feedbackBrevity, judgeWithExplanation, submittedAnswer, setCards]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;

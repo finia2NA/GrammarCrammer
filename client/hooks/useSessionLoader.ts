@@ -70,7 +70,7 @@ export function useSessionLoader({ topic, language, cardCount, existingExplanati
     }
     load();
     return () => { cancelled = true; };
-  }, [cardCount, existingExplanation, language, router, t, topic]);
+  }, [analyticsContext, cardCount, existingExplanation, language, router, t, topic]);
 
   return {
     loading,

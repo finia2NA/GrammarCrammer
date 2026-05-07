@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { vars } from 'nativewind';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 
 // ── Raw RGB triples — single source of truth ──────────────────────────────────
 // Edit only here. Everything else (CSS vars, hex palette) is derived below.

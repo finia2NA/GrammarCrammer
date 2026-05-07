@@ -10,6 +10,7 @@ import type { TreeNode } from '@/lib/types';
 import { DatePicker } from '@/components/pickers/DatePicker';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { formatLocalDateToYmd } from '@/components/pickers/dateUtils';
+import { useI18n } from '@/lib/i18n';
 
 const clickOrTap = Platform.OS === 'web' ? 'Click' : 'Tap';
 
@@ -445,12 +446,13 @@ function GrammarCaseDifficultyChart({
   cases: GrammarCaseSummary[];
   colors: ReturnType<typeof useColors>;
 }) {
+  const { t } = useI18n();
   const visible = cases.slice(0, 12);
   const maxDifficulty = Math.max(0.4, ...visible.map(item => item.difficulty));
 
   return (
     <View className="bg-surface border border-border rounded-2xl p-4 mb-4">
-      <Text className="text-foreground-secondary text-xs font-medium mb-3">Grammar Case Difficulty</Text>
+      <Text className="text-foreground-secondary text-xs font-medium mb-3">{t('history.grammarCaseDifficulty')}</Text>
       <View className="gap-2">
         {visible.map((item) => {
           const width = `${Math.max(10, (item.difficulty / maxDifficulty) * 100)}%` as const;

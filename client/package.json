@@ -11,7 +11,7 @@
     "android:phone": "expo run:android --device",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
-    "lint": "expo lint",
+    "lint": "expo lint .",
     "typecheck": "tsc --noEmit",
     "reset-project": "node ./scripts/reset-project.js"
   },
