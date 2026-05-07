@@ -71,6 +71,8 @@ export function DatePicker({
       cancelText: t('common.cancel'),
       confirmText: t('common.done'),
       accentColor: colors.primary,
+      sheetBackgroundColor: colors.background,
+      panelBackgroundColor: colors.surface,
       resetButton: androidNeutralButton ? {
         label: androidNeutralButton.label,
         textColor: androidNeutralButton.textColor,
@@ -83,7 +85,7 @@ export function DatePicker({
     setDraftDate(selectedDate);
     setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
     openPopover();
-  }, [androidNeutralButton, colors.primary, disabled, displayTitle, nativePickerModule, onChange, selectedDate, t]);
+  }, [androidNeutralButton, colors.background, colors.primary, colors.surface, disabled, displayTitle, nativePickerModule, onChange, selectedDate, t]);
 
   function handleDone() {
     if (draftDate) onChange(formatLocalDateToYmd(draftDate));

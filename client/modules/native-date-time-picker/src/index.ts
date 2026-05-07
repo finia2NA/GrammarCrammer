@@ -12,6 +12,8 @@ export interface NativeDateTimePickerOptions {
   is24Hour?: boolean;
   minuteInterval?: number;
   accentColor?: string;
+  sheetBackgroundColor?: string;
+  panelBackgroundColor?: string;
   resetText?: string;
   resetTextColor?: string;
 }

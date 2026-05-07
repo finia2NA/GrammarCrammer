@@ -14,8 +14,8 @@ export function ThemedSwitch({ value, onValueChange, disabled }: ThemedSwitchPro
       value={value}
       onValueChange={onValueChange}
       disabled={disabled}
-      trackColor={{ false: colors.border, true: colors.surface }}
-      thumbColor={colors.primary}
+      trackColor={{ false: colors.border, true: colors.primary }}
+      thumbColor={value ? colors.surface : colors.primary}
     />
   );
 }

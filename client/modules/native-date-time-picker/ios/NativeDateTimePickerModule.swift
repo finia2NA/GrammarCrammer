@@ -33,6 +33,8 @@ public class NativeDateTimePickerModule: Module {
         let is24Hour = options["is24Hour"] as? Bool ?? true
         let minuteInterval = options["minuteInterval"] as? Int ?? 1
         let accentColor = (options["accentColor"] as? String).flatMap(UIColor.pdFromHex)
+        let sheetBackgroundColor = (options["sheetBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
+        let panelBackgroundColor = (options["panelBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let resetText = options["resetText"] as? String
         let resetTextColor = (options["resetTextColor"] as? String).flatMap(UIColor.pdFromHex)
 
@@ -45,6 +47,8 @@ public class NativeDateTimePickerModule: Module {
           is24Hour: is24Hour,
           minuteInterval: minuteInterval,
           accentColor: accentColor,
+          sheetBackgroundColor: sheetBackgroundColor,
+          panelBackgroundColor: panelBackgroundColor,
           resetText: resetText,
           resetTextColor: resetTextColor
         ) { result in
@@ -78,6 +82,8 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
     is24Hour: Bool,
     minuteInterval: Int,
     accentColor: UIColor?,
+    sheetBackgroundColor: UIColor?,
+    panelBackgroundColor: UIColor?,
     resetText: String?,
     resetTextColor: UIColor?,
     completion: @escaping ([String: Any]) -> Void
@@ -92,6 +98,8 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
       is24Hour: is24Hour,
       minuteInterval: minuteInterval,
       accentColor: accentColor,
+      sheetBackgroundColor: sheetBackgroundColor,
+      panelBackgroundColor: panelBackgroundColor,
       resetText: resetText,
       resetTextColor: resetTextColor
     )
@@ -106,7 +114,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
     viewController.presentationController?.delegate = self
     if let sheet = viewController.sheetPresentationController {
       if #available(iOS 16.0, *) {
-        let height: CGFloat = viewController.pickerMode == .date ? 540 : 360
+        let height: CGFloat = viewController.pickerMode == .date ? 630 : 400
         sheet.detents = [
           .custom(identifier: .init("patterndeckPicker")) { context in
             min(height, context.maximumDetentValue)
@@ -161,6 +169,8 @@ private final class NativeDateTimePickerViewController: UIViewController {
   private let is24Hour: Bool
   private let minuteInterval: Int
   private let accentColor: UIColor?
+  private let sheetBackgroundColor: UIColor?
+  private let panelBackgroundColor: UIColor?
   private let resetText: String?
   private let resetTextColor: UIColor?
   private let picker = UIDatePicker()
@@ -174,6 +184,8 @@ private final class NativeDateTimePickerViewController: UIViewController {
     is24Hour: Bool,
     minuteInterval: Int,
     accentColor: UIColor?,
+    sheetBackgroundColor: UIColor?,
+    panelBackgroundColor: UIColor?,
     resetText: String?,
     resetTextColor: UIColor?
   ) {
@@ -185,6 +197,8 @@ private final class NativeDateTimePickerViewController: UIViewController {
     self.is24Hour = is24Hour
     self.minuteInterval = min(max(minuteInterval, 1), 30)
     self.accentColor = accentColor
+    self.sheetBackgroundColor = sheetBackgroundColor
+    self.panelBackgroundColor = panelBackgroundColor
     self.resetText = resetText
     self.resetTextColor = resetTextColor
     super.init(nibName: nil, bundle: nil)
@@ -196,9 +210,37 @@ private final class NativeDateTimePickerViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    view.backgroundColor = .systemBackground
+    view.isOpaque = false
+    view.backgroundColor = .clear
+    installGlassBackground()
     configurePicker()
     buildLayout()
+  }
+
+  private func installGlassBackground() {
+    let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+    blurView.translatesAutoresizingMaskIntoConstraints = false
+    blurView.isUserInteractionEnabled = false
+
+    let veilView = UIView()
+    veilView.translatesAutoresizingMaskIntoConstraints = false
+    veilView.isUserInteractionEnabled = false
+    veilView.backgroundColor = UIColor.pdPickerSheetFill(sheetBackgroundColor)
+
+    view.addSubview(blurView)
+    view.addSubview(veilView)
+
+    NSLayoutConstraint.activate([
+      blurView.topAnchor.constraint(equalTo: view.topAnchor),
+      blurView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      blurView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      blurView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+      veilView.topAnchor.constraint(equalTo: view.topAnchor),
+      veilView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      veilView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      veilView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+    ])
   }
 
   private func configurePicker() {
@@ -207,6 +249,9 @@ private final class NativeDateTimePickerViewController: UIViewController {
     picker.minuteInterval = minuteInterval
     picker.preferredDatePickerStyle = pickerMode == .date ? .inline : .wheels
     picker.datePickerMode = pickerMode == .date ? .date : .time
+    picker.backgroundColor = UIColor.pdPickerPanelFill(panelBackgroundColor)
+    picker.layer.cornerRadius = 18
+    picker.layer.masksToBounds = true
 
     if pickerMode == .time && is24Hour {
       picker.locale = Locale(identifier: "en_GB")
@@ -225,21 +270,23 @@ private final class NativeDateTimePickerViewController: UIViewController {
     titleLabel.textAlignment = .center
     titleLabel.numberOfLines = 1
 
-    let cancelButton = UIButton(type: .system)
+    let cancelButton = makeHeaderButton(
+      systemName: "xmark",
+      accessibilityLabel: cancelText,
+      foregroundColor: accentColor ?? .label,
+      backgroundColor: UIColor.pdPickerButtonFill
+    )
     cancelButton.translatesAutoresizingMaskIntoConstraints = false
-    cancelButton.setTitle(cancelText, for: .normal)
-    cancelButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
     cancelButton.addTarget(self, action: #selector(cancelPressed), for: .touchUpInside)
 
-    let confirmButton = UIButton(type: .system)
+    let confirmButton = makeHeaderButton(
+      systemName: "checkmark",
+      accessibilityLabel: confirmText,
+      foregroundColor: accentColor ?? .label,
+      backgroundColor: UIColor.pdPickerButtonFill
+    )
     confirmButton.translatesAutoresizingMaskIntoConstraints = false
-    confirmButton.setTitle(confirmText, for: .normal)
-    confirmButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
     confirmButton.addTarget(self, action: #selector(confirmPressed), for: .touchUpInside)
-    if let accentColor {
-      cancelButton.tintColor = accentColor
-      confirmButton.tintColor = accentColor
-    }
 
     picker.translatesAutoresizingMaskIntoConstraints = false
     let resetButton = makeResetButton()
@@ -256,35 +303,39 @@ private final class NativeDateTimePickerViewController: UIViewController {
     let pickerHeight: CGFloat = pickerMode == .date ? 420 : 220
     let resetTopAnchor = resetButton?.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 8)
     let resetCenterAnchor = resetButton?.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+    let resetLeadingAnchor = resetButton?.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24)
+    let resetTrailingAnchor = resetButton?.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
     let resetHeightAnchor = resetButton?.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
 
     var constraints = [
-      header.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+      header.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
       header.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       header.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      header.heightAnchor.constraint(equalToConstant: 56),
+      header.heightAnchor.constraint(equalToConstant: 64),
 
       cancelButton.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
-      cancelButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-      cancelButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 64),
+      cancelButton.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
+      cancelButton.widthAnchor.constraint(equalToConstant: 40),
+      cancelButton.heightAnchor.constraint(equalToConstant: 40),
 
       confirmButton.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
-      confirmButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-      confirmButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 64),
+      confirmButton.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
+      confirmButton.widthAnchor.constraint(equalToConstant: 40),
+      confirmButton.heightAnchor.constraint(equalToConstant: 40),
 
       titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: cancelButton.trailingAnchor, constant: 12),
       titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: confirmButton.leadingAnchor, constant: -12),
       titleLabel.centerXAnchor.constraint(equalTo: header.centerXAnchor),
-      titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+      titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
 
-      picker.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
+      picker.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 12),
       picker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
       picker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
       picker.heightAnchor.constraint(equalToConstant: pickerHeight)
     ]
 
-    if let resetTopAnchor, let resetCenterAnchor, let resetHeightAnchor {
-      constraints.append(contentsOf: [resetTopAnchor, resetCenterAnchor, resetHeightAnchor])
+    if let resetTopAnchor, let resetCenterAnchor, let resetLeadingAnchor, let resetTrailingAnchor, let resetHeightAnchor {
+      constraints.append(contentsOf: [resetTopAnchor, resetCenterAnchor, resetLeadingAnchor, resetTrailingAnchor, resetHeightAnchor])
     }
 
     NSLayoutConstraint.activate(constraints)
@@ -297,10 +348,68 @@ private final class NativeDateTimePickerViewController: UIViewController {
 
     let button = UIButton(type: .system)
     button.translatesAutoresizingMaskIntoConstraints = false
-    button.setTitle(resetText, for: .normal)
-    button.titleLabel?.font = .preferredFont(forTextStyle: .body)
-    button.tintColor = resetTextColor ?? .systemRed
+    let color = resetTextColor ?? .systemRed
+
+    if #available(iOS 15.0, *) {
+      var configuration = UIButton.Configuration.tinted()
+      configuration.title = resetText
+      configuration.baseForegroundColor = color
+      configuration.baseBackgroundColor = color
+      configuration.cornerStyle = .capsule
+      configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 22, bottom: 10, trailing: 22)
+      button.configuration = configuration
+    } else {
+      button.setTitle(resetText, for: .normal)
+      button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 22, bottom: 10, right: 22)
+      button.backgroundColor = color.withAlphaComponent(0.16)
+      button.tintColor = color
+      button.layer.cornerRadius = 18
+    }
+
+    button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+    button.layer.borderColor = color.withAlphaComponent(0.8).cgColor
+    button.layer.borderWidth = 1
+    button.layer.cornerCurve = .continuous
     button.addTarget(self, action: #selector(resetPressed), for: .touchUpInside)
+    return button
+  }
+
+  private func makeHeaderButton(
+    systemName: String,
+    accessibilityLabel: String,
+    foregroundColor: UIColor,
+    backgroundColor: UIColor
+  ) -> UIButton {
+    let button = UIButton(type: .system)
+
+    if #available(iOS 26.0, *) {
+      var configuration = UIButton.Configuration.glass()
+      configuration.image = UIImage(systemName: systemName)
+      configuration.baseForegroundColor = foregroundColor
+      configuration.cornerStyle = .capsule
+      configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
+      button.configuration = configuration
+    } else if #available(iOS 15.0, *) {
+      var configuration = UIButton.Configuration.filled()
+      configuration.image = UIImage(systemName: systemName)
+      configuration.baseForegroundColor = foregroundColor
+      configuration.baseBackgroundColor = backgroundColor
+      configuration.cornerStyle = .capsule
+      configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+      button.configuration = configuration
+    } else {
+      button.setImage(UIImage(systemName: systemName), for: .normal)
+      button.tintColor = foregroundColor
+      button.backgroundColor = backgroundColor
+      button.layer.cornerRadius = 18
+    }
+
+    button.accessibilityLabel = accessibilityLabel
+    if #unavailable(iOS 26.0) {
+      button.layer.borderColor = UIColor.pdPickerButtonBorder.cgColor
+      button.layer.borderWidth = 1
+    }
+    button.layer.cornerCurve = .continuous
     return button
   }
 
@@ -326,6 +435,40 @@ private extension ISO8601DateFormatter {
 }
 
 private extension UIColor {
+  static func pdPickerSheetFill(_ color: UIColor?) -> UIColor {
+    UIColor { traits in
+      let fallback = traits.userInterfaceStyle == .dark
+        ? UIColor(red: 20 / 255, green: 21 / 255, blue: 23 / 255, alpha: 1)
+        : UIColor(red: 253 / 255, green: 240 / 255, blue: 224 / 255, alpha: 1)
+      return (color ?? fallback).withAlphaComponent(traits.userInterfaceStyle == .dark ? 0.90 : 0.88)
+    }
+  }
+
+  static func pdPickerPanelFill(_ color: UIColor?) -> UIColor {
+    UIColor { traits in
+      let fallback = traits.userInterfaceStyle == .dark
+        ? UIColor(red: 27 / 255, green: 29 / 255, blue: 33 / 255, alpha: 1)
+        : UIColor(red: 255 / 255, green: 250 / 255, blue: 244 / 255, alpha: 1)
+      return (color ?? fallback).withAlphaComponent(traits.userInterfaceStyle == .dark ? 0.82 : 0.78)
+    }
+  }
+
+  static var pdPickerButtonFill: UIColor {
+    UIColor { traits in
+      traits.userInterfaceStyle == .dark
+        ? UIColor(white: 1.0, alpha: 0.11)
+        : UIColor(white: 0.0, alpha: 0.08)
+    }
+  }
+
+  static var pdPickerButtonBorder: UIColor {
+    UIColor { traits in
+      traits.userInterfaceStyle == .dark
+        ? UIColor(white: 1.0, alpha: 0.18)
+        : UIColor(white: 0.0, alpha: 0.12)
+    }
+  }
+
   static func pdFromHex(_ hex: String) -> UIColor? {
     var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
     if cleaned.hasPrefix("#") {

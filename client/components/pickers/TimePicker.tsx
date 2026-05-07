@@ -90,6 +90,8 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
       cancelText: t('common.cancel'),
       confirmText: t('common.done'),
       accentColor: colors.primary,
+      sheetBackgroundColor: colors.background,
+      panelBackgroundColor: colors.surface,
     })) {
       return;
     }
@@ -97,7 +99,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     setDraftHour(nextHour);
     setDraftMinute(nextMinute);
     openPopover();
-  }, [colors.primary, disabled, nativePickerModule, onChange, t, textValue]);
+  }, [colors.background, colors.primary, colors.surface, disabled, nativePickerModule, onChange, t, textValue]);
 
   function handleDone() {
     const next = normalizeTime(`${draftHour}:${draftMinute}`);

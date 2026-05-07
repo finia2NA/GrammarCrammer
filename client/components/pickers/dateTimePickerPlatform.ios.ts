@@ -6,6 +6,8 @@ interface IosPickerOptions {
   cancelText: string;
   confirmText: string;
   accentColor?: string;
+  sheetBackgroundColor?: string;
+  panelBackgroundColor?: string;
 }
 
 interface IosDatePickerOptions extends IosPickerOptions {
@@ -56,6 +58,8 @@ export function openIosDatePicker(
     cancelText: options.cancelText,
     confirmText: options.confirmText,
     accentColor: options.accentColor,
+    sheetBackgroundColor: options.sheetBackgroundColor,
+    panelBackgroundColor: options.panelBackgroundColor,
     resetText: options.resetButton?.label,
     resetTextColor: options.resetButton?.textColor,
   }).then((result) => {
@@ -87,6 +91,8 @@ export function openIosTimePicker(
     confirmText: options.confirmText,
     is24Hour: true,
     accentColor: options.accentColor,
+    sheetBackgroundColor: options.sheetBackgroundColor,
+    panelBackgroundColor: options.panelBackgroundColor,
   }).then((result) => {
     if (result.action === 'confirmed' && result.value) {
       onSelected(new Date(result.value));

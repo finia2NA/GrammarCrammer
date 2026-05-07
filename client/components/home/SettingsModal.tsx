@@ -10,7 +10,7 @@ import {
 import { ThemedSwitch } from '@/components/ThemedSwitch';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import { CARD_ORDER_OPTIONS, JUDGE_WITH_EXPLANATION_OPTIONS, FEEDBACK_BREVITY_OPTIONS, KEY_PREFERENCE_OPTIONS, MAX_DECKS_OPTIONS, NEW_DECKS_OPTIONS, UNLIMITED_NEW_DECKS } from '@patterndeck/shared';
+import { CARD_ORDER_OPTIONS, FEEDBACK_BREVITY_OPTIONS, KEY_PREFERENCE_OPTIONS, MAX_DECKS_OPTIONS, NEW_DECKS_OPTIONS, UNLIMITED_NEW_DECKS } from '@patterndeck/shared';
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { clearAuthToken, clearUserEmail, clearUserId, getUserEmail, getUserId } from '@/lib/storage';
@@ -234,7 +234,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           />
         </SettingsRow>
         <SettingsRow label={t('settings.contextAwareJudging')} description={t('settings.contextAwareJudgingDescription')}>
-          <PillDropdown value={judgeWithExplanation} options={JUDGE_WITH_EXPLANATION_OPTIONS} onChange={setJudgeWithExplanation} formatLabel={(v: 'on' | 'off') => v === 'on' ? t('settings.on') : t('settings.off')} />
+          <ThemedSwitch
+            value={judgeWithExplanation === 'on'}
+            onValueChange={(enabled) => setJudgeWithExplanation(enabled ? 'on' : 'off')}
+            disabled={saving}
+          />
         </SettingsRow>
         <SettingsRow label={t('settings.feedbackBrevity')} description={t('settings.feedbackBrevityDescription')}>
           <PillDropdown value={feedbackBrevity} options={FEEDBACK_BREVITY_OPTIONS} onChange={setFeedbackBrevity} formatLabel={(v: 'brief' | 'normal') => v === 'brief' ? t('settings.brief') : t('settings.normal')} />
