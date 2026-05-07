@@ -210,6 +210,8 @@ Deployment is handled via SSH-based scripts in deploy/.
 
 `./deploy/deploy.sh`
 
+The web export runs with Expo's `--clear` flag so NativeWind/Tailwind config changes are not served from Metro's stale CSS cache.
+
 Android internal testing is built locally and submitted with EAS Submit:
 
 `pnpm ship:android`

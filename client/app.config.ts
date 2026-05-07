@@ -59,7 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
   },
   web: {
-    output: 'static' as const,
+    output: 'single' as const,
     favicon: './assets/images/favicon.png',
   },
   plugins: [

@@ -11,7 +11,7 @@ REMOTE_WEB="/home/patterndeck/web"
 TEMP_DIR="/tmp/patterndeck-deploy"
 
 echo "=== Building frontend (Expo web) ==="
-pnpm --filter client exec expo export --platform web
+pnpm --filter client exec expo export --platform web --clear
 
 echo ""
 echo "=== Building shared package ==="

@@ -30,7 +30,7 @@
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",
     "xcode": "pnpm prebuild && open client/ios/*.xcworkspace",
-    "build:web": "pnpm --filter client exec expo export --platform web",
+    "build:web": "pnpm --filter client exec expo export --platform web --clear",
     "ship": "bash deploy/deploy.sh",
     "ship:android": "bash deploy/ship-android.sh",
     "setup:server": "bash deploy/setup-server.sh",
