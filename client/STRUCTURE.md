@@ -120,6 +120,10 @@ client/
 │   ├── pill-dropdown/          ← Custom native dropdown module (iOS + web implementations)
 │   └── platform-button/        ← Custom native iOS UIButton module
 │
+├── public/
+│   ├── index.html              ← SPA HTML shell with pre-JS loading screen
+│   └── logo*.svg               ← Public web logo assets
+│
 └── assets/
     └── images/                 ← App icon, splash screen, etc.
 ```

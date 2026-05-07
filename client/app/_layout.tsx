@@ -14,6 +14,12 @@ import { getAuthToken, setUserId } from '@/lib/storage';
 import { syncPushDeviceRegistrationIfEnabled } from '@/lib/notifications';
 import { useIsStageManagerWindow } from '@/hooks/useIsStageManagerWindow';
 
+declare global {
+  interface Window {
+    __gcMarkAppReady?: () => void;
+  }
+}
+
 // Adjusts safe area insets for Stage Manager floating windows on iPadOS, where
 // the window title bar (traffic lights) isn't always reflected in insets.top.
 function StageManagerInsetAdapter({ children }: { children: ReactNode }) {
@@ -54,12 +60,16 @@ export default function RootLayout() {
       .catch(() => {});
 
     if (Platform.OS === 'web') {
-      const loader = document.getElementById('gc-loader');
-      if (loader) {
-        loader.style.transition = 'opacity 0.3s ease-out';
-        loader.style.opacity = '0';
-        loader.style.pointerEvents = 'none';
-        setTimeout(() => loader.remove(), 350);
+      if (window.__gcMarkAppReady) {
+        window.__gcMarkAppReady();
+      } else {
+        const loader = document.getElementById('gc-loader');
+        if (loader) {
+          loader.style.transition = 'opacity 0.3s ease-out';
+          loader.style.opacity = '0';
+          loader.style.pointerEvents = 'none';
+          setTimeout(() => loader.remove(), 350);
+        }
       }
     }
   }, []);
