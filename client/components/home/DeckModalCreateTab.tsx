@@ -8,6 +8,7 @@ import { usePageSheetScrolling } from '@/components/PageSheetScrollContext';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { useI18n } from '@/lib/i18n';
 import type { GrammarCaseSummary } from '@/lib/api';
+import { useScreenSize } from '@/hooks/useScreenSize';
 
 interface DeckModalCreateTabProps {
   isCollection: boolean;
@@ -31,6 +32,8 @@ interface DeckModalCreateTabProps {
   grammarCases?: GrammarCaseSummary[];
   regenerateGrammarCases?: boolean;
   onRegenerateGrammarCases?: () => void;
+  explanationChanged?: boolean;
+  editNodeId?: string;
 }
 
 export function DeckModalCreateTab({
@@ -55,9 +58,14 @@ export function DeckModalCreateTab({
   grammarCases = [],
   regenerateGrammarCases = false,
   onRegenerateGrammarCases,
+  explanationChanged = false,
+  editNodeId,
 }: DeckModalCreateTabProps) {
   const colors = useColors();
   const { t } = useI18n();
+  const { isSmallScreen } = useScreenSize();
+  const isLargeWeb = Platform.OS === 'web' && !isSmallScreen;
+  const showEnhancedEditorButton = isLargeWeb && !!editNodeId && !explanationChanged;
   const isScrollingRef = usePageSheetScrolling();
   const topicRef = useRef<TextInput>(null);
   const clarificationRef = useRef<TextInput>(null);
@@ -122,35 +130,67 @@ export function DeckModalCreateTab({
           />
 
           {showExplanationField && (
-            <View className="mb-6 rounded-xl border border-border bg-background-muted overflow-hidden">
-              <TouchableOpacity
-                className="px-4 py-3 flex-row items-center justify-between"
-                onPress={() => setExplanationExpanded(v => !v)}
-                activeOpacity={0.85}
-              >
-                <View className="flex-1 pr-3">
-                  <Text className="text-foreground/80 text-sm font-medium">{t('deck.generatedExplanation')}</Text>
-                  <Text className="text-foreground-secondary text-xs mt-1">
-                    {t('deck.generatedExplanationDescription')}
-                  </Text>
+            <View className="mb-6">
+              {showEnhancedEditorButton ? (
+                <TouchableOpacity
+                  className="rounded-xl border border-border bg-background-muted overflow-hidden px-4 py-3 flex-row items-center justify-between"
+                  onPress={() => {
+                    window.open(`/edit-explanation?nodeId=${editNodeId}`, '_blank');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View className="flex-1 pr-3">
+                    <Text className="text-foreground/80 text-sm font-medium">{t('deck.generatedExplanation')}</Text>
+                    <Text className="text-foreground-secondary text-xs mt-1">
+                      {t('deck.generatedExplanationDescription')}
+                    </Text>
+                    <Text className="text-primary text-xs font-semibold mt-1">
+                      {t('deck.openEnhancedEditor')}
+                    </Text>
+                  </View>
+                  <Text className="text-foreground-secondary text-sm">▶</Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="rounded-xl border border-border bg-background-muted overflow-hidden">
+                  <TouchableOpacity
+                    className="px-4 py-3 flex-row items-center justify-between"
+                    onPress={() => setExplanationExpanded(v => !v)}
+                    activeOpacity={0.85}
+                  >
+                    <View className="flex-1 pr-3">
+                      <Text className="text-foreground/80 text-sm font-medium">{t('deck.generatedExplanation')}</Text>
+                      <Text className="text-foreground-secondary text-xs mt-1">
+                        {t('deck.generatedExplanationDescription')}
+                      </Text>
+                      {explanationChanged ? (
+                        <Text className="text-primary text-xs font-semibold mt-1">
+                          {t('deck.explanationChangedCasesWillRegenerate')}
+                        </Text>
+                      ) : (
+                        <Text className="text-foreground-secondary italic text-xs mt-1">
+                          {t('deck.enhancedEditorHint')}
+                        </Text>
+                      )}
+                    </View>
+                    <Text className="text-foreground-secondary text-sm">{explanationExpanded ? '▼' : '▶'}</Text>
+                  </TouchableOpacity>
+                  <AnimatedCollapsible expanded={explanationExpanded} keepMounted>
+                    <View className="px-4 pb-4">
+                      <TextInput
+                        ref={explanationRef}
+                        className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
+                        placeholder={t('deck.generatedExplanationPlaceholder')}
+                        placeholderTextColor={colors.foreground_muted}
+                        value={explanation}
+                        onChangeText={onExplanationChange}
+                        multiline
+                        style={{ minHeight: 160, textAlignVertical: 'top' }}
+                        onFocus={() => handleScrollAwareFocus(explanationRef)}
+                      />
+                    </View>
+                  </AnimatedCollapsible>
                 </View>
-                <Text className="text-foreground-secondary text-sm">{explanationExpanded ? '▼' : '▶'}</Text>
-              </TouchableOpacity>
-              <AnimatedCollapsible expanded={explanationExpanded} keepMounted>
-                <View className="px-4 pb-4">
-                  <TextInput
-                    ref={explanationRef}
-                    className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
-                    placeholder={t('deck.generatedExplanationPlaceholder')}
-                    placeholderTextColor={colors.foreground_muted}
-                    value={explanation}
-                    onChangeText={onExplanationChange}
-                    multiline
-                    style={{ minHeight: 160, textAlignVertical: 'top' }}
-                    onFocus={() => handleScrollAwareFocus(explanationRef)}
-                  />
-                </View>
-              </AnimatedCollapsible>
+              )}
             </View>
           )}
 
@@ -164,7 +204,7 @@ export function DeckModalCreateTab({
                 <View className="flex-1 pr-3">
                   <Text className="text-foreground/80 text-sm font-medium">{t('deck.grammarCases')}</Text>
                   <Text className="text-foreground-secondary text-xs mt-1">
-                    {regenerateGrammarCases ? t('deck.grammarCasesRegenerationScheduled') : caseCountLabel}
+                    {(regenerateGrammarCases || explanationChanged) ? t('deck.grammarCasesRegenerationScheduled') : caseCountLabel}
                   </Text>
                 </View>
                 <Text className="text-foreground-secondary text-sm">{casesExpanded ? '▼' : '▶'}</Text>

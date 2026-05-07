@@ -254,19 +254,9 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
 
     if (result.regenerateExplanation) {
       enqueueExplanation(req.userId!, req.params.nodeId);
-    } else if (regenerateGrammarCases === true) {
+    } else if (regenerateGrammarCases === true || result.explanationChanged) {
       await enqueueGrammarCaseExtraction(req.userId!, req.params.nodeId, {
         force: true,
-        analyticsContext: {
-          appSessionId: req.appSessionId,
-          deckId: req.params.nodeId,
-          deckTopic: typeof topic === 'string' ? topic : undefined,
-          language: typeof language === 'string' ? language : undefined,
-          traceId: `case_extraction:${req.params.nodeId}`,
-        },
-      });
-    } else if (typeof explanation === 'string' && explanation.trim().length > 0) {
-      await enqueueGrammarCaseExtraction(req.userId!, req.params.nodeId, {
         analyticsContext: {
           appSessionId: req.appSessionId,
           deckId: req.params.nodeId,
@@ -286,7 +276,7 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
       card_count: cardCount !== undefined ? Number(cardCount) : undefined,
       has_clarification: typeof clarification === 'string' ? clarification.trim().length > 0 : undefined,
       regenerated_explanation: result.regenerateExplanation,
-      regenerated_grammar_cases: regenerateGrammarCases === true,
+      regenerated_grammar_cases: regenerateGrammarCases === true || result.explanationChanged,
       updated_fields: ['name', 'topic', 'clarification', 'language', 'cardCount', 'explanation']
         .filter(field => req.body[field] !== undefined),
     });

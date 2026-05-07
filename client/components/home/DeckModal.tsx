@@ -109,6 +109,7 @@ export function DeckModal({
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
   const [explanation, setExplanation] = useState('');
+  const [originalExplanation, setOriginalExplanation] = useState('');
   const [grammarCases, setGrammarCases] = useState<GrammarCaseSummary[]>([]);
   const [regenerateGrammarCases, setRegenerateGrammarCases] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
@@ -142,6 +143,7 @@ export function DeckModal({
             setLanguage(deck.language as Language);
             setCardCount(deck.cardCount as CardCount);
             setExplanation(deck.explanation ?? '');
+            setOriginalExplanation(deck.explanation ?? '');
             if (deck.explanation) {
               const result = await getGrammarCases(node.id, { sort: 'order' });
               setGrammarCases(result.cases);
@@ -180,6 +182,7 @@ export function DeckModal({
       setLanguage(initialData?.language ?? 'Japanese');
       setCardCount(initialData?.cardCount ?? 0);
       setExplanation(initialData?.explanation ?? '');
+      setOriginalExplanation(initialData?.explanation ?? '');
     }
   }, [visible, editNode, editNodePath, isEdit, onEditDataLoaded, initialData]);
 
@@ -218,6 +221,7 @@ export function DeckModal({
     topic.trim() !== editNode.deck.topic ||
     clarification.trim() !== (editNode.deck.clarification ?? '')
   );
+  const explanationChanged = isEdit && !isCollection && explanation !== originalExplanation;
 
   function handleSubmit() {
     void submitDeckForm();
@@ -318,6 +322,8 @@ export function DeckModal({
       grammarCases={grammarCases}
       regenerateGrammarCases={regenerateGrammarCases}
       onRegenerateGrammarCases={() => setRegenerateGrammarCases(true)}
+      explanationChanged={explanationChanged}
+      editNodeId={editNode?.id}
     />
   );
 

@@ -13,6 +13,7 @@ client/
 │   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, alpha warning, sign-up, API key
 │   ├── home.tsx                ← Main screen: deck tree, quick study input, modals
 │   ├── session.tsx             ← Study session: card loop, explanation overlay, chat, SRS rating
+│   ├── edit-explanation.tsx    ← Dedicated Markdown editor: Monaco + live preview + AI chat (web large-screen only)
 │   └── reset-password.tsx      ← Password reset flow (token from email link)
 │
 ├── components/
@@ -43,6 +44,13 @@ client/
 │   │   ├── CardChat.tsx                    ← In-session chat about the current card
 │   │   ├── ClickableEnglishSentence.tsx    ← Tappable English prompt with word lookup
 │   │   └── FuriganaText.tsx               ← Japanese furigana renderer
+│   │
+│   ├── editor/
+│   │   ├── MonacoEditor.web.tsx            ← Monaco editor wrapper (web only; markdown, live AI value sync)
+│   │   ├── MonacoEditor.tsx                ← Native stub (returns null)
+│   │   ├── ExplanationChat.tsx             ← AI chat panel for agentic search/replace explanation edits
+│   │   ├── ResizeHandle.tsx                ← Draggable vertical divider (web pointer events + native PanResponder)
+│   │   └── ResizablePanels.tsx             ← N-panel flex layout with draggable dividers between each pair
 │   │
 │   ├── onboarding/
 │   │   ├── AccountCard.tsx                 ← Account creation step (email/password or OAuth)

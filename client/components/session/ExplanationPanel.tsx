@@ -10,6 +10,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { ResizeHandle } from '@/components/editor/ResizeHandle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/theme';
 import { GrammarMarkdown } from './GrammarMarkdown';
@@ -45,53 +46,7 @@ export function SidePanel({
   const insets = useSafeAreaInsets();
   const c = useColors();
   const [width, setWidth] = useState(320);
-  const widthRef = useRef(320);
-  const [isDragging, setIsDragging] = useState(false);
-
-  // ── Web: pointer-event drag (mouse + Apple Pencil on iPad web) ─────────────
-  function onDragHandlePressWeb(e: any) {
-    const startX: number = e.nativeEvent.clientX ?? e.nativeEvent.pageX;
-    const startWidth = widthRef.current;
-    setIsDragging(true);
-
-    function onPointerMove(ev: PointerEvent) {
-      ev.preventDefault();
-      const next = Math.max(180, Math.min(600, startWidth + ev.clientX - startX));
-      setWidth(next);
-      widthRef.current = next;
-    }
-
-    function onPointerUp() {
-      setIsDragging(false);
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
-    }
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-  }
-
-  // ── Native (Catalyst, iOS, Android): PanResponder drag ────────────────────
-  const dragStartWidthRef = useRef(320);
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        dragStartWidthRef.current = widthRef.current;
-        setIsDragging(true);
-      },
-      onPanResponderMove: (_, { dx }) => {
-        const next = Math.max(180, Math.min(600, dragStartWidthRef.current + dx));
-        setWidth(next);
-        widthRef.current = next;
-      },
-      onPanResponderRelease: () => setIsDragging(false),
-    })
-  ).current;
-
-  const dragHandleProps = Platform.OS === 'web'
-    ? { onStartShouldSetResponder: () => true, onResponderGrant: onDragHandlePressWeb }
-    : panResponder.panHandlers;
+  const widthAtDragStartRef = useRef(320);
 
   return (
     <View style={{ width, flexDirection: 'row', height: '100%' } as any}>
@@ -117,30 +72,10 @@ export function SidePanel({
         </ScrollView>
       </View>
 
-      {/* Drag handle */}
-      <View
-        {...dragHandleProps}
-        style={{
-          width: 6,
-          cursor: 'col-resize',
-          backgroundColor: isDragging ? c.primary : c.background_muted,
-          alignItems: 'center',
-          justifyContent: 'center',
-        } as any}
-      >
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={{
-              width: 2,
-              height: 2,
-              borderRadius: 1,
-              backgroundColor: c.primary,
-              marginVertical: 2,
-            }}
-          />
-        ))}
-      </View>
+      <ResizeHandle
+        onDragStart={() => { widthAtDragStartRef.current = width; }}
+        onDelta={(dx) => setWidth(Math.max(180, Math.min(600, widthAtDragStartRef.current + dx)))}
+      />
     </View>
   );
 }

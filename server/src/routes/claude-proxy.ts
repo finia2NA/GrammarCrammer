@@ -9,6 +9,7 @@ import {
   rateSession,
   generateWordHint,
   explainSentence,
+  editExplanation,
 } from '../services/claude.service.js';
 import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -192,6 +193,25 @@ claudeProxyRouter.post('/word-hint', async (req, res, next) => {
       ...ctx,
       traceId: ctx.traceId ?? (ctx.studySessionId ? `word_hint:${ctx.studySessionId}:${ctx.cardIndex ?? 'unknown'}:${ctx.wordIndex ?? 0}` : undefined),
     });
+    res.json(result);
+  } catch (e) { next(e); }
+});
+
+// Non-streaming: AI explanation edit
+claudeProxyRouter.post('/explanation/edit', async (req, res, next) => {
+  try {
+    const { nodeId, explanation, instruction, messages, analyticsContext: rawCtx } = req.body;
+    if (!explanation || !instruction) {
+      throw new AppError(400, 'MISSING_FIELDS', 'explanation and instruction are required.');
+    }
+    logAI(req.userId!, 'explanation-edit', 'sonnet');
+    const ctx = analyticsContext(req.body, {
+      appSessionId: req.appSessionId,
+      deckId: typeof nodeId === 'string' ? nodeId : undefined,
+      traceId: typeof nodeId === 'string' ? `explanation_edit:${nodeId}:${Date.now()}` : undefined,
+    });
+    const msgs = Array.isArray(messages) ? messages as Array<{ role: 'user' | 'assistant'; content: string }> : [];
+    const result = await editExplanation(req.userId!, String(explanation), String(instruction), msgs, ctx);
     res.json(result);
   } catch (e) { next(e); }
 });

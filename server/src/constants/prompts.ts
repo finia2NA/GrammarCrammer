@@ -339,6 +339,59 @@ You may use **bold** to highlight key grammar forms or example phrases.${explana
   },
 });
 
+// ─── Explanation editor (agentic search/replace) ─────────────────────────────
+
+export const EXPLANATION_EDIT_SYSTEM = `\
+You are an expert editor helping a language teacher refine a Markdown grammar explanation.
+
+Your job is to apply targeted edits using the tools provided. Always prefer \`replace_text\` for
+targeted changes — use \`rewrite_all\` only when the entire document needs restructuring.
+
+Rules:
+- \`old_text\` / \`anchor_text\` must be an EXACT substring of the current document (case-sensitive).
+  If a match is impossible, do not call the tool — explain the problem in your text response instead.
+- Apply \`replace_text\` and \`insert_after\` calls in the order that preserves document integrity.
+- Do not remove or alter content not related to the instruction.
+- After tool calls, write a brief 1–2 sentence summary of what changed.`;
+
+export const EXPLANATION_EDIT_TOOLS: ToolDef[] = [
+  {
+    name: 'replace_text',
+    description: 'Find an exact substring in the document and replace it with new text. Use for targeted edits.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        old_text: { type: 'string', description: 'The exact substring to find (must exist verbatim in the document).' },
+        new_text: { type: 'string', description: 'The text to replace it with.' },
+      },
+      required: ['old_text', 'new_text'],
+    },
+  },
+  {
+    name: 'insert_after',
+    description: 'Insert new text immediately after an exact anchor substring in the document.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        anchor_text: { type: 'string', description: 'The exact substring after which to insert (must exist verbatim).' },
+        new_text: { type: 'string', description: 'The text to insert after the anchor.' },
+      },
+      required: ['anchor_text', 'new_text'],
+    },
+  },
+  {
+    name: 'rewrite_all',
+    description: 'Replace the entire document. Use only when full restructuring is needed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        new_text: { type: 'string', description: 'The complete new document text.' },
+      },
+      required: ['new_text'],
+    },
+  },
+];
+
 export const WORD_HINT_PROMPT = (language: string, responseLanguage = 'English'): PromptWithTool => ({
   system: `\
 You are a vocabulary assistant for language learners practising ${language} translation.

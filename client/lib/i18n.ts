@@ -245,6 +245,17 @@ const en = {
   'status.caseExtractionQueued': 'Case extraction queued',
   'status.caseExtractionFailed': 'Case extraction failed',
   'history.grammarCaseDifficulty': 'Grammar Case Difficulty',
+  'deck.openEnhancedEditor': 'Open Enhanced Editor',
+  'deck.enhancedEditorHint': 'For enhanced editing with AI assistance, open on web in a larger screen.',
+  'deck.explanationChangedCasesWillRegenerate': 'Saving will regenerate grammar cases from the updated explanation.',
+  'editor.save': 'Save',
+  'editor.saving': 'Saving...',
+  'editor.diff': 'Diff',
+  'editor.unsavedChanges': 'You have unsaved changes. Discard?',
+  'editor.smallScreenMessage': 'The enhanced editor requires a larger screen. Open this page on a desktop browser.',
+  'editor.chatPlaceholder': 'Describe changes to make...',
+  'editor.changesApplied': 'Changes applied',
+  'editor.costLabel': 'Cost',
 } as const;
 
 const de: Partial<Record<keyof typeof en, string>> = {
@@ -480,6 +491,17 @@ const de: Partial<Record<keyof typeof en, string>> = {
   'status.caseExtractionQueued': 'Fall-Extraktion in der Warteschlange',
   'status.caseExtractionFailed': 'Fall-Extraktion fehlgeschlagen',
   'history.grammarCaseDifficulty': 'Schwierigkeit der Grammatikfälle',
+  'deck.openEnhancedEditor': 'Erweiterter Editor öffnen',
+  'deck.enhancedEditorHint': 'Für erweiterte Bearbeitung mit KI-Unterstützung im Web auf einem größeren Bildschirm öffnen.',
+  'deck.explanationChangedCasesWillRegenerate': 'Beim Speichern werden die Grammatikfälle aus der aktualisierten Erklärung neu generiert.',
+  'editor.save': 'Speichern',
+  'editor.saving': 'Speichern...',
+  'editor.diff': 'Diff',
+  'editor.unsavedChanges': 'Du hast ungespeicherte Änderungen. Verwerfen?',
+  'editor.smallScreenMessage': 'Der erweiterte Editor erfordert einen größeren Bildschirm. Öffne diese Seite in einem Desktop-Browser.',
+  'editor.chatPlaceholder': 'Änderungen beschreiben...',
+  'editor.changesApplied': 'Änderungen angewendet',
+  'editor.costLabel': 'Kosten',
 };
 
 const ja: Partial<Record<keyof typeof en, string>> = {
@@ -715,6 +737,17 @@ const ja: Partial<Record<keyof typeof en, string>> = {
   'status.caseExtractionQueued': 'ケース抽出の待機中',
   'status.caseExtractionFailed': 'ケース抽出に失敗しました',
   'history.grammarCaseDifficulty': '文法ケースの難易度',
+  'deck.openEnhancedEditor': '高度なエディタを開く',
+  'deck.enhancedEditorHint': 'AI支援による高度な編集は、大きな画面のWebブラウザで開いてください。',
+  'deck.explanationChangedCasesWillRegenerate': '保存すると、更新された説明から文法ケースが再生成されます。',
+  'editor.save': '保存',
+  'editor.saving': '保存中...',
+  'editor.diff': 'Diff',
+  'editor.unsavedChanges': '未保存の変更があります。破棄しますか？',
+  'editor.smallScreenMessage': '高度なエディタは大きな画面が必要です。デスクトップブラウザで開いてください。',
+  'editor.chatPlaceholder': '変更内容を入力...',
+  'editor.changesApplied': '変更が適用されました',
+  'editor.costLabel': 'コスト',
 };
 
 export type TranslationKey = keyof typeof en;

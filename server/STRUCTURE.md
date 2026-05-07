@@ -137,6 +137,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | POST   | `/judge`                | Judge a user's answer (Haiku, JSON response)             |
 | POST   | `/explain-sentence`     | Explain the correct sentence when learner skips (Haiku)  |
 | POST   | `/explanation/stream`   | Stream grammar explanation (Sonnet, SSE)                 |
+| POST   | `/explanation/edit`     | AI explanation editor: apply search/replace tool calls to Markdown (Sonnet, JSON response) |
 | POST   | `/rejection/stream`     | Stream explanation of a wrong answer (Sonnet, SSE)       |
 | POST   | `/chat/stream`          | Stream chat about the current card (Sonnet, SSE)         |
 
@@ -157,6 +158,7 @@ Owns all Anthropic API communication.
 - `resolveApiKey(userId)` — determines which API key to use (user's own or central server key) based on user preference and limit checks. Throws 429 if central key limits are exceeded.
 - Every public AI function records usage via `recordUsage()` after the call completes.
 - `generateDeckExplanation(userId, deckId)` — generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`), then queues grammar-case extraction for saved-deck card coverage.
+- `editExplanation(userId, explanation, instruction, messages, analyticsContext?)` — agentic explanation editor; sends the current Markdown document + instruction to Claude Sonnet with `replace_text`, `insert_after`, and `rewrite_all` tools; applies all returned tool calls sequentially; returns `{ explanation, summary, cost }`.
 
 ### `grammar-case.service.ts`
 Maintains per-deck grammar subcases used for coverage-aware card generation.

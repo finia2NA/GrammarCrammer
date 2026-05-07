@@ -134,7 +134,7 @@ export async function updateDeck(
   userId: string,
   nodeId: string,
   updates: { name?: string; topic?: string; clarification?: string | null; language?: string; cardCount?: number; explanation?: string },
-): Promise<{ regenerateExplanation: boolean }> {
+): Promise<{ regenerateExplanation: boolean; explanationChanged: boolean }> {
   const node = await prisma.node.findFirst({
     where: { id: nodeId, userId },
     include: { deck: true },
@@ -142,6 +142,7 @@ export async function updateDeck(
   if (!node?.deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
   let regenerate = false;
+  let explanationChanged = false;
 
   if (updates.name !== undefined) {
     await prisma.node.update({ where: { id: nodeId }, data: { name: updates.name } });
@@ -176,13 +177,16 @@ export async function updateDeck(
       },
     });
   } else if (updates.explanation !== undefined) {
-    await prisma.deck.update({
-      where: { nodeId },
-      data: { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' },
-    });
+    explanationChanged = updates.explanation !== node.deck.explanation;
+    if (explanationChanged) {
+      await prisma.deck.update({
+        where: { nodeId },
+        data: { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' },
+      });
+    }
   }
 
-  return { regenerateExplanation: regenerate };
+  return { regenerateExplanation: regenerate, explanationChanged };
 }
 
 export async function renameCollection(userId: string, nodeId: string, newName: string): Promise<void> {

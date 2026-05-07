@@ -674,6 +674,19 @@ export async function wordHint(
   });
 }
 
+export async function editExplanationAI(
+  nodeId: string | undefined,
+  explanation: string,
+  instruction: string,
+  messages: ChatMessage[],
+  analyticsContext?: AnalyticsContext,
+): Promise<{ explanation: string; summary: string; cost: number }> {
+  return request('/ai/explanation/edit', {
+    method: 'POST',
+    body: JSON.stringify({ nodeId, explanation, instruction, messages, analyticsContext }),
+  });
+}
+
 export async function chatAboutCard(
   card: Card,
   userAnswer: string,
