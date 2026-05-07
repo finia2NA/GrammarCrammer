@@ -62,6 +62,8 @@ function getConfiguredBaseUrl(): string {
 }
 
 async function getBaseUrl(): Promise<string> {
+  if (!__DEV__) return getConfiguredBaseUrl();
+
   const override = await getBackendBaseUrl();
   return override ? resolveBackendBaseUrlForPlatform(override) : getConfiguredBaseUrl();
 }

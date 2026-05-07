@@ -44,7 +44,6 @@ export function SidePanel({
   wasTruncated: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const c = useColors();
   const [width, setWidth] = useState(320);
   const widthAtDragStartRef = useRef(320);
 

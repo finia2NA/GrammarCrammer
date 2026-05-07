@@ -44,7 +44,7 @@ import type { TranslationKey } from '@/lib/i18n';
 // ─── Card content ────────────────────────────────────────────────────────────
 
 const TOTAL_STEPS = 4;
-const BACKEND_DEBUG_UI_ENABLED = Constants.expoConfig?.extra?.backendDebugUiEnabled !== false;
+const BACKEND_DEBUG_UI_ENABLED = __DEV__ && Constants.expoConfig?.extra?.backendDebugUiEnabled !== false;
 
 const WelcomeCard = memo(function WelcomeCard({ t }: { t: (key: TranslationKey) => string }) {
   return (

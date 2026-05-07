@@ -200,7 +200,7 @@ claudeProxyRouter.post('/word-hint', async (req, res, next) => {
 // Non-streaming: AI explanation edit
 claudeProxyRouter.post('/explanation/edit', async (req, res, next) => {
   try {
-    const { nodeId, explanation, instruction, messages, analyticsContext: rawCtx } = req.body;
+    const { nodeId, explanation, instruction, messages } = req.body;
     if (!explanation || !instruction) {
       throw new AppError(400, 'MISSING_FIELDS', 'explanation and instruction are required.');
     }

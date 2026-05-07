@@ -29,7 +29,13 @@ client/
 │   │   ├── UsageBar.tsx                    ← Monthly cost usage visualization
 │   │   ├── DueIndicator.tsx                ← SRS due-date badge on deck items
 │   │   ├── LanguagePicker.tsx              ← Language selection dropdown
-│   │   ├── ReviewHistoryModal.tsx           ← Review history with charts, table, and study action buttons
+│   │   ├── ReviewHistoryModal.tsx           ← Review history coordinator modal
+│   │   ├── review-history/
+│   │   │   ├── ReviewHistoryStats.tsx       ← Due/interval/review summary stats
+│   │   │   ├── ReviewHistoryCharts.tsx      ← Interval-over-time and grammar-case difficulty charts
+│   │   │   ├── ReviewHistoryTable.tsx       ← Paginated review/event table
+│   │   │   ├── ReviewScheduleSection.tsx    ← Due-date picker and reset-to-never-studied controls
+│   │   │   └── utils.ts                      ← Review-history date/star formatting helpers
 │   │   ├── SectionCard.tsx                 ← Styled section container card
 │   │   └── SettingsRow.tsx                 ← Single settings row layout
 │   │
@@ -157,7 +163,7 @@ Both modes share `SessionUI`: explanation overlay, card loop (`FlashcardDeck`), 
 Handles the deep-link from a password reset email. Reads the token from the URL, lets the user set a new password, and redirects to onboarding on success.
 
 ### `lib/api.ts`
-The single place all server communication happens. Uses environment-aware base URL: production web uses relative `/api` (same origin via nginx), native production uses `extra.productionBackendBaseUrl`, and dev uses the configured host/port from `app.config.ts` → `extra`. Exports typed functions for every endpoint group:
+The single place all server communication happens. Uses environment-aware base URL: production web uses relative `/api/v1` (same origin via nginx), native production uses `extra.productionBackendBaseUrl`, and dev uses the configured host/port from `app.config.ts` → `extra` with an optional persisted backend override. Production builds ignore persisted backend overrides. Exports typed functions for every endpoint group:
 - `register`, `login`, `loginWithApple`, `loginWithGoogle`, `getMe`, `validateApiKey`
 - `requestPasswordReset`, `resetPassword`
 - `setApiKey`, `deleteApiKey`, `getApiKeyStatus`

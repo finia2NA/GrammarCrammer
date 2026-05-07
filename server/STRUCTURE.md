@@ -30,7 +30,13 @@ server/
 │   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
-│   │   ├── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
+│   │   ├── claude.service.ts       ← Compatibility re-export for the Claude service modules
+│   │   ├── claude/                 ← Split Claude service implementation
+│   │   │   ├── shared.ts           ← Anthropic transport, key resolution, pricing, usage analytics helpers
+│   │   │   ├── explanations.ts     ← Deck/generic explanation generation and SSE streaming
+│   │   │   ├── endpoints.ts        ← Cards, judging, rejection, chat, session rating, sentence/word hints
+│   │   │   ├── edit.ts             ← Agentic explanation editor
+│   │   │   └── index.ts            ← Public re-exports
 │   │   ├── grammar-case.service.ts ← Grammar subcase extraction, session target selection, per-case stats
 │   │   ├── scheduler.service.ts    ← Shared FIFO queue for background explanation/case extraction jobs (max 5 concurrent)
 │   │   ├── srs.service.ts          ← Spaced-repetition scheduling: interval calculation from AI + user star ratings
@@ -150,8 +156,8 @@ SSE streams emit newline-delimited JSON events:
 
 ## Key services
 
-### `claude.service.ts`
-Owns all Anthropic API communication.
+### `claude/` and `claude.service.ts`
+Owns all Anthropic API communication. `claude.service.ts` re-exports the split implementation modules for existing imports.
 - Uses server-to-server `fetch` — no client-side API key exposure.
 - Two models:
   - **Sonnet 4.6** — explanations, grammar-case extraction, rejection feedback, chat
