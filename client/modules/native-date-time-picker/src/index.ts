@@ -12,9 +12,11 @@ export interface NativeDateTimePickerOptions {
   is24Hour?: boolean;
   minuteInterval?: number;
   accentColor?: string;
+  foregroundColor?: string;
   sheetBackgroundColor?: string;
   panelBackgroundColor?: string;
   resetText?: string;
+  resetArmedText?: string;
   resetTextColor?: string;
 }
 
@@ -25,6 +27,7 @@ export interface NativeDateTimePickerResult {
 
 interface NativeDateTimePickerModule {
   present(options: NativeDateTimePickerOptions): Promise<NativeDateTimePickerResult>;
+  updateAppearance(options: Partial<NativeDateTimePickerOptions>): Promise<void>;
 }
 
 let nativeModule: NativeDateTimePickerModule | null | undefined;

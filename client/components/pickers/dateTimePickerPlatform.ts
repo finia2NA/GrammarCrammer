@@ -73,3 +73,5 @@ export function openIosTimePicker(
 ) {
   return false;
 }
+
+export function updateIosPickerAppearance(_options: unknown = {}) {}

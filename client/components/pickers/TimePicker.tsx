@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { normalizeTime, splitTime } from './timeUtils';
-import { dismissPickerKeyboard, openAndroidTimePicker, openIosTimePicker, useDateTimePickerModule } from './dateTimePickerPlatform';
+import { dismissPickerKeyboard, openAndroidTimePicker, openIosTimePicker, updateIosPickerAppearance, useDateTimePickerModule } from './dateTimePickerPlatform';
 import { PlatformPopover } from './PlatformPopover';
 import { TimePickerContent } from './TimePickerContent';
 import { TimePickerTrigger } from './TimePickerTrigger';
@@ -56,6 +56,16 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     setDraftMinute(minute);
   }, [hour, minute, normalizedValue]);
 
+  const { primary, foreground, background, surface } = colors;
+  useEffect(() => {
+    updateIosPickerAppearance({
+      accentColor: primary,
+      foregroundColor: foreground,
+      sheetBackgroundColor: background,
+      panelBackgroundColor: surface,
+    });
+  }, [primary, foreground, background, surface]);
+
   const pickerDate = useMemo(() => {
     const next = new Date();
     next.setHours(Number(draftHour), Number(draftMinute), 0, 0);
@@ -90,6 +100,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
       cancelText: t('common.cancel'),
       confirmText: t('common.done'),
       accentColor: colors.primary,
+      foregroundColor: colors.foreground,
       sheetBackgroundColor: colors.background,
       panelBackgroundColor: colors.surface,
     })) {
@@ -99,7 +110,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
     setDraftHour(nextHour);
     setDraftMinute(nextMinute);
     openPopover();
-  }, [colors.background, colors.primary, colors.surface, disabled, nativePickerModule, onChange, t, textValue]);
+  }, [colors.background, colors.foreground, colors.primary, colors.surface, disabled, nativePickerModule, onChange, t, textValue]);
 
   function handleDone() {
     const next = normalizeTime(`${draftHour}:${draftMinute}`);

@@ -6,6 +6,7 @@ interface IosPickerOptions {
   cancelText: string;
   confirmText: string;
   accentColor?: string;
+  foregroundColor?: string;
   sheetBackgroundColor?: string;
   panelBackgroundColor?: string;
 }
@@ -59,6 +60,7 @@ export function openIosDatePicker(
     cancelText: options.cancelText,
     confirmText: options.confirmText,
     accentColor: options.accentColor,
+    foregroundColor: options.foregroundColor,
     sheetBackgroundColor: options.sheetBackgroundColor,
     panelBackgroundColor: options.panelBackgroundColor,
     resetText: options.resetButton?.label,
@@ -93,6 +95,7 @@ export function openIosTimePicker(
     confirmText: options.confirmText,
     is24Hour: true,
     accentColor: options.accentColor,
+    foregroundColor: options.foregroundColor,
     sheetBackgroundColor: options.sheetBackgroundColor,
     panelBackgroundColor: options.panelBackgroundColor,
   }).then((result) => {
@@ -102,4 +105,15 @@ export function openIosTimePicker(
   }).catch(() => {});
 
   return true;
+}
+
+export function updateIosPickerAppearance(options: IosPickerOptions) {
+  const nativePicker = getNativeDateTimePicker();
+  if (!nativePicker) return;
+  nativePicker.updateAppearance({
+    accentColor: options.accentColor,
+    foregroundColor: options.foregroundColor,
+    sheetBackgroundColor: options.sheetBackgroundColor,
+    panelBackgroundColor: options.panelBackgroundColor,
+  }).catch(() => {});
 }

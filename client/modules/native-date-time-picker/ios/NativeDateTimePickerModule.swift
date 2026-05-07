@@ -33,6 +33,7 @@ public class NativeDateTimePickerModule: Module {
         let is24Hour = options["is24Hour"] as? Bool ?? true
         let minuteInterval = options["minuteInterval"] as? Int ?? 1
         let accentColor = (options["accentColor"] as? String).flatMap(UIColor.pdFromHex)
+        let foregroundColor = (options["foregroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let sheetBackgroundColor = (options["sheetBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let panelBackgroundColor = (options["panelBackgroundColor"] as? String).flatMap(UIColor.pdFromHex)
         let resetText = options["resetText"] as? String
@@ -48,6 +49,7 @@ public class NativeDateTimePickerModule: Module {
           is24Hour: is24Hour,
           minuteInterval: minuteInterval,
           accentColor: accentColor,
+          foregroundColor: foregroundColor,
           sheetBackgroundColor: sheetBackgroundColor,
           panelBackgroundColor: panelBackgroundColor,
           resetText: resetText,
@@ -60,6 +62,12 @@ public class NativeDateTimePickerModule: Module {
 
         self.activePresenter = presenter
         presenter.present(from: presentingViewController)
+      }
+    }
+
+    AsyncFunction("updateAppearance") { (options: [String: Any]) in
+      DispatchQueue.main.async {
+        self.activePresenter?.updateAppearance(from: options)
       }
     }
   }
@@ -84,6 +92,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
     is24Hour: Bool,
     minuteInterval: Int,
     accentColor: UIColor?,
+    foregroundColor: UIColor?,
     sheetBackgroundColor: UIColor?,
     panelBackgroundColor: UIColor?,
     resetText: String?,
@@ -101,6 +110,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
       is24Hour: is24Hour,
       minuteInterval: minuteInterval,
       accentColor: accentColor,
+      foregroundColor: foregroundColor,
       sheetBackgroundColor: sheetBackgroundColor,
       panelBackgroundColor: panelBackgroundColor,
       resetText: resetText,
@@ -132,6 +142,10 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
       sheet.preferredCornerRadius = 28
     }
     presentingViewController.present(viewController, animated: true)
+  }
+
+  func updateAppearance(from options: [String: Any]) {
+    viewController.updateAppearance(from: options)
   }
 
   func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
@@ -172,9 +186,10 @@ private final class NativeDateTimePickerViewController: UIViewController {
   private let confirmText: String
   private let is24Hour: Bool
   private let minuteInterval: Int
-  private let accentColor: UIColor?
-  private let sheetBackgroundColor: UIColor?
-  private let panelBackgroundColor: UIColor?
+  private var accentColor: UIColor?
+  private var foregroundColor: UIColor?
+  private var sheetBackgroundColor: UIColor?
+  private var panelBackgroundColor: UIColor?
   private let resetText: String?
   private let resetArmedText: String?
   private let resetTextColor: UIColor?
@@ -182,6 +197,9 @@ private final class NativeDateTimePickerViewController: UIViewController {
   private var resetButton: UIButton?
   private var resetArmed = false
   private var resetTimer: Timer?
+  private var veilView: UIView?
+  private var headerCancelButton: UIButton?
+  private var headerConfirmButton: UIButton?
 
   init(
     mode: NativeDateTimePickerMode,
@@ -192,6 +210,7 @@ private final class NativeDateTimePickerViewController: UIViewController {
     is24Hour: Bool,
     minuteInterval: Int,
     accentColor: UIColor?,
+    foregroundColor: UIColor?,
     sheetBackgroundColor: UIColor?,
     panelBackgroundColor: UIColor?,
     resetText: String?,
@@ -206,6 +225,7 @@ private final class NativeDateTimePickerViewController: UIViewController {
     self.is24Hour = is24Hour
     self.minuteInterval = min(max(minuteInterval, 1), 30)
     self.accentColor = accentColor
+    self.foregroundColor = foregroundColor
     self.sheetBackgroundColor = sheetBackgroundColor
     self.panelBackgroundColor = panelBackgroundColor
     self.resetText = resetText
@@ -239,6 +259,8 @@ private final class NativeDateTimePickerViewController: UIViewController {
 
     view.addSubview(blurView)
     view.addSubview(veilView)
+
+    self.veilView = veilView
 
     NSLayoutConstraint.activate([
       blurView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -283,20 +305,23 @@ private final class NativeDateTimePickerViewController: UIViewController {
     let cancelButton = makeHeaderButton(
       systemName: "xmark",
       accessibilityLabel: cancelText,
-      foregroundColor: accentColor ?? .label,
+      foregroundColor: foregroundColor ?? accentColor ?? .label,
       backgroundColor: UIColor.pdPickerButtonFill
     )
     cancelButton.translatesAutoresizingMaskIntoConstraints = false
     cancelButton.addTarget(self, action: #selector(cancelPressed), for: .touchUpInside)
+    self.headerCancelButton = cancelButton
 
     let confirmButton = makeHeaderButton(
       systemName: "checkmark",
       accessibilityLabel: confirmText,
-      foregroundColor: .white,
+      foregroundColor: foregroundColor ?? accentColor ?? .label,
       backgroundColor: accentColor ?? .label
     )
     confirmButton.translatesAutoresizingMaskIntoConstraints = false
     confirmButton.addTarget(self, action: #selector(confirmPressed), for: .touchUpInside)
+    self.headerConfirmButton = confirmButton
+    self.headerConfirmButton = confirmButton
 
     picker.translatesAutoresizingMaskIntoConstraints = false
     let resetButton = makeResetButton()
@@ -433,6 +458,29 @@ private final class NativeDateTimePickerViewController: UIViewController {
 
   @objc private func confirmPressed() {
     onConfirm?(picker.date)
+  }
+
+  func updateAppearance(from options: [String: Any]) {
+    if let accent = (options["accentColor"] as? String).flatMap(UIColor.pdFromHex) {
+      accentColor = accent
+      picker.tintColor = accent
+    }
+    if let foreground = (options["foregroundColor"] as? String).flatMap(UIColor.pdFromHex) {
+      foregroundColor = foreground
+    }
+    if let sheet = (options["sheetBackgroundColor"] as? String).flatMap(UIColor.pdFromHex) {
+      sheetBackgroundColor = sheet
+      veilView?.backgroundColor = UIColor.pdPickerSheetFill(sheetBackgroundColor)
+    }
+    if let panel = (options["panelBackgroundColor"] as? String).flatMap(UIColor.pdFromHex) {
+      panelBackgroundColor = panel
+      picker.backgroundColor = UIColor.pdPickerPanelFill(panelBackgroundColor)
+    }
+
+    let resolvedFG = foregroundColor ?? accentColor ?? .label
+    headerCancelButton?.configuration?.baseForegroundColor = resolvedFG
+    headerConfirmButton?.configuration?.baseForegroundColor = resolvedFG
+    headerConfirmButton?.configuration?.baseBackgroundColor = accentColor ?? .label
   }
 
   @objc private func resetPressed() {

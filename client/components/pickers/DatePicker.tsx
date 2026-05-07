@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { formatLocalDateToYmd, parseYmd } from './dateUtils';
 import { DatePickerContent } from './DatePickerContent';
 import { DatePickerTrigger } from './DatePickerTrigger';
-import { dismissPickerKeyboard, openAndroidDatePicker, openIosDatePicker, useDateTimePickerModule } from './dateTimePickerPlatform';
+import { dismissPickerKeyboard, openAndroidDatePicker, openIosDatePicker, updateIosPickerAppearance, useDateTimePickerModule } from './dateTimePickerPlatform';
 import { PlatformPopover } from './PlatformPopover';
 import { useColors } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
@@ -53,6 +53,16 @@ export function DatePicker({
     setDraftDate(selectedDate);
   }, [selectedDate]);
 
+  const { primary, foreground, background, surface } = colors;
+  useEffect(() => {
+    updateIosPickerAppearance({
+      accentColor: primary,
+      foregroundColor: foreground,
+      sheetBackgroundColor: background,
+      panelBackgroundColor: surface,
+    });
+  }, [primary, foreground, background, surface]);
+
   const handleOpen = useCallback((openPopover: () => void) => {
     if (disabled) return;
     dismissPickerKeyboard();
@@ -78,6 +88,7 @@ export function DatePicker({
       cancelText: t('common.cancel'),
       confirmText: t('common.done'),
       accentColor: colors.primary,
+      foregroundColor: colors.foreground,
       sheetBackgroundColor: colors.background,
       panelBackgroundColor: colors.surface,
       resetButton: iosResetButtonProps ? {
@@ -93,7 +104,7 @@ export function DatePicker({
     setDraftDate(selectedDate);
     setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
     openPopover();
-  }, [androidNeutralButton, colors.background, colors.primary, colors.surface, disabled, displayTitle, iosResetButtonProps, nativePickerModule, onChange, selectedDate, t]);
+  }, [androidNeutralButton, colors.background, colors.foreground, colors.primary, colors.surface, disabled, displayTitle, iosResetButtonProps, nativePickerModule, onChange, selectedDate, t]);
 
   function handleDone() {
     if (draftDate) onChange(formatLocalDateToYmd(draftDate));
