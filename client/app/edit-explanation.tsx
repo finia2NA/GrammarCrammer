@@ -174,12 +174,14 @@ export default function EditExplanationPage() {
       <ResizablePanels>
         {[
           <View key="monaco" className="flex-1 relative">
-            <MonacoEditor
-              value={explanation}
-              onChange={handleExplanationChange}
-              readOnly={loading || aiGenerating}
-              externalRevision={editorRevision}
-            />
+            {!loading && (
+              <MonacoEditor
+                value={explanation}
+                onChange={handleExplanationChange}
+                readOnly={aiGenerating}
+                externalRevision={editorRevision}
+              />
+            )}
           </View>,
           <ScrollView
             key="preview"
