@@ -187,7 +187,9 @@ const en = {
   'deck.unknownError': 'Unknown error',
   'deck.importFailed': 'Import failed.',
   'deck.regenerateTitle': 'Regenerate explanation?',
-  'deck.regenerateMessage': 'This will regenerate the explanation for this deck.',
+  'deck.regenerateMessage': 'This will regenerate the explanation and all grammar cases for this deck.',
+  'deck.regenerateCasesTitle': 'Regenerate cases?',
+  'deck.regenerateCasesMessage': 'This will regenerate all grammar cases and reset any difficulty data.',
   'deck.confirm': 'Confirm',
   'deck.csvCollectionDescription': 'Use :: to nest in collections, e.g. "Japanese::N5". Imported rows become subdecks in this collection.',
   'deck.howThisWorks': 'How this works',
@@ -255,6 +257,7 @@ const en = {
   'editor.chatPlaceholder': 'Describe changes to make...',
   'editor.changesApplied': 'Changes applied',
   'editor.costLabel': 'Cost',
+  'editor.diff': 'Diff',
 } as const;
 
 const de: Partial<Record<keyof typeof en, string>> = {
@@ -432,7 +435,9 @@ const de: Partial<Record<keyof typeof en, string>> = {
   'deck.unknownError': 'Unbekannter Fehler',
   'deck.importFailed': 'Import fehlgeschlagen.',
   'deck.regenerateTitle': 'Erklärung neu generieren?',
-  'deck.regenerateMessage': 'Dadurch wird die Erklärung für dieses Deck neu generiert.',
+  'deck.regenerateMessage': 'Dadurch werden die Erklärung und alle Grammatikfälle für dieses Deck neu generiert.',
+  'deck.regenerateCasesTitle': 'Fälle neu generieren?',
+  'deck.regenerateCasesMessage': 'Dadurch werden alle Grammatikfälle neu generiert und alle Schwierigkeitsdaten zurückgesetzt.',
   'deck.confirm': 'Bestätigen',
   'deck.csvCollectionDescription': 'Nutze :: für verschachtelte Sammlungen, z. B. „Japanisch::N5“. Importierte Zeilen werden Subdecks in dieser Sammlung.',
   'deck.howThisWorks': 'So funktioniert es',
@@ -500,6 +505,7 @@ const de: Partial<Record<keyof typeof en, string>> = {
   'editor.chatPlaceholder': 'Änderungen beschreiben...',
   'editor.changesApplied': 'Änderungen angewendet',
   'editor.costLabel': 'Kosten',
+  'editor.diff': 'Diff',
 };
 
 const ja: Partial<Record<keyof typeof en, string>> = {
@@ -677,7 +683,9 @@ const ja: Partial<Record<keyof typeof en, string>> = {
   'deck.unknownError': '不明なエラー',
   'deck.importFailed': 'インポートに失敗しました。',
   'deck.regenerateTitle': '説明を再生成しますか？',
-  'deck.regenerateMessage': 'このデッキの説明を再生成します。',
+  'deck.regenerateMessage': 'このデッキの説明とすべての文法ケースを再生成します。',
+  'deck.regenerateCasesTitle': 'ケースを再生成しますか？',
+  'deck.regenerateCasesMessage': 'すべての文法ケースを再生成し、難易度データをリセットします。',
   'deck.confirm': '確認',
   'deck.csvCollectionDescription': ':: でコレクションを入れ子にできます。例:「Japanese::N5」。インポートした行はこのコレクション内のサブデッキになります。',
   'deck.howThisWorks': '仕組み',
@@ -745,6 +753,7 @@ const ja: Partial<Record<keyof typeof en, string>> = {
   'editor.chatPlaceholder': '変更内容を入力...',
   'editor.changesApplied': '変更が適用されました',
   'editor.costLabel': 'コスト',
+  'editor.diff': 'Diff',
 };
 
 export type TranslationKey = keyof typeof en;

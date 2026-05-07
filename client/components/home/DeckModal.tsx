@@ -218,8 +218,8 @@ export function DeckModal({
   }
 
   const promptChanged = isEdit && !isCollection && !!editNode?.deck && (
-    topic.trim() !== editNode.deck.topic ||
-    clarification.trim() !== (editNode.deck.clarification ?? '')
+    topic.trim() !== editNode.deck.topic.trim() ||
+    clarification.trim() !== (editNode.deck.clarification ?? '').trim()
   );
   const explanationChanged = isEdit && !isCollection && explanation !== originalExplanation;
 
@@ -321,7 +321,7 @@ export function DeckModal({
       enabledLanguages={enabledLanguages}
       grammarCases={grammarCases}
       regenerateGrammarCases={regenerateGrammarCases}
-      onRegenerateGrammarCases={() => setRegenerateGrammarCases(true)}
+      onRegenerateGrammarCases={() => setRegenerateGrammarCases(v => !v)}
       explanationChanged={explanationChanged}
       editNodeId={editNode?.id}
     />
@@ -356,9 +356,17 @@ export function DeckModal({
       onConfirm={handleConfirm}
       confirmDisabled={confirmDisabled}
       confirmCloses={false}
-      confirmConfirmationTitle={promptChanged && !showingCsvTab ? t('deck.regenerateTitle') : undefined}
-      confirmConfirmationMessage={promptChanged && !showingCsvTab ? t('deck.regenerateMessage') : undefined}
-      confirmConfirmationActionText={promptChanged && !showingCsvTab ? t('deck.confirm') : undefined}
+      confirmConfirmationTitle={
+        !showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases)
+          ? (promptChanged ? t('deck.regenerateTitle') : t('deck.regenerateCasesTitle'))
+          : undefined
+      }
+      confirmConfirmationMessage={
+        !showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases)
+          ? (promptChanged ? t('deck.regenerateMessage') : t('deck.regenerateCasesMessage'))
+          : undefined
+      }
+      confirmConfirmationActionText={!showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases) ? t('deck.confirm') : undefined}
     >
       {canUseCsvTab && (
         <AnimatedTabbed

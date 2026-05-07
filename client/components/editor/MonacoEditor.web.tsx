@@ -1,6 +1,6 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import MonacoReact, { type OnMount } from '@monaco-editor/react';
+import MonacoReact, { DiffEditor, type OnMount, type DiffOnMount } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 
 interface MonacoEditorProps {
@@ -8,14 +8,17 @@ interface MonacoEditorProps {
   onChange: (value: string) => void;
   readOnly?: boolean;
   externalRevision?: number;
+  original?: string;
+  showDiff?: boolean;
 }
 
-export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0 }: MonacoEditorProps) {
+export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, original, showDiff }: MonacoEditorProps) {
   const colorScheme = useColorScheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const onChangeRef = useRef(onChange);
   const applyingExternalValueRef = useRef(false);
   const appliedExternalRevisionRef = useRef(externalRevision);
+  const [pinnedModified, setPinnedModified] = useState(value);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -24,6 +27,8 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0 }
   useEffect(() => {
     if (externalRevision === appliedExternalRevisionRef.current) return;
     appliedExternalRevisionRef.current = externalRevision;
+
+    setPinnedModified(value);
 
     const ed = editorRef.current;
     if (!ed) return;
@@ -70,6 +75,45 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0 }
       }
     });
   };
+
+  const handleDiffMount: DiffOnMount = (diffEditor) => {
+    const modifiedEditor = diffEditor.getModifiedEditor();
+    editorRef.current = modifiedEditor;
+    appliedExternalRevisionRef.current = externalRevision;
+
+    if (modifiedEditor.getValue() !== value) {
+      applyingExternalValueRef.current = true;
+      try {
+        modifiedEditor.setValue(value);
+      } finally {
+        applyingExternalValueRef.current = false;
+      }
+    }
+
+    modifiedEditor.onDidChangeModelContent(() => {
+      if (!applyingExternalValueRef.current) {
+        onChangeRef.current(modifiedEditor.getValue());
+      }
+    });
+  };
+
+  if (showDiff && original !== undefined) {
+    return (
+      <DiffEditor
+        height="100%"
+        language="markdown"
+        theme={colorScheme === 'dark' ? 'vs-dark' : 'light'}
+        original={original}
+        modified={pinnedModified}
+        onMount={handleDiffMount}
+        options={{
+          ...commonOptions,
+          renderSideBySide: true,
+          originalEditable: false,
+        }}
+      />
+    );
+  }
 
   return (
     <MonacoReact

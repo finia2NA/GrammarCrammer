@@ -30,6 +30,7 @@ export default function EditExplanationPage() {
   const [editCount, setEditCount] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
   const [editorRevision, setEditorRevision] = useState(0);
+  const [showDiff, setShowDiff] = useState(false);
   const dirty = explanation !== originalExplanation;
 
   useEffect(() => {
@@ -180,7 +181,21 @@ export default function EditExplanationPage() {
                 onChange={handleExplanationChange}
                 readOnly={aiGenerating}
                 externalRevision={editorRevision}
+                original={originalExplanation}
+                showDiff={showDiff}
               />
+            )}
+            {dirty && (
+              <TouchableOpacity
+                style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 10 }}
+                className={`px-3 py-1.5 rounded-lg border ${showDiff ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
+                onPress={() => setShowDiff(v => !v)}
+                activeOpacity={0.7}
+              >
+                <Text className={`text-xs font-medium ${showDiff ? 'text-primary' : 'text-foreground-secondary'}`}>
+                  {t('editor.diff')}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>,
           <ScrollView
