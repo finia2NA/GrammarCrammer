@@ -1,7 +1,8 @@
-import { useRef, useEffect, useMemo, useState } from 'react';
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useColorScheme } from 'react-native';
 import MonacoReact, { DiffEditor, type OnMount, type DiffOnMount } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { light, dark } from '@/constants/theme';
 
 interface MonacoEditorProps {
   value: string;
@@ -12,6 +13,8 @@ interface MonacoEditorProps {
   showDiff?: boolean;
 }
 
+let themesDefined = false;
+
 export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, original, showDiff }: MonacoEditorProps) {
   const colorScheme = useColorScheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -19,6 +22,64 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
   const applyingExternalValueRef = useRef(false);
   const appliedExternalRevisionRef = useRef(externalRevision);
   const [pinnedModified, setPinnedModified] = useState(value);
+
+  const beforeMount = useCallback((monaco: any) => {
+    if (themesDefined) return;
+
+    // Define light theme
+    monaco.editor.defineTheme('grammarCrammerLight', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'heading', foreground: light.primary.replace('#', '') },
+        { token: 'bold', fontStyle: 'bold' },
+        { token: 'italic', fontStyle: 'italic' },
+        { token: 'link', foreground: light.secondary.replace('#', '') },
+        { token: 'string.link', foreground: light.secondary.replace('#', '') },
+      ],
+      colors: {
+        'editor.background': light.background,
+        'editor.foreground': light.foreground,
+        'editorCursor.foreground': light.primary,
+        'editorLineNumber.foreground': light.foreground_muted,
+        'editorLineNumber.activeForeground': light.foreground,
+        'editor.selectionBackground': light.primary_light + '40',
+        'editor.lineHighlightBackground': light.background_warm,
+        'editorBracketMatch.background': light.primary_light + '40',
+        'editorBracketMatch.border': light.primary,
+        'editorIndentGuide.background': light.background_muted,
+        'editorIndentGuide.activeBackground': light.foreground_subtle,
+      }
+    });
+
+    // Define dark theme
+    monaco.editor.defineTheme('grammarCrammerDark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'heading', foreground: dark.primary.replace('#', '') },
+        { token: 'bold', fontStyle: 'bold' },
+        { token: 'italic', fontStyle: 'italic' },
+        { token: 'link', foreground: dark.secondary.replace('#', '') },
+        { token: 'string.link', foreground: dark.secondary.replace('#', '') },
+      ],
+      colors: {
+        'editor.background': dark.background,
+        'editor.foreground': dark.foreground,
+        'editorCursor.foreground': dark.primary,
+        'editorLineNumber.foreground': dark.foreground_muted,
+        'editorLineNumber.activeForeground': dark.foreground,
+        'editor.selectionBackground': dark.primary_light + '40',
+        'editor.lineHighlightBackground': dark.background_warm,
+        'editorBracketMatch.background': dark.primary_light + '40',
+        'editorBracketMatch.border': dark.primary,
+        'editorIndentGuide.background': dark.background_muted,
+        'editorIndentGuide.activeBackground': dark.foreground_subtle,
+      }
+    });
+
+    themesDefined = true;
+  }, []);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -105,9 +166,10 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
         key={editorKey}
         height="100%"
         language="markdown"
-        theme={colorScheme === 'dark' ? 'vs-dark' : 'vs'}
+        theme={colorScheme === 'dark' ? 'grammarCrammerDark' : 'grammarCrammerLight'}
         original={original}
         modified={pinnedModified}
+        beforeMount={beforeMount}
         onMount={handleDiffMount}
         options={{
           ...commonOptions,
@@ -123,20 +185,9 @@ export function MonacoEditor({ value, onChange, readOnly, externalRevision = 0, 
       key={editorKey}
       height="100%"
       language="markdown"
-      theme={colorScheme === 'dark' ? 'vs-dark' : 'vs'}
+      theme={colorScheme === 'dark' ? 'grammarCrammerDark' : 'grammarCrammerLight'}
       defaultValue={value}
-      onMount={handleMount}
-      options={commonOptions}
-    />
-  );
-  }
-
-  return (
-    <MonacoReact
-      height="100%"
-      language="markdown"
-      theme={colorScheme === 'dark' ? 'vs-dark' : 'light'}
-      defaultValue={value}
+      beforeMount={beforeMount}
       onMount={handleMount}
       options={commonOptions}
     />
