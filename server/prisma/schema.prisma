@@ -25,6 +25,7 @@ model User {
   pushDevices            PushDevice[]
   notificationSchedule   NotificationSchedule?
   notificationDeliveries NotificationDelivery[]
+  grammarCaseStats       GrammarCaseUserStat[]
 }
 
 model PasswordResetToken {
@@ -62,6 +63,7 @@ model Deck {
   language          String
   explanation       String?
   explanationStatus String    @default("pending")
+  grammarCaseStatus String    @default("ready")
   cardCount         Int       @default(10)
   lastStudiedAt     DateTime?
   dueAt             DateTime?
@@ -69,6 +71,7 @@ model Deck {
 
   node    Node         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
   reviews DeckReview[]
+  grammarCases GrammarCase[]
 }
 
 model DeckReview {
@@ -84,6 +87,47 @@ model DeckReview {
   totalCount      Int?
 
   deck Deck @relation(fields: [deckId], references: [nodeId], onDelete: Cascade)
+}
+
+model GrammarCase {
+  id             String   @id @default(uuid())
+  deckId         String
+  caseKey        String
+  label          String
+  ruleSummary    String
+  generationHint String
+  baseWeight     Float    @default(1)
+  sourceHash     String
+  active         Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  deck      Deck                  @relation(fields: [deckId], references: [nodeId], onDelete: Cascade)
+  userStats GrammarCaseUserStat[]
+
+  @@unique([deckId, caseKey])
+  @@index([deckId, active, sortOrder])
+  @@index([deckId, sourceHash])
+}
+
+model GrammarCaseUserStat {
+  userId                  String
+  grammarCaseId           String
+  seenCount               Int      @default(0)
+  correctFirstTryCount    Int      @default(0)
+  difficultyMass          Float    @default(0)
+  attemptMass             Float    @default(0)
+  lastPracticedIteration  Int?
+  lastUpdatedIteration    Int?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grammarCase GrammarCase @relation(fields: [grammarCaseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, grammarCaseId])
+  @@index([grammarCaseId])
 }
 
 model Setting {

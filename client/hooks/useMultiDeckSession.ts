@@ -70,7 +70,7 @@ export function useMultiDeckSession({ nodeId, selectedDeckIds, studySessionId, s
         language: meta.language,
         traceId: `deck_generation:${meta.id}`,
       };
-      const result = await generateCards(meta.topic, meta.language, meta.cardCount, meta.explanation!, analyticsContext);
+      const result = await generateCards(meta.topic, meta.language, meta.cardCount, meta.explanation!, analyticsContext, meta.id);
       if (result.cost) addCost(result.cost);
       generatedDecksRef.current.add(meta.id);
       return result.cards.map((c): DeckCard => ({ ...c, deckId: meta.id }));
@@ -104,7 +104,7 @@ export function useMultiDeckSession({ nodeId, selectedDeckIds, studySessionId, s
         for (const id of ids) {
           try {
             const d = await getDeck(id);
-            if (!d || d.explanationStatus !== 'ready' || !d.explanation) continue;
+            if (!d || d.explanationStatus !== 'ready' || d.grammarCaseStatus !== 'ready' || !d.explanation) continue;
             let deckName = d.topic;
             try {
               const node = await getNode(id);

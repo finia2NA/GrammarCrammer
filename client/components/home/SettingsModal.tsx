@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Switch,
   Platform,
   Alert,
   Pressable,
 } from 'react-native';
+import { ThemedSwitch } from '@/components/ThemedSwitch';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { CARD_ORDER_OPTIONS, JUDGE_WITH_EXPLANATION_OPTIONS, FEEDBACK_BREVITY_OPTIONS, KEY_PREFERENCE_OPTIONS, MAX_DECKS_OPTIONS, NEW_DECKS_OPTIONS, UNLIMITED_NEW_DECKS } from '@patterndeck/shared';
@@ -54,6 +54,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { t, localeLabels } = useI18n();
   const [uiLanguage, setUiLanguage] = useState<UiLocale>('en');
   const [cardOrder, setCardOrder] = useState<CardOrder>('shuffled');
+  const [caseAwareGeneration, setCaseAwareGeneration] = useState<'on' | 'off'>('on');
   const [judgeWithExplanation, setJudgeWithExplanation] = useState<'on' | 'off'>('on');
   const [feedbackBrevity, setFeedbackBrevity] = useState<'brief' | 'normal'>('normal');
   const [defaultCardCount, setDefaultCardCount] = useState<CardCount>(10);
@@ -82,6 +83,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
       setUiLanguage(resolveUiLocale(settings.ui_language));
       if (settings.card_order === 'sequential' || settings.card_order === 'shuffled') setCardOrder(settings.card_order);
+      if (settings.case_aware_generation === 'on' || settings.case_aware_generation === 'off') setCaseAwareGeneration(settings.case_aware_generation);
       if (settings.judge_with_explanation === 'on' || settings.judge_with_explanation === 'off') setJudgeWithExplanation(settings.judge_with_explanation);
       if (settings.feedback_brevity === 'brief' || settings.feedback_brevity === 'normal') setFeedbackBrevity(settings.feedback_brevity);
 
@@ -134,6 +136,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       ...getSettingsSnapshot(),
       ui_language: uiLanguage,
       card_order: cardOrder,
+      case_aware_generation: caseAwareGeneration,
       judge_with_explanation: judgeWithExplanation,
       feedback_brevity: feedbackBrevity,
       default_card_count: String(defaultCardCount),
@@ -223,6 +226,13 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         <SettingsRow label={t('settings.collectionCardOrder')} description={t('settings.collectionCardOrderDescription')}>
           <PillDropdown value={cardOrder} options={CARD_ORDER_OPTIONS} onChange={setCardOrder} formatLabel={(v: CardOrder) => v === 'shuffled' ? t('settings.shuffled') : t('settings.sequential')} />
         </SettingsRow>
+        <SettingsRow label={t('settings.caseAwareGeneration')} description={t('settings.caseAwareGenerationDescription')}>
+          <ThemedSwitch
+            value={caseAwareGeneration === 'on'}
+            onValueChange={(enabled) => setCaseAwareGeneration(enabled ? 'on' : 'off')}
+            disabled={saving}
+          />
+        </SettingsRow>
         <SettingsRow label={t('settings.contextAwareJudging')} description={t('settings.contextAwareJudgingDescription')}>
           <PillDropdown value={judgeWithExplanation} options={JUDGE_WITH_EXPLANATION_OPTIONS} onChange={setJudgeWithExplanation} formatLabel={(v: 'on' | 'off') => v === 'on' ? t('settings.on') : t('settings.off')} />
         </SettingsRow>
@@ -246,12 +256,10 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       {supportsPushNotifications ? (
         <SectionCard title={t('settings.notifications')}>
           <SettingsRow label={t('settings.dueDeckReminders')} description={t('settings.dueDeckRemindersDescription')}>
-            <Switch
+            <ThemedSwitch
               value={notificationsEnabled === 'on'}
               onValueChange={handleNotificationsToggle}
               disabled={saving || notificationSetupBusy}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.surface}
             />
           </SettingsRow>
           <SettingsRow label={t('settings.reminderTime')} description={t('settings.reminderTimeDescription')}>

@@ -7,6 +7,7 @@ import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { usePageSheetScrolling } from '@/components/PageSheetScrollContext';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { useI18n } from '@/lib/i18n';
+import type { GrammarCaseSummary } from '@/lib/api';
 
 interface DeckModalCreateTabProps {
   isCollection: boolean;
@@ -27,6 +28,9 @@ interface DeckModalCreateTabProps {
   cardCount: CardCount;
   onCardCountChange: (value: CardCount) => void;
   enabledLanguages: string[];
+  grammarCases?: GrammarCaseSummary[];
+  regenerateGrammarCases?: boolean;
+  onRegenerateGrammarCases?: () => void;
 }
 
 export function DeckModalCreateTab({
@@ -48,6 +52,9 @@ export function DeckModalCreateTab({
   cardCount,
   onCardCountChange,
   enabledLanguages,
+  grammarCases = [],
+  regenerateGrammarCases = false,
+  onRegenerateGrammarCases,
 }: DeckModalCreateTabProps) {
   const colors = useColors();
   const { t } = useI18n();
@@ -56,6 +63,7 @@ export function DeckModalCreateTab({
   const clarificationRef = useRef<TextInput>(null);
   const explanationRef = useRef<TextInput>(null);
   const [explanationExpanded, setExplanationExpanded] = useState(false);
+  const [casesExpanded, setCasesExpanded] = useState(false);
 
   function handleScrollAwareFocus(ref: RefObject<TextInput | null>) {
     if (Platform.OS !== 'web' && isScrollingRef?.current) {
@@ -138,6 +146,54 @@ export function DeckModalCreateTab({
                     style={{ minHeight: 160, textAlignVertical: 'top' }}
                     onFocus={() => handleScrollAwareFocus(explanationRef)}
                   />
+                </View>
+              </AnimatedCollapsible>
+            </View>
+          )}
+
+          {isEdit && showExplanationField && (
+            <View className="mb-6 rounded-xl border border-border bg-background-muted overflow-hidden">
+              <TouchableOpacity
+                className="px-4 py-3 flex-row items-center justify-between"
+                onPress={() => setCasesExpanded(v => !v)}
+                activeOpacity={0.85}
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-foreground/80 text-sm font-medium">Grammar Cases</Text>
+                  <Text className="text-foreground-secondary text-xs mt-1">
+                    {regenerateGrammarCases ? 'Regeneration scheduled' : `${grammarCases.length} extracted case${grammarCases.length === 1 ? '' : 's'}`}
+                  </Text>
+                </View>
+                <Text className="text-foreground-secondary text-sm">{casesExpanded ? '▼' : '▶'}</Text>
+              </TouchableOpacity>
+              <AnimatedCollapsible expanded={casesExpanded} keepMounted>
+                <View className="px-4 pb-4 gap-3">
+                  {grammarCases.length === 0 ? (
+                    <Text className="text-foreground-secondary text-xs leading-5">
+                      No cases have been extracted yet.
+                    </Text>
+                  ) : (
+                    <View className="gap-2">
+                      {grammarCases.map((item) => (
+                        <View key={item.id} className="bg-surface border border-border rounded-xl px-3 py-2">
+                          <Text className="text-foreground text-sm font-medium">{item.label}</Text>
+                          <Text className="text-foreground-secondary text-xs mt-1" numberOfLines={2}>{item.ruleSummary}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {onRegenerateGrammarCases && (
+                    <TouchableOpacity
+                      className="py-3 rounded-xl border items-center"
+                      style={{ borderColor: regenerateGrammarCases ? colors.primary : colors.border, backgroundColor: regenerateGrammarCases ? colors.primary + '18' : 'transparent' }}
+                      onPress={onRegenerateGrammarCases}
+                      activeOpacity={0.8}
+                    >
+                      <Text className="text-foreground font-semibold">
+                        {regenerateGrammarCases ? 'Regeneration scheduled' : 'Regenerate cases'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </AnimatedCollapsible>
             </View>

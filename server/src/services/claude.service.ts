@@ -12,6 +12,7 @@ import { capture, captureAiGeneration, captureException, type AiAnalyticsContext
 import {
   EXPLANATION_PROMPT,
   CARD_GEN_PROMPT,
+  CASE_EXTRACTION_PROMPT,
   JUDGMENT_PROMPT,
   REJECTION_PROMPT,
   SESSION_RATING_PROMPT,
@@ -21,6 +22,7 @@ import {
 } from '../constants/prompts.js';
 import type { Card } from '../types/index.js';
 import { DEBUG_AI } from '../routes/claude-proxy.js';
+import type { ExtractedGrammarCase, GrammarCaseTarget } from './grammar-case.service.js';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -320,6 +322,16 @@ async function callTool<T>(
 
 const activeVersion = new Map<string, number>();
 
+function enqueueCaseExtractionAfterExplanation(userId: string, deckId: string, analyticsContext: AiAnalyticsContext) {
+  void import('./scheduler.service.js')
+    .then(({ enqueueGrammarCaseExtraction }) => {
+      enqueueGrammarCaseExtraction(userId, deckId, { analyticsContext });
+    })
+    .catch(err => {
+      console.error(`[scheduler] Failed to enqueue case extraction for deck ${deckId}:`, err);
+    });
+}
+
 export function generateDeckExplanation(userId: string, deckId: string): Promise<void> {
   const version = (activeVersion.get(deckId) ?? 0) + 1;
   activeVersion.set(deckId, version);
@@ -366,6 +378,13 @@ async function runExplanation(userId: string, deckId: string, version: number): 
     await recordUsage(userId, source, 'explanation', SONNET, cost);
     if (activeVersion.get(deckId) === version) {
       await setExplanation(deckId, fullText);
+      enqueueCaseExtractionAfterExplanation(userId, deckId, {
+        deckId,
+        deckName: deck.node.name,
+        deckTopic: deck.topic,
+        language: deck.language,
+        traceId: `case_extraction:${deckId}`,
+      });
     }
   } catch (e) {
     if (activeVersion.get(deckId) === version) {
@@ -420,6 +439,13 @@ export async function streamExplanation(req: Request, res: Response, userId: str
     );
     await recordUsage(userId, source, 'explanation', SONNET, cost);
     await setExplanation(deckId, fullText);
+    enqueueCaseExtractionAfterExplanation(userId, deckId, {
+      deckId,
+      deckName: deck.node.name,
+      deckTopic: deck.topic,
+      language: deck.language,
+      traceId: `case_extraction:${deckId}`,
+    });
     sendDone(res, { cost, wasTruncated });
   } catch (e) {
     await setExplanationError(deckId);
@@ -436,18 +462,75 @@ type GeneratedCard = {
   targetSentence?: string;
   english?: string;
   targetLanguage?: string;
+  caseKey?: string;
   sentenceContext?: string;
   hint?: string;
 };
 
-export async function generateCards(userId: string, topic: string, language: string, count: number, explanation: string, responseLanguage = 'English', analyticsContext?: AiAnalyticsContext) {
+export async function extractGrammarCases(
+  userId: string,
+  topic: string,
+  language: string,
+  explanation: string,
+  analyticsContext?: AiAnalyticsContext,
+  responseLanguage = 'English',
+): Promise<ExtractedGrammarCase[]> {
+  const { apiKey, source } = await resolveApiKey(userId);
+
+  const { result, cost } = await callTool<{ cases: ExtractedGrammarCase[] }>(
+    apiKey, SONNET,
+    CASE_EXTRACTION_PROMPT(language, responseLanguage),
+    JSON.stringify({ topic, studyLanguage: language, responseLanguage, explanation }),
+    2500,
+    {
+      userId,
+      source,
+      endpoint: 'case-extraction',
+      context: {
+        ...analyticsContext,
+        deckTopic: analyticsContext?.deckTopic ?? topic,
+        language: analyticsContext?.language ?? language,
+      },
+    },
+  );
+
+  await recordUsage(userId, source, 'case-extraction', SONNET, cost);
+  return Array.isArray(result.cases) ? result.cases : [];
+}
+
+export async function generateCards(
+  userId: string,
+  topic: string,
+  language: string,
+  count: number,
+  explanation: string,
+  responseLanguage = 'English',
+  analyticsContext?: AiAnalyticsContext,
+  caseTargets?: GrammarCaseTarget[],
+) {
   const { apiKey, source } = await resolveApiKey(userId);
 
   const { result, cost } = await callTool<{ cards: GeneratedCard[] }>(
     apiKey, HAIKU,
     CARD_GEN_PROMPT(language, count, responseLanguage),
-    JSON.stringify({ topic, studyLanguage: language, responseLanguage, count, explanation }),
-    2000,
+    JSON.stringify({
+      topic,
+      studyLanguage: language,
+      responseLanguage,
+      count,
+      explanation,
+      ...(caseTargets && caseTargets.length > 0
+        ? {
+          caseTargets: caseTargets.map(target => ({
+            caseKey: target.caseKey,
+            label: target.label,
+            ruleSummary: target.ruleSummary,
+            generationHint: target.generationHint,
+          })),
+        }
+        : {}),
+    }),
+    caseTargets && caseTargets.length > 0 ? 2400 : 2000,
     {
       userId,
       source,
@@ -476,19 +559,47 @@ export async function generateCards(userId: string, topic: string, language: str
       language,
       requested_card_count: count,
       explanation,
+      case_targets: caseTargets?.map(target => ({
+        grammar_case_id: target.id,
+        case_key: target.caseKey,
+        label: target.label,
+      })),
     },
     output: {
       cards: result.cards,
     },
   });
 
-  const cards: Card[] = result.cards.map((c, i) => ({
-    id: String(i),
-    english: c.translateFrom ?? c.english ?? '',
-    targetLanguage: c.targetSentence ?? c.targetLanguage ?? '',
-    ...(c.sentenceContext ? { sentenceContext: c.sentenceContext } : {}),
-    ...(c.hint ? { hint: c.hint } : {}),
-  }));
+  const targetByKey = new Map((caseTargets ?? []).map(target => [target.caseKey, target]));
+  let repairedCaseKeys = 0;
+  const cards: Card[] = result.cards.map((c, i) => {
+    const matchedTarget = c.caseKey ? targetByKey.get(c.caseKey) : undefined;
+    const fallbackTarget = caseTargets?.[i];
+    const target = matchedTarget ?? fallbackTarget;
+    if (caseTargets && caseTargets.length > 0 && target && matchedTarget === undefined) {
+      repairedCaseKeys++;
+    }
+
+    return {
+      id: String(i),
+      english: c.translateFrom ?? c.english ?? '',
+      targetLanguage: c.targetSentence ?? c.targetLanguage ?? '',
+      ...(target ? {
+        grammarCaseId: target.id,
+        grammarCaseKey: target.caseKey,
+        grammarCaseLabel: target.label,
+      } : {}),
+      ...(c.sentenceContext ? { sentenceContext: c.sentenceContext } : {}),
+      ...(c.hint ? { hint: c.hint } : {}),
+    };
+  });
+  if (repairedCaseKeys > 0) {
+    capture(userId, 'card_case_key_repaired', {
+      ...analyticsContext,
+      repaired_count: repairedCaseKeys,
+      requested_card_count: count,
+    });
+  }
   // Fisher-Yates shuffle
   for (let i = cards.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

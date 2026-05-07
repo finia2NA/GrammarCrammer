@@ -94,7 +94,14 @@ export function SessionCompleteScreen({
           if (!draft) throw new Error(t('session.ratingWaitError'));
           const correctCount = attempts.filter(a => a.answers.length === 1).length;
           const totalCount = attempts.length;
-          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode, studySessionId, correctCount, totalCount);
+          const caseAttempts = attempts
+            .filter(a => a.card.grammarCaseId || a.card.grammarCaseKey)
+            .map(a => ({
+              grammarCaseId: a.card.grammarCaseId,
+              grammarCaseKey: a.card.grammarCaseKey,
+              answers: a.answers,
+            }));
+          await submitDeckReview(deckId, draft.userStars, draft.aiStars, draft.aiRecap, studyMode, studySessionId, correctCount, totalCount, caseAttempts);
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : t('session.reviewSaveError');

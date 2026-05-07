@@ -14,6 +14,8 @@ import { CARD_CHAT_PROMPT } from '../constants/prompts.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getSetting } from '../services/settings.service.js';
 import type { AiAnalyticsContext } from '../services/analytics.service.js';
+import { selectCaseTargets } from '../services/grammar-case.service.js';
+import { prisma } from '../lib/prisma.js';
 
 const DEFAULT_CARD_COUNT = 10;
 
@@ -54,7 +56,7 @@ function responseLanguage(body: Record<string, unknown>): string {
 // Non-streaming: generate cards
 claudeProxyRouter.post('/cards', async (req, res, next) => {
   try {
-    const { topic, language, count, explanation } = req.body;
+    const { topic, language, count, explanation, deckId } = req.body;
     if (!topic || !language || count === undefined || count === null || !explanation) {
       throw new AppError(400, 'MISSING_FIELDS', 'topic, language, count, and explanation are required.');
     }
@@ -64,12 +66,29 @@ claudeProxyRouter.post('/cards', async (req, res, next) => {
       resolvedCount = setting ? parseInt(setting, 10) : DEFAULT_CARD_COUNT;
     }
     logAI(req.userId!, 'cards', 'haiku');
-    const result = await generateCards(req.userId!, topic, language, resolvedCount, explanation, responseLanguage(req.body), analyticsContext(req.body, {
+    const ctx = analyticsContext(req.body, {
       appSessionId: req.appSessionId,
+      deckId: typeof deckId === 'string' ? deckId : undefined,
       deckTopic: String(topic),
       language: String(language),
       traceId: req.body.analyticsContext?.deckId ? `deck_generation:${req.body.analyticsContext.deckId}` : undefined,
-    }));
+    });
+    const caseAwareGeneration = await getSetting(req.userId!, 'case_aware_generation');
+    const savedDeckId = typeof deckId === 'string' && deckId.trim().length > 0 ? deckId.trim() : undefined;
+    if (savedDeckId) {
+      const deck = await prisma.deck.findFirst({
+        where: { nodeId: savedDeckId, node: { userId: req.userId! } },
+        select: { grammarCaseStatus: true },
+      });
+      if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
+      if (deck.grammarCaseStatus !== 'ready') {
+        throw new AppError(409, 'DECK_PREPARING', 'This deck is still preparing grammar cases. Please try again once preparation finishes.');
+      }
+    }
+    const caseTargets = caseAwareGeneration !== 'off' && savedDeckId
+      ? await selectCaseTargets(req.userId!, savedDeckId, resolvedCount, ctx)
+      : undefined;
+    const result = await generateCards(req.userId!, topic, language, resolvedCount, explanation, responseLanguage(req.body), ctx, caseTargets);
     res.json(result);
   } catch (e) { next(e); }
 });

@@ -1,67 +1,137 @@
 import { prisma } from '../lib/prisma.js';
 import { generateDeckExplanation } from './claude.service.js';
+import { setGrammarCaseError, setGrammarCaseGenerating, setGrammarCasePending, setGrammarCaseReady } from './deck.service.js';
+import { ensureGrammarCasesForDeck, regenerateGrammarCasesForDeck } from './grammar-case.service.js';
 import { initializeNotificationScheduling, startNotificationWorker } from './notification.service.js';
+import type { AiAnalyticsContext } from './analytics.service.js';
 
-const MAX_CONCURRENT_PER_USER = 5;
+const MAX_CONCURRENT_AI_JOBS = 5;
+
+type JobType = 'explanation' | 'case-ensure' | 'case-regenerate';
 
 interface Job {
+  type: JobType;
   userId: string;
   deckId: string;
+  analyticsContext?: AiAnalyticsContext;
 }
 
-const queues = new Map<string, Job[]>();
-const running = new Map<string, Set<string>>();
+const queue: Job[] = [];
+const running = new Set<string>();
 
-function getQueue(userId: string): Job[] {
-  let q = queues.get(userId);
-  if (!q) {
-    q = [];
-    queues.set(userId, q);
+function jobKey(job: Pick<Job, 'type' | 'deckId'>): string {
+  return `${job.type}:${job.deckId}`;
+}
+
+function isQueued(type: JobType, deckId: string): boolean {
+  return queue.some(j => j.type === type && j.deckId === deckId);
+}
+
+function isCaseJob(type: JobType): boolean {
+  return type === 'case-ensure' || type === 'case-regenerate';
+}
+
+function hasQueuedCaseJob(deckId: string): boolean {
+  return queue.some(j => isCaseJob(j.type) && j.deckId === deckId);
+}
+
+function hasRunningCaseJob(deckId: string): boolean {
+  return running.has(`case-ensure:${deckId}`) || running.has(`case-regenerate:${deckId}`);
+}
+
+function nextRunnableJobIndex(): number {
+  return queue.findIndex(job => {
+    if (running.has(jobKey(job))) return false;
+    if (isCaseJob(job.type) && hasRunningCaseJob(job.deckId)) return false;
+    return true;
+  });
+}
+
+async function runJob(job: Job): Promise<void> {
+  if (job.type === 'explanation') {
+    await generateDeckExplanation(job.userId, job.deckId);
+  } else if (job.type === 'case-regenerate') {
+    await setGrammarCaseGenerating(job.deckId);
+    try {
+      await regenerateGrammarCasesForDeck(job.userId, job.deckId, job.analyticsContext);
+      await setGrammarCaseReady(job.deckId);
+    } catch (error) {
+      await setGrammarCaseError(job.deckId);
+      throw error;
+    }
+  } else {
+    await setGrammarCaseGenerating(job.deckId);
+    try {
+      await ensureGrammarCasesForDeck(job.userId, job.deckId, job.analyticsContext);
+      await setGrammarCaseReady(job.deckId);
+    } catch (error) {
+      await setGrammarCaseError(job.deckId);
+      throw error;
+    }
   }
-  return q;
 }
 
-function getRunning(userId: string): Set<string> {
-  let s = running.get(userId);
-  if (!s) {
-    s = new Set();
-    running.set(userId, s);
-  }
-  return s;
-}
+function drain() {
+  while (queue.length > 0 && running.size < MAX_CONCURRENT_AI_JOBS) {
+    const index = nextRunnableJobIndex();
+    if (index < 0) break;
+    const job = queue.splice(index, 1)[0];
+    const key = jobKey(job);
+    running.add(key);
 
-function drain(userId: string) {
-  const q = getQueue(userId);
-  const r = getRunning(userId);
-
-  while (q.length > 0 && r.size < MAX_CONCURRENT_PER_USER) {
-    const job = q.shift()!;
-    if (r.has(job.deckId)) continue;
-    r.add(job.deckId);
-
-    generateDeckExplanation(job.userId, job.deckId)
+    runJob(job)
       .catch(err => {
-        console.error(`[scheduler] Explanation failed for deck ${job.deckId}:`, err);
+        console.error(`[scheduler] ${job.type} failed for deck ${job.deckId}:`, err);
       })
       .finally(() => {
-        r.delete(job.deckId);
-        drain(userId);
+        running.delete(key);
+        drain();
       });
   }
-
-  if (q.length === 0) queues.delete(userId);
-  if (r.size === 0) running.delete(userId);
 }
 
 export function enqueueExplanation(userId: string, deckId: string) {
-  const r = getRunning(userId);
-  if (r.has(deckId)) return;
+  enqueueJob({ type: 'explanation', userId, deckId });
+}
 
-  const q = getQueue(userId);
-  if (q.some(j => j.deckId === deckId)) return;
+function enqueueJob(job: Job) {
+  const key = jobKey(job);
+  if (running.has(key) || isQueued(job.type, job.deckId)) return;
 
-  q.push({ userId, deckId });
-  drain(userId);
+  if (job.type === 'case-regenerate') {
+    const queuedEnsureIndex = queue.findIndex(j => j.type === 'case-ensure' && j.deckId === job.deckId);
+    if (queuedEnsureIndex >= 0) queue.splice(queuedEnsureIndex, 1);
+  }
+
+  queue.push(job);
+  drain();
+}
+
+export async function enqueueGrammarCaseExtraction(
+  userId: string,
+  deckId: string,
+  options: { force?: boolean; analyticsContext?: AiAnalyticsContext } = {},
+): Promise<void> {
+  const job: Job = {
+    type: options.force ? 'case-regenerate' : 'case-ensure',
+    userId,
+    deckId,
+    analyticsContext: options.analyticsContext,
+  };
+
+  if (job.type === 'case-ensure' && (hasQueuedCaseJob(deckId) || hasRunningCaseJob(deckId))) return;
+  if (job.type === 'case-regenerate') {
+    if (running.has(jobKey(job)) || isQueued(job.type, deckId)) return;
+    const queuedEnsureIndex = queue.findIndex(j => j.type === 'case-ensure' && j.deckId === deckId);
+    if (queuedEnsureIndex >= 0) queue.splice(queuedEnsureIndex, 1);
+  }
+
+  if (!hasRunningCaseJob(deckId)) {
+    await setGrammarCasePending(deckId);
+  }
+
+  queue.push(job);
+  drain();
 }
 
 export async function initScheduler() {

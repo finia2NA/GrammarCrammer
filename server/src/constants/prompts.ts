@@ -1,4 +1,4 @@
-import { getExplanationInstructions, getCardInstructions, getJudgmentInstructions } from './languageInstructions.js';
+import { getExplanationInstructions, getCardInstructions, getJudgmentInstructions, getCaseExtractionInstructions } from './languageInstructions.js';
 
 function explanationLanguageBlock(language: string): string {
   const extra = getExplanationInstructions(language);
@@ -13,6 +13,11 @@ function cardLanguageBlock(language: string): string {
 function judgmentLanguageBlock(language: string): string {
   const extra = getJudgmentInstructions(language);
   return extra ? `\n\nAdditional instructions for ${language}:\n${extra}` : '';
+}
+
+function caseExtractionLanguageBlock(language: string): string {
+  const extra = getCaseExtractionInstructions(language);
+  return extra ? `\n\nAdditional case extraction instructions for ${language}:\n${extra}` : '';
 }
 
 function responseLanguageInstruction(responseLanguage: string): string {
@@ -91,10 +96,10 @@ The user message is JSON with these fields:
 - responseLanguage (string): the source sentence and hint language.
 - count (integer): the exact number of cards to generate.
 - explanation (string): the grammar explanation already shown to the learner.
+- caseTargets (array, optional): exact grammar cases to test this session. If present, its length equals count.
 
-Generate exactly the requested number of flashcard pairs that cover the grammar patterns
-mentioned in the explanation. Distribute the cards as evenly as possible across every
-distinct pattern. For each card, compose the ${language} targetSentence first, then derive the translateFrom sentence from it.
+Generate exactly the requested number of flashcard pairs. If caseTargets is present, generate exactly one card for each target case, following its generationHint and echoing its exact caseKey in that card. If caseTargets is absent, cover the grammar patterns mentioned in the explanation and distribute the cards as evenly as possible across every distinct pattern.
+For each card, compose the ${language} targetSentence first, then derive the translateFrom sentence from it.
 The targetSentence MUST be entirely in ${language}. The translateFrom sentence MUST be entirely in ${responseLanguage}.
 Do not mix ${language} words into translateFrom, and do not mix ${responseLanguage} words into targetSentence.
 The correct ${language} targetSentence should unambiguously require the specific grammar point
@@ -123,6 +128,7 @@ Write any optional learner-facing hints in ${responseLanguage}.${cardLanguageBlo
             properties: {
               targetSentence: { type: 'string', description: `The correct sentence entirely in ${language}, unambiguously requiring the grammar point being practised. Compose this first. Do not include ${responseLanguage} words unless they are proper nouns or unavoidable loanwords.` },
               translateFrom: { type: 'string', description: `The source sentence entirely in ${responseLanguage} that the learner must translate, derived from the ${language} targetSentence. Do not include ${language} words unless they are proper nouns or unavoidable loanwords.` },
+              caseKey: { type: 'string', description: 'When caseTargets are provided, echo the exact caseKey for the target case this card tests.' },
               sentenceContext: { type: 'string', description: 'A 1–3 word phrase constraining what form the answer must take (e.g. "polite speech", "past tense"). Only include when needed to rule out an otherwise equally valid phrasing, and if the context is ambiguous from translateFrom. Do NOT include obvious hints, or things that the learner should know from translateFrom. Such things belong in the hint.' },
               hint: { type: 'string', description: `A brief grammar hint shown to the learner on request. Use ${responseLanguage}. Only include when genuinely helpful.` },
             },
@@ -131,6 +137,60 @@ Write any optional learner-facing hints in ${responseLanguage}.${cardLanguageBlo
         },
       },
       required: ['cards'],
+    },
+  },
+});
+
+export const CASE_EXTRACTION_PROMPT = (language: string, responseLanguage = 'English'): PromptWithTool => ({
+  system: `\
+You are a senior ${language} grammar curriculum designer extracting practice coverage cases from a grammar explanation.
+
+Critical language roles:
+- Study language: ${language}. Extract cases for this language only.
+- Response language: ${responseLanguage}. Use this for learner-facing labels and summaries.
+- Do NOT extract cases for ${responseLanguage} grammar unless ${responseLanguage} is also the study language.
+
+The user message is JSON with these fields:
+- topic (string): the grammar topic.
+- studyLanguage (string): the language being studied.
+- responseLanguage (string): the language for labels and summaries.
+- explanation (string): the grammar explanation shown to the learner.
+
+A grammar case is distinct if the learner needs a different rule, transformation, exception, cue, word class, conjugation class, agreement pattern, particle choice, register choice, or error-prone decision process to answer correctly.
+
+Extract the smallest useful set of cases needed for good flashcard coverage:
+- Do not merge cases under broad labels like "verb" when verb classes behave differently.
+- Do not split cases only because examples use different vocabulary.
+- Include exceptions and irregular forms when they require targeted practice.
+- If one simple pattern covers the whole topic, return one "general" case.
+- Prefer 2–16 cases. Use more only when the explanation clearly requires it.
+- caseKey must be stable lower_snake_case ASCII, based on the rule category, not on an example sentence.
+- generationHint should tell a card generator exactly what kind of sentence to create for that case.
+- importance is a relative weight from 0.5 to 2.0, where 1.0 is normal.${responseLanguageInstruction(responseLanguage)}${caseExtractionLanguageBlock(language)}`,
+  tool: {
+    name: 'extract_grammar_cases',
+    description: 'Extract stable grammar practice cases from a grammar explanation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cases: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 32,
+          items: {
+            type: 'object',
+            properties: {
+              caseKey: { type: 'string', description: 'Stable lower_snake_case ASCII identifier for this case.' },
+              label: { type: 'string', description: `Short learner-facing label in ${responseLanguage}.` },
+              ruleSummary: { type: 'string', description: `One concise sentence in ${responseLanguage} explaining what rule or decision this case tests.` },
+              generationHint: { type: 'string', description: `Instruction in ${responseLanguage} for generating a flashcard that specifically tests this case.` },
+              importance: { type: 'number', minimum: 0.5, maximum: 2.0, description: 'Relative scheduling importance, where 1.0 is normal.' },
+            },
+            required: ['caseKey', 'label', 'ruleSummary', 'generationHint'],
+          },
+        },
+      },
+      required: ['cases'],
     },
   },
 });

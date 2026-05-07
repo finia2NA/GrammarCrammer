@@ -31,7 +31,8 @@ server/
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
 │   │   ├── claude.service.ts       ← Anthropic API calls, SSE streaming, key resolution, usage recording
-│   │   ├── scheduler.service.ts    ← Per-user FIFO queue for background explanation jobs (max 5 concurrent per user)
+│   │   ├── grammar-case.service.ts ← Grammar subcase extraction, session target selection, per-case stats
+│   │   ├── scheduler.service.ts    ← Shared FIFO queue for background explanation/case extraction jobs (max 5 concurrent)
 │   │   ├── srs.service.ts          ← Spaced-repetition scheduling: interval calculation from AI + user star ratings
 │   │   ├── notification.service.ts ← Push notification delivery: find due decks, send via Expo, record delivery
 │   │   ├── email.service.ts        ← Transactional email via Resend (password reset links)
@@ -96,6 +97,8 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | POST   | `/`                       | Create deck from a `::` -delimited path, triggers explanation  |
 | GET    | `/:nodeId`                | Get deck data (topic, language, explanation, status, SRS fields) |
 | PATCH  | `/:nodeId`                | Update deck (name, topic, language, cardCount)                 |
+| GET    | `/:nodeId/grammar-cases`  | Get extracted grammar cases with per-user difficulty stats     |
+| POST   | `/:nodeId/grammar-cases/regenerate` | Queue grammar-case regeneration for the deck explanation |
 | POST   | `/:nodeId/mark-studied`   | Set lastStudiedAt to now                                       |
 | POST   | `/:nodeId/review`         | Submit post-session review (AI + user stars, recap, correctCount, totalCount), updates SRS interval |
 | GET    | `/:nodeId/reviews`        | Get all review history records for a deck          |
@@ -130,7 +133,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 
 | Method | Path                    | Description                                               |
 | ------ | ----------------------- | --------------------------------------------------------- |
-| POST   | `/cards`                | Generate flashcards for a topic (Haiku, JSON response)   |
+| POST   | `/cards`                | Generate flashcards for a topic; saved decks use grammar-case targets (Haiku, JSON response) |
 | POST   | `/judge`                | Judge a user's answer (Haiku, JSON response)             |
 | POST   | `/explain-sentence`     | Explain the correct sentence when learner skips (Haiku)  |
 | POST   | `/explanation/stream`   | Stream grammar explanation (Sonnet, SSE)                 |
@@ -149,11 +152,24 @@ SSE streams emit newline-delimited JSON events:
 Owns all Anthropic API communication.
 - Uses server-to-server `fetch` — no client-side API key exposure.
 - Two models:
-  - **Sonnet 4.6** — explanations, rejection feedback, chat (streamed SSE)
+  - **Sonnet 4.6** — explanations, grammar-case extraction, rejection feedback, chat
   - **Haiku 4.5** — card generation, answer judgment (non-streamed JSON)
 - `resolveApiKey(userId)` — determines which API key to use (user's own or central server key) based on user preference and limit checks. Throws 429 if central key limits are exceeded.
 - Every public AI function records usage via `recordUsage()` after the call completes.
-- `generateExplanationBackground(nodeId)` — fire-and-forget: generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`).
+- `generateDeckExplanation(userId, deckId)` — generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`), then queues grammar-case extraction for saved-deck card coverage.
+
+### `grammar-case.service.ts`
+Maintains per-deck grammar subcases used for coverage-aware card generation.
+- Extracts `GrammarCase` rows from saved deck explanations using language-specific prompt instructions, with a fallback `general` case if extraction fails.
+- Selects per-session card targets using coverage debt, recent learner difficulty, staleness, uncertainty, and iteration-based decay.
+- Lists and regenerates extracted cases for deck editing and review-history difficulty charts.
+- Updates `GrammarCaseUserStat` at deck-review submission without changing the deck-level SRS scheduler.
+
+### `scheduler.service.ts`
+Runs background AI preparation work.
+- Shares one FIFO queue across explanation generation and grammar-case extraction/regeneration.
+- Caps background explanation/case extraction concurrency at 5 total jobs.
+- Re-enqueues decks whose explanation status is `pending` when the server starts.
 
 ### `srs.service.ts`
 Spaced-repetition scheduling logic.
@@ -209,6 +225,7 @@ User
   pushDevices[] → PushDevice
   notificationSchedule? → NotificationSchedule
   notificationDeliveries[] → NotificationDelivery
+  grammarCaseStats[] → GrammarCaseUserStat
 
 PasswordResetToken
   id            UUID PK
@@ -232,11 +249,13 @@ Deck  (leaf data, attached 1-to-1 to a Node)
   language
   explanation   (full Markdown, optional)
   explanationStatus  pending | generating | ready | error
+  grammarCaseStatus  pending | generating | ready | error
   cardCount     (default 10)
   lastStudiedAt (optional)
   dueAt         (SRS next review date, optional)
   intervalDays  (SRS current interval, default 1)
   reviews[]     → DeckReview
+  grammarCases[] → GrammarCase
 
 DeckReview  (SRS review record per session OR schedule change)
   id              UUID PK
@@ -249,6 +268,30 @@ DeckReview  (SRS review record per session OR schedule change)
   intervalApplied (interval set at the time of this review)
   correctCount    Int? (cards correct on first try, nullable for old records)
   totalCount      Int? (total cards in session, nullable for old records)
+
+GrammarCase  (testable subcase of a saved deck explanation)
+  id             UUID PK
+  deckId         FK → Deck
+  caseKey        stable lower_snake_case identifier, unique per deck
+  label
+  ruleSummary
+  generationHint
+  baseWeight     relative scheduling importance
+  sourceHash     hash of topic + language + explanation
+  active         currently extracted case flag
+  sortOrder
+  userStats[]    → GrammarCaseUserStat
+
+GrammarCaseUserStat  (per-user mastery estimate for a grammar case)
+  userId + grammarCaseId  composite PK
+  seenCount
+  correctFirstTryCount
+  difficultyMass         decayed difficulty evidence
+  attemptMass            decayed attempt evidence
+  lastPracticedIteration
+  lastUpdatedIteration
+
+Grammar-case extraction replaces the deck's previous case rows and cascades their per-user stats, so a changed or regenerated explanation starts with fresh case difficulty estimates.
 
 Setting  (arbitrary key-value per user)
   userId + key  composite PK
@@ -280,7 +323,7 @@ UsageLedger  (append-only audit trail)
   userId        FK → User
   yearMonth     "2026-04"
   source        "central" | "own"
-  endpoint      "cards" | "judge" | "explanation" | "rejection" | "chat"
+  endpoint      "cards" | "judge" | "explanation" | "case-extraction" | "rejection" | "chat"
   model         model ID string
   cost          Float (dollars, high precision)
   createdAt

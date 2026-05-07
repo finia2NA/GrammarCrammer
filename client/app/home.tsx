@@ -75,6 +75,10 @@ export default function Home() {
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
+  function isDeckReadyForStudy(deck: TreeNode['deck']): boolean {
+    return !!deck && deck.explanationStatus === 'ready' && deck.grammarCaseStatus === 'ready';
+  }
+
   function handleQuickStart() {
     const trimmed = topic.trim();
     if (!trimmed) return;
@@ -97,7 +101,7 @@ export default function Home() {
     };
 
     if (node.deck) {
-      if (node.deck.explanationStatus !== 'ready') return;
+      if (!isDeckReadyForStudy(node.deck)) return;
       const isDue = node.deck.isDue ?? false;
       if (isDue) {
         startStudy({ nodeId: node.id, studyMode: 'scheduled' });
@@ -117,7 +121,7 @@ export default function Home() {
     while (queue.length > 0) {
       const current = queue.shift()!;
       if (current.deck) {
-        if (current.deck.explanationStatus !== 'ready') continue;
+        if (!isDeckReadyForStudy(current.deck)) continue;
         if (current.deck.isDue) dueDeckIds.push(current.id);
         else if (current.deck.dueAt == null) notStartedDeckIds.push(current.id);
         continue;
@@ -219,6 +223,7 @@ export default function Home() {
             language: data.language,
             cardCount: data.cardCount,
             explanation: data.explanation,
+            regenerateGrammarCases: data.regenerateGrammarCases,
           });
 
         }

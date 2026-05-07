@@ -72,6 +72,7 @@ client/
 │   ├── PillDropdown.tsx / .ios.tsx / .web.tsx ← Generic pill-style dropdown (platform-split)
 │   ├── PullDownCard.tsx                    ← Card with pull-down dismiss gesture
 │   ├── RainbowButton.tsx                   ← Accent-gradient button
+│   ├── ThemedSwitch.tsx / .web.tsx         ← Toggle switch (platform-split: CSS knob on web, RN Switch on native)
 │   └── TouchTarget.tsx                     ← Minimum-size touch target wrapper
 │
 ├── hooks/
@@ -166,7 +167,7 @@ Core types shared across the client:
 ```typescript
 Card            { id, english, targetLanguage, sentenceContext?, notes? }
 TreeNode        { id, parentId, name, sortOrder, deck, children[] }
-DeckData        { nodeId, topic, language, explanation, explanationStatus, cardCount, lastStudiedAt, dueAt, intervalDays }
+DeckData        { nodeId, topic, language, explanation, explanationStatus, grammarCaseStatus, cardCount, lastStudiedAt, dueAt, intervalDays }
 ChatMessage     { role, content }
 ```
 

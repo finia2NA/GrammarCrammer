@@ -15,6 +15,7 @@ import {
   type SrsConfig,
   type StudyMode,
 } from './srs.service.js';
+import { updateCaseStatsFromReview, type GrammarCaseReviewAttempt } from './grammar-case.service.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ async function getNextSortOrder(userId: string, parentId: string | null): Promis
 
 function mapDeckRow(deck: {
   nodeId: string; topic: string; clarification: string | null; language: string;
-  explanation: string | null; explanationStatus: string;
+  explanation: string | null; explanationStatus: string; grammarCaseStatus: string;
   cardCount: number; lastStudiedAt: Date | null;
   dueAt: Date | null; intervalDays: number;
 }, srsConfig: { dailyDueTime: string; reviewTimezone: string }): DeckData {
@@ -46,6 +47,7 @@ function mapDeckRow(deck: {
     language: deck.language,
     explanation: deck.explanation,
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
+    grammarCaseStatus: deck.grammarCaseStatus as DeckData['grammarCaseStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
     dueAt: resolvedDueAt,
@@ -104,6 +106,7 @@ export async function createDeckFromPath(
           clarification: clarification?.trim() ? clarification : null,
           language,
           cardCount,
+          grammarCaseStatus: 'pending',
           ...(explanation !== undefined ? { explanation, explanationStatus: 'ready' } : {}),
         },
       },
@@ -166,16 +169,16 @@ export async function updateDeck(
         language: newLang,
         cardCount: newCount,
         ...(regenerate
-          ? { explanationStatus: 'pending', explanation: null }
+          ? { explanationStatus: 'pending', grammarCaseStatus: 'pending', explanation: null }
           : updates.explanation !== undefined
-            ? { explanation: updates.explanation, explanationStatus: 'ready' }
+            ? { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' }
             : {}),
       },
     });
   } else if (updates.explanation !== undefined) {
     await prisma.deck.update({
       where: { nodeId },
-      data: { explanation: updates.explanation, explanationStatus: 'ready' },
+      data: { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' },
     });
   }
 
@@ -281,7 +284,7 @@ export async function deleteNode(userId: string, nodeId: string): Promise<void> 
 export async function setExplanation(nodeId: string, explanation: string): Promise<void> {
   await prisma.deck.update({
     where: { nodeId },
-    data: { explanation, explanationStatus: 'ready' },
+    data: { explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' },
   });
 }
 
@@ -296,6 +299,34 @@ export async function setExplanationGenerating(nodeId: string): Promise<void> {
   await prisma.deck.update({
     where: { nodeId },
     data: { explanationStatus: 'generating' },
+  });
+}
+
+export async function setGrammarCasePending(nodeId: string): Promise<void> {
+  await prisma.deck.update({
+    where: { nodeId },
+    data: { grammarCaseStatus: 'pending' },
+  });
+}
+
+export async function setGrammarCaseGenerating(nodeId: string): Promise<void> {
+  await prisma.deck.update({
+    where: { nodeId },
+    data: { grammarCaseStatus: 'generating' },
+  });
+}
+
+export async function setGrammarCaseReady(nodeId: string): Promise<void> {
+  await prisma.deck.update({
+    where: { nodeId },
+    data: { grammarCaseStatus: 'ready' },
+  });
+}
+
+export async function setGrammarCaseError(nodeId: string): Promise<void> {
+  await prisma.deck.update({
+    where: { nodeId },
+    data: { grammarCaseStatus: 'error' },
   });
 }
 
@@ -394,11 +425,15 @@ export async function saveDeckReview(
   studyMode: StudyMode,
   correctCount?: number,
   totalCount?: number,
+  caseAttempts: GrammarCaseReviewAttempt[] = [],
 ): Promise<{ dueAt: number; nextIntervalDays: number }> {
-  const deck = await prisma.deck.findFirst({
-    where: { nodeId, node: { userId } },
-    select: { intervalDays: true, dueAt: true },
-  });
+  const [deck, previousReviewCount] = await Promise.all([
+    prisma.deck.findFirst({
+      where: { nodeId, node: { userId } },
+      select: { intervalDays: true, dueAt: true },
+    }),
+    prisma.deckReview.count({ where: { deckId: nodeId, eventType: 'review' } }),
+  ]);
   if (!deck) throw new AppError(404, 'NOT_FOUND', 'Deck not found.');
 
   const now = new Date();
@@ -418,12 +453,14 @@ export async function saveDeckReview(
     forceEarlyMultipliers: !currentlyDue,
   });
 
-  await prisma.$transaction([
-    prisma.deck.update({
+  const reviewIteration = previousReviewCount + 1;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.deck.update({
       where: { nodeId },
       data: { lastStudiedAt: now, dueAt, intervalDays: nextIntervalDays },
-    }),
-    prisma.deckReview.create({
+    });
+    await tx.deckReview.create({
       data: {
         deckId: nodeId,
         aiStars,
@@ -433,8 +470,9 @@ export async function saveDeckReview(
         correctCount: correctCount ?? null,
         totalCount: totalCount ?? null,
       },
-    }),
-  ]);
+    });
+    await updateCaseStatsFromReview(tx, userId, nodeId, caseAttempts, reviewIteration);
+  });
 
   return { dueAt: dueAt.getTime(), nextIntervalDays };
 }

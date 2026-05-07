@@ -4,8 +4,8 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react
 import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
 import { PageSheetModal } from '@/components/PageSheetModal';
 import { useColors } from '@/constants/theme';
-import { getDeckReviews, getCollectionReviews, setDeckDueDate, resetDeckToNeverStudied } from '@/lib/api';
-import type { DeckReviewRecord, CollectionReviewRecord } from '@/lib/api';
+import { getDeckReviews, getCollectionReviews, setDeckDueDate, resetDeckToNeverStudied, getGrammarCases } from '@/lib/api';
+import type { DeckReviewRecord, CollectionReviewRecord, GrammarCaseSummary } from '@/lib/api';
 import type { TreeNode } from '@/lib/types';
 import { DatePicker } from '@/components/pickers/DatePicker';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
@@ -42,9 +42,10 @@ export function ReviewHistoryModal({
   const [deckReviews, setDeckReviews] = useState<DeckReviewRecord[]>([]);
   const [collectionReviews, setCollectionReviews] = useState<CollectionReviewRecord[]>([]);
   const [collectionDecks, setCollectionDecks] = useState<{ id: string; name: string }[]>([]);
+  const [grammarCases, setGrammarCases] = useState<GrammarCaseSummary[]>([]);
 
   const fetchReviews = useCallback((nodeId: string, initial: boolean) => {
-    if (initial) { setLoading(true); setDeckReviews([]); setCollectionReviews([]); setCollectionDecks([]); }
+    if (initial) { setLoading(true); setDeckReviews([]); setCollectionReviews([]); setCollectionDecks([]); setGrammarCases([]); }
     else setRefreshing(true);
 
     if (isCollection) {
@@ -53,8 +54,12 @@ export function ReviewHistoryModal({
         setCollectionDecks(result.decks);
       }).catch(() => { }).finally(() => { setLoading(false); setRefreshing(false); });
     } else {
-      getDeckReviews(nodeId).then(result => {
-        setDeckReviews(result.reviews);
+      Promise.all([
+        getDeckReviews(nodeId),
+        getGrammarCases(nodeId, { ensure: false, sort: 'difficulty' }).catch(() => ({ cases: [] })),
+      ]).then(([reviewResult, caseResult]) => {
+        setDeckReviews(reviewResult.reviews);
+        setGrammarCases(caseResult.cases);
       }).catch(() => { }).finally(() => { setLoading(false); setRefreshing(false); });
     }
   }, [isCollection]);
@@ -108,6 +113,10 @@ export function ReviewHistoryModal({
               isCollection={isCollection}
               colors={colors}
             />
+          )}
+
+          {!isCollection && grammarCases.length > 0 && (
+            <GrammarCaseDifficultyChart cases={grammarCases} colors={colors} />
           )}
 
           {/* Review table or empty state */}
@@ -425,6 +434,53 @@ function IntervalChart({
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+function GrammarCaseDifficultyChart({
+  cases,
+  colors,
+}: {
+  cases: GrammarCaseSummary[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  const visible = cases.slice(0, 12);
+  const maxDifficulty = Math.max(0.4, ...visible.map(item => item.difficulty));
+
+  return (
+    <View className="bg-surface border border-border rounded-2xl p-4 mb-4">
+      <Text className="text-foreground-secondary text-xs font-medium mb-3">Grammar Case Difficulty</Text>
+      <View className="gap-2">
+        {visible.map((item) => {
+          const width = `${Math.max(10, (item.difficulty / maxDifficulty) * 100)}%` as const;
+          const accuracy = item.seenCount > 0
+            ? Math.round((item.correctFirstTryCount / item.seenCount) * 100)
+            : null;
+          return (
+            <View key={item.id}>
+              <View className="h-9 rounded-lg overflow-hidden justify-center" style={{ backgroundColor: colors.background_muted }}>
+                <View
+                  className="absolute left-0 top-0 bottom-0 rounded-lg"
+                  style={{
+                    width,
+                    backgroundColor: item.difficulty >= 0.55 ? colors.error : item.difficulty >= 0.4 ? '#f59e0b' : colors.success,
+                    opacity: 0.82,
+                  }}
+                />
+                <View className="relative px-3 flex-row items-center justify-between gap-2">
+                  <Text className="text-white text-xs font-semibold flex-1" numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  <Text className="text-white text-[11px] font-medium">
+                    {item.seenCount === 0 ? 'new' : `${Math.round(item.difficulty * 100)}${accuracy !== null ? ` / ${accuracy}%` : ''}`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }

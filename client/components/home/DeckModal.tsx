@@ -7,8 +7,8 @@ import { AnimatedTabbed } from '@/components/AnimatedTabbed';
 import type { Language, CardCount } from '@/constants/session';
 import { DEFAULT_LANGUAGES } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
-import type { CsvImportResult } from '@/lib/api';
-import { exportNodeCsv, getNodePath, getDeck } from '@/lib/api';
+import type { CsvImportResult, GrammarCaseSummary } from '@/lib/api';
+import { exportNodeCsv, getNodePath, getDeck, getGrammarCases } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
 import { DeckModalCsvTab } from './DeckModalCsvTab';
 import { useColors } from '@/constants/theme';
@@ -69,6 +69,7 @@ export interface DeckFormData {
   language: Language;
   cardCount: CardCount;
   explanation?: string;
+  regenerateGrammarCases?: boolean;
 }
 
 export interface CsvImportData {
@@ -108,6 +109,8 @@ export function DeckModal({
   const [language, setLanguage] = useState<Language>('Japanese');
   const [cardCount, setCardCount] = useState<CardCount>(0);
   const [explanation, setExplanation] = useState('');
+  const [grammarCases, setGrammarCases] = useState<GrammarCaseSummary[]>([]);
+  const [regenerateGrammarCases, setRegenerateGrammarCases] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
@@ -120,6 +123,8 @@ export function DeckModal({
       setActiveTab('create');
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
+      setGrammarCases([]);
+      setRegenerateGrammarCases(false);
 
       const node = editNode;
       const pathProp = editNodePath;
@@ -137,10 +142,15 @@ export function DeckModal({
             setLanguage(deck.language as Language);
             setCardCount(deck.cardCount as CardCount);
             setExplanation(deck.explanation ?? '');
+            if (deck.explanation) {
+              const result = await getGrammarCases(node.id, { sort: 'order' });
+              setGrammarCases(result.cases);
+            }
           } else {
             setTopic('');
             setClarification('');
             setExplanation('');
+            setGrammarCases([]);
           }
         } catch {
           setName(pathProp ?? node.name);
@@ -151,6 +161,7 @@ export function DeckModal({
             setCardCount(node.deck.cardCount as CardCount);
             setExplanation(node.deck.explanation ?? '');
           }
+          setGrammarCases([]);
         } finally {
           setLoading(false);
         }
@@ -161,6 +172,8 @@ export function DeckModal({
       setActiveTab('create');
       setCsvContent(null);
       setImportStatus({ state: 'idle' });
+      setGrammarCases([]);
+      setRegenerateGrammarCases(false);
       setName(initialData?.path ?? '');
       setTopic(initialData?.topic ?? '');
       setClarification(initialData?.clarification ?? '');
@@ -190,6 +203,7 @@ export function DeckModal({
         language,
         cardCount,
         explanation,
+        regenerateGrammarCases,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : t('common.errorGeneric');
@@ -301,6 +315,9 @@ export function DeckModal({
       cardCount={cardCount}
       onCardCountChange={setCardCount}
       enabledLanguages={enabledLanguages}
+      grammarCases={grammarCases}
+      regenerateGrammarCases={regenerateGrammarCases}
+      onRegenerateGrammarCases={() => setRegenerateGrammarCases(true)}
     />
   );
 

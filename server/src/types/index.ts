@@ -2,11 +2,15 @@ export interface Card {
   id: string;
   english: string;
   targetLanguage: string;
+  grammarCaseId?: string;
+  grammarCaseKey?: string;
+  grammarCaseLabel?: string;
   sentenceContext?: string;
   hint?: string;
 }
 
 export type ExplanationStatus = 'pending' | 'generating' | 'ready' | 'error';
+export type GrammarCaseStatus = 'pending' | 'generating' | 'ready' | 'error';
 
 export interface DeckData {
   nodeId: string;
@@ -15,6 +19,7 @@ export interface DeckData {
   language: string;
   explanation: string | null;
   explanationStatus: ExplanationStatus;
+  grammarCaseStatus: GrammarCaseStatus;
   cardCount: number;
   lastStudiedAt: string | null;
   dueAt: number | null;

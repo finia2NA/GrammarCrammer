@@ -101,6 +101,8 @@ const en = {
   'settings.uiLanguageDescription': 'Language used for the app interface and AI-generated text',
   'settings.collectionCardOrder': 'Collection Card Order',
   'settings.collectionCardOrderDescription': 'Order of cards when studying a collection',
+  'settings.caseAwareGeneration': 'Case-Aware Generation',
+  'settings.caseAwareGenerationDescription': 'Use extracted grammar cases to balance card coverage inside saved decks.',
   'settings.contextAwareJudging': 'Context-Aware Judging',
   'settings.contextAwareJudgingDescription': 'Pass the grammar explanation to the judging AI for more topic-relevant feedback. Uses API limits faster.',
   'settings.feedbackBrevity': 'Feedback Brevity',

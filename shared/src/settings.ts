@@ -10,6 +10,7 @@ export const UNLIMITED_NEW_DECKS = 999;
 
 export const SETTING_DEFAULTS: Record<string, string> = {
   card_order: 'shuffled',
+  case_aware_generation: 'on',
   judge_with_explanation: 'on',
   feedback_brevity: 'normal',
   default_card_count: '10',

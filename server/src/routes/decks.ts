@@ -3,9 +3,10 @@ import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
 import { createDeckFromPath, getDeck, updateDeck, deleteNode, setLastStudied, saveDeckReview, updateDeckSchedule, getDeckReviews } from '../services/deck.service.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { enqueueExplanation } from '../services/scheduler.service.js';
+import { enqueueExplanation, enqueueGrammarCaseExtraction } from '../services/scheduler.service.js';
 import { capture } from '../services/analytics.service.js';
 import { getNodePath } from '../services/tree.service.js';
+import { getGrammarCaseSummaries } from '../services/grammar-case.service.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const CSV_MAX_DATA_ROWS = 5000;
@@ -30,6 +31,16 @@ decksRouter.post('/', async (req, res, next) => {
 
     if (existingExplanation === undefined) {
       enqueueExplanation(req.userId!, nodeId);
+    } else {
+      await enqueueGrammarCaseExtraction(req.userId!, nodeId, {
+        analyticsContext: {
+          appSessionId: req.appSessionId,
+          deckId: nodeId,
+          deckTopic: String(topic),
+          language: String(language),
+          traceId: `case_extraction:${nodeId}`,
+        },
+      });
     }
 
     capture(req.userId!, 'deck_created', {
@@ -42,10 +53,11 @@ decksRouter.post('/', async (req, res, next) => {
       card_count: Number(cardCount ?? 0),
       has_clarification: deckClarification !== undefined,
       has_existing_explanation: existingExplanation !== undefined,
+      grammar_case_queued: existingExplanation !== undefined,
       creation_source: existingExplanation !== undefined ? 'quick_study_save' : 'manual',
     });
 
-    res.status(201).json({ nodeId });
+    res.status(201).json({ nodeId, grammarCaseQueued: existingExplanation !== undefined });
   } catch (e) { next(e); }
 });
 
@@ -189,6 +201,16 @@ decksRouter.post('/import-csv', upload.single('file'), async (req, res, next) =>
         if (existingExplanation === undefined) {
           enqueueExplanation(userId, nodeId);
           queuedCount++;
+        } else {
+          await enqueueGrammarCaseExtraction(userId, nodeId, {
+            analyticsContext: {
+              appSessionId: req.appSessionId,
+              deckId: nodeId,
+              deckTopic: row.topic,
+              language: String(language),
+              traceId: `case_extraction:${nodeId}`,
+            },
+          });
         }
       } catch (e) {
         failures.push({
@@ -227,11 +249,32 @@ decksRouter.get('/:nodeId', async (req, res, next) => {
 
 decksRouter.patch('/:nodeId', async (req, res, next) => {
   try {
-    const { name, topic, clarification, language, cardCount, explanation } = req.body;
+    const { name, topic, clarification, language, cardCount, explanation, regenerateGrammarCases } = req.body;
     const result = await updateDeck(req.userId!, req.params.nodeId, { name, topic, clarification, language, cardCount, explanation });
 
     if (result.regenerateExplanation) {
       enqueueExplanation(req.userId!, req.params.nodeId);
+    } else if (regenerateGrammarCases === true) {
+      await enqueueGrammarCaseExtraction(req.userId!, req.params.nodeId, {
+        force: true,
+        analyticsContext: {
+          appSessionId: req.appSessionId,
+          deckId: req.params.nodeId,
+          deckTopic: typeof topic === 'string' ? topic : undefined,
+          language: typeof language === 'string' ? language : undefined,
+          traceId: `case_extraction:${req.params.nodeId}`,
+        },
+      });
+    } else if (typeof explanation === 'string' && explanation.trim().length > 0) {
+      await enqueueGrammarCaseExtraction(req.userId!, req.params.nodeId, {
+        analyticsContext: {
+          appSessionId: req.appSessionId,
+          deckId: req.params.nodeId,
+          deckTopic: typeof topic === 'string' ? topic : undefined,
+          language: typeof language === 'string' ? language : undefined,
+          traceId: `case_extraction:${req.params.nodeId}`,
+        },
+      });
     }
 
     capture(req.userId!, 'deck_updated', {
@@ -243,6 +286,7 @@ decksRouter.patch('/:nodeId', async (req, res, next) => {
       card_count: cardCount !== undefined ? Number(cardCount) : undefined,
       has_clarification: typeof clarification === 'string' ? clarification.trim().length > 0 : undefined,
       regenerated_explanation: result.regenerateExplanation,
+      regenerated_grammar_cases: regenerateGrammarCases === true,
       updated_fields: ['name', 'topic', 'clarification', 'language', 'cardCount', 'explanation']
         .filter(field => req.body[field] !== undefined),
     });
@@ -305,6 +349,29 @@ decksRouter.post('/:nodeId/generate-explanation', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+decksRouter.get('/:nodeId/grammar-cases', async (req, res, next) => {
+  try {
+    const sort = req.query.sort === 'difficulty' ? 'difficulty' : 'order';
+    const ensure = req.query.ensure === '1' || req.query.ensure === 'true';
+    const cases = await getGrammarCaseSummaries(req.userId!, req.params.nodeId, { ensure, sort });
+    res.json({ cases });
+  } catch (e) { next(e); }
+});
+
+decksRouter.post('/:nodeId/grammar-cases/regenerate', async (req, res, next) => {
+  try {
+    await enqueueGrammarCaseExtraction(req.userId!, req.params.nodeId, {
+      force: true,
+      analyticsContext: {
+        appSessionId: req.appSessionId,
+        deckId: req.params.nodeId,
+        traceId: `case_extraction:${req.params.nodeId}`,
+      },
+    });
+    res.json({ queued: true });
+  } catch (e) { next(e); }
+});
+
 decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
   try {
     await setLastStudied(req.params.nodeId);
@@ -314,7 +381,7 @@ decksRouter.post('/:nodeId/mark-studied', async (req, res, next) => {
 
 decksRouter.post('/:nodeId/review', async (req, res, next) => {
   try {
-    const { userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount } = req.body;
+    const { userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount, caseAttempts } = req.body;
     if (!userStars || aiStars === undefined || aiRecap === undefined || aiRecap === null) {
       throw new AppError(400, 'MISSING_FIELDS', 'userStars, aiStars, and aiRecap are required.');
     }
@@ -324,7 +391,24 @@ decksRouter.post('/:nodeId/review', async (req, res, next) => {
     const dueAgeHours = deck?.dueAt ? Math.max(0, Date.now() - deck.dueAt) / 36e5 : null;
     const parsedCorrectCount = correctCount != null ? Math.max(0, Math.round(Number(correctCount))) : undefined;
     const parsedTotalCount = totalCount != null ? Math.max(0, Math.round(Number(totalCount))) : undefined;
-    const result = await saveDeckReview(req.userId!, req.params.nodeId, stars, Number(aiStars), String(aiRecap), resolvedStudyMode, parsedCorrectCount, parsedTotalCount);
+    const parsedCaseAttempts = Array.isArray(caseAttempts)
+      ? caseAttempts.map((attempt) => ({
+        grammarCaseId: typeof attempt?.grammarCaseId === 'string' ? attempt.grammarCaseId : undefined,
+        grammarCaseKey: typeof attempt?.grammarCaseKey === 'string' ? attempt.grammarCaseKey : undefined,
+        answers: Array.isArray(attempt?.answers) ? attempt.answers.map(String) : [],
+      }))
+      : [];
+    const result = await saveDeckReview(
+      req.userId!,
+      req.params.nodeId,
+      stars,
+      Number(aiStars),
+      String(aiRecap),
+      resolvedStudyMode,
+      parsedCorrectCount,
+      parsedTotalCount,
+      parsedCaseAttempts,
+    );
     capture(req.userId!, 'deck_review_submitted', {
       deck_id: req.params.nodeId,
       app_session_id: req.appSessionId,
@@ -341,6 +425,7 @@ decksRouter.post('/:nodeId/review', async (req, res, next) => {
       was_due_when_studied: deck?.isDue,
       due_age_hours: dueAgeHours,
       due_bucket: dueAgeHours === null ? 'not_started' : dueAgeHours >= 24 * 7 ? 'week_plus' : dueAgeHours >= 24 ? 'day_plus' : dueAgeHours > 0 ? 'same_day' : 'not_due',
+      grammar_case_attempt_count: parsedCaseAttempts.length,
     });
     res.json(result);
   } catch (e) { next(e); }

@@ -6,13 +6,13 @@ import { buildSrsConfig, isDueNow, resolveDueAt } from './srs.service.js';
 // Deck select used by tree queries — omits explanation to keep responses small.
 const DECK_TREE_SELECT = {
   nodeId: true, topic: true, clarification: true, language: true,
-  explanationStatus: true, cardCount: true,
+  explanationStatus: true, grammarCaseStatus: true, cardCount: true,
   lastStudiedAt: true, dueAt: true, intervalDays: true,
 } as const;
 
 type DeckTreeRow = {
   nodeId: string; topic: string; clarification: string | null; language: string;
-  explanationStatus: string; cardCount: number;
+  explanationStatus: string; grammarCaseStatus: string; cardCount: number;
   lastStudiedAt: Date | null; dueAt: Date | null; intervalDays: number;
 };
 
@@ -25,6 +25,7 @@ function mapDeckWithDue(deck: DeckTreeRow, srsConfig: { dailyDueTime: string; re
     language: deck.language,
     explanation: null,
     explanationStatus: deck.explanationStatus as DeckData['explanationStatus'],
+    grammarCaseStatus: deck.grammarCaseStatus as DeckData['grammarCaseStatus'],
     cardCount: deck.cardCount,
     lastStudiedAt: deck.lastStudiedAt?.toISOString() ?? null,
     dueAt,

@@ -272,11 +272,32 @@ export async function getDeck(nodeId: string) {
   return request<DeckData>(`/decks/${nodeId}`);
 }
 
-export async function updateDeck(nodeId: string, updates: { name?: string; topic?: string; clarification?: string; language?: string; cardCount?: number; explanation?: string }) {
+export async function updateDeck(nodeId: string, updates: { name?: string; topic?: string; clarification?: string; language?: string; cardCount?: number; explanation?: string; regenerateGrammarCases?: boolean }) {
   return request<{ regenerateExplanation: boolean }>(`/decks/${nodeId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
+}
+
+export interface GrammarCaseSummary {
+  id: string;
+  caseKey: string;
+  label: string;
+  ruleSummary: string;
+  generationHint: string;
+  baseWeight: number;
+  difficulty: number;
+  seenCount: number;
+  correctFirstTryCount: number;
+  lastPracticedIteration: number | null;
+}
+
+export async function getGrammarCases(nodeId: string, opts: { ensure?: boolean; sort?: 'order' | 'difficulty' } = {}) {
+  const params = new URLSearchParams();
+  if (opts.ensure) params.set('ensure', '1');
+  if (opts.sort) params.set('sort', opts.sort);
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return request<{ cases: GrammarCaseSummary[] }>(`/decks/${nodeId}/grammar-cases${suffix}`);
 }
 
 export async function resetDeckToNeverStudied(nodeId: string) {
@@ -453,10 +474,10 @@ export async function unregisterPushDevice(expoPushToken?: string) {
 
 // ─── AI (non-streaming) ──────────────────────────────────────────────────────
 
-export async function generateCards(topic: string, language: string, count: number, explanation: string, analyticsContext?: AnalyticsContext) {
+export async function generateCards(topic: string, language: string, count: number, explanation: string, analyticsContext?: AnalyticsContext, deckId?: string) {
   return request<{ cards: Card[]; cost: number }>('/ai/cards', {
     method: 'POST',
-    body: JSON.stringify({ topic, language, count, explanation, analyticsContext, uiLanguage: getAiResponseLanguage() }),
+    body: JSON.stringify({ topic, language, count, explanation, analyticsContext, deckId, uiLanguage: getAiResponseLanguage() }),
   });
 }
 
@@ -488,10 +509,11 @@ export async function submitDeckReview(
   studySessionId?: string,
   correctCount?: number,
   totalCount?: number,
+  caseAttempts?: Array<{ grammarCaseId?: string; grammarCaseKey?: string; answers: string[] }>,
 ) {
   return request<{ dueAt: number; nextIntervalDays: number }>(`/decks/${nodeId}/review`, {
     method: 'POST',
-    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount }),
+    body: JSON.stringify({ userStars, aiStars, aiRecap, studyMode, studySessionId, correctCount, totalCount, caseAttempts }),
   });
 }
 

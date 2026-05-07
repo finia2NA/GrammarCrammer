@@ -72,8 +72,10 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### AI Pipeline
 
-- Sonnet: explanations, chat, feedback  
+- Sonnet: explanations, grammar-case extraction, chat, feedback  
 - Haiku: card generation, answer evaluation  
+- Saved deck explanations are split into grammar subcases asynchronously so future card generation can balance coverage and learner difficulty  
+- Case-aware generation can be disabled in settings, and extracted cases can be reviewed or regenerated from deck editing  
 - Prompts distinguish UI response language from the language being studied  
 - Streaming responses via SSE  
 - Each request logs:
@@ -102,6 +104,7 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### Asynchronous Deck Generation
 - Keeps UI responsive during heavy AI tasks  
+- Background explanation and grammar-case extraction jobs share a scheduler capped at 5 concurrent jobs  
 - Improves user experience for large collections  
 - Tradeoff: requires job tracking and failure handling  
 
@@ -109,7 +112,7 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### Model Separation (Sonnet vs Haiku)
 - Haiku used for high-volume, low-cost tasks  
-- Sonnet used for quality-sensitive outputs  
+- Sonnet used for quality-sensitive outputs, including grammar-case extraction  
 - Balances cost vs output quality  
 
 ---
@@ -129,6 +132,7 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 - Node: hierarchical collection structure  
 - Deck: topic, explanation, scheduling data  
 - DeckReview: session results and interval updates  
+- GrammarCase / GrammarCaseUserStat: saved-deck subcase coverage and per-learner mastery estimates  
 - UsageLedger: AI cost tracking and enforcement  
 - NotificationSchedule / PushDevice: reminders  
 

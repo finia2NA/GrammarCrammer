@@ -123,8 +123,13 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHisto
           : <View style={{ width: 72 }} />
         }
 
-        {/* Explanation generating spinner */}
-        {!isCollection && <StatusBadge status={node.deck!.explanationStatus} />}
+        {/* Background preparation status */}
+        {!isCollection && (
+          <StatusBadge
+            explanationStatus={node.deck!.explanationStatus}
+            grammarCaseStatus={node.deck!.grammarCaseStatus}
+          />
+        )}
 
         {/* History button */}
         <TouchableOpacity
@@ -189,27 +194,40 @@ function PendingDot({ color }: { color: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({
+  explanationStatus,
+  grammarCaseStatus,
+}: {
+  explanationStatus: string;
+  grammarCaseStatus?: string;
+}) {
   const colors = useColors();
+  const status = explanationStatus === 'ready' && grammarCaseStatus && grammarCaseStatus !== 'ready'
+    ? grammarCaseStatus
+    : explanationStatus;
+  const label = explanationStatus === 'ready' && grammarCaseStatus && grammarCaseStatus !== 'ready'
+    ? 'Case extraction'
+    : 'Explanation generation';
+
   switch (status) {
     case 'generating':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6 }} title="Explanation generating">
+        <View style={{ paddingHorizontal: 6 }} title={`${label} running`}>
           <ActivityIndicator size={10} color={colors.primary} />
         </View>
       );
     case 'pending':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title="Explanation generation queued">
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={`${label} queued`}>
           <PendingDot color={colors.primary} />
         </View>
       );
     case 'error':
       return (
         // @ts-ignore — title is valid on web View for hover tooltip
-        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title="Explanation generation failed">
+        <View style={{ paddingHorizontal: 6, justifyContent: 'center' }} title={`${label} failed`}>
           <Icon name="warning" size={12} color={colors.error} />
         </View>
       );
