@@ -17,7 +17,7 @@ client/
 │
 ├── components/
 │   ├── home/
-│   │   ├── DeckTree.tsx                    ← Renders hierarchical collections/decks from the server tree
+│   │   ├── DeckTree.tsx                    ← Renders hierarchical collections/decks from the server tree (study, view, edit, history buttons)
 │   │   ├── DeckModal.tsx                   ← Tabbed create/edit deck modal (wraps tabs below)
 │   │   ├── DeckModalCreateTab.tsx          ← Manual deck creation form
 │   │   ├── DeckModalJsonTab.tsx            ← JSON bulk-import tab
@@ -152,8 +152,9 @@ Multi-step swipe carousel using individual card components from `components/onbo
 ### `app/home.tsx`
 Main hub. Contains:
 - **Quick study** — topic input, language picker, card count → launches `/session`
-- **Deck tree** — renders `DeckTree.tsx`, supports create / edit / delete / rename / move
+- **Deck tree** — renders `DeckTree.tsx`, supports create / edit / delete / rename / move / view explanation
 - **Settings modal** — UI language, sort order, API key status, usage bar
+- **Explanation viewer** — navigates to `/session?explainOnly=true` for a read-only explanation view (no cards)
 
 ### `app/session.tsx`
 Handles two modes:

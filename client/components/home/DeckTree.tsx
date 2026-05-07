@@ -13,9 +13,10 @@ interface DeckTreeProps {
   onStudy: (node: TreeNode) => void;
   onEdit: (node: TreeNode) => void;
   onHistory: (node: TreeNode) => void;
+  onView: (node: TreeNode) => void;
 }
 
-export function DeckTree({ tree, onStudy, onEdit, onHistory }: DeckTreeProps) {
+export function DeckTree({ tree, onStudy, onEdit, onHistory, onView }: DeckTreeProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
@@ -63,6 +64,7 @@ export function DeckTree({ tree, onStudy, onEdit, onHistory }: DeckTreeProps) {
           onStudy={onStudy}
           onEdit={onEdit}
           onHistory={onHistory}
+          onView={onView}
         />
       ))}
     </View>
@@ -79,12 +81,14 @@ interface TreeRowProps {
   onStudy: (node: TreeNode) => void;
   onEdit: (node: TreeNode) => void;
   onHistory: (node: TreeNode) => void;
+  onView: (node: TreeNode) => void;
 }
 
-function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHistory }: TreeRowProps) {
+function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHistory, onView }: TreeRowProps) {
   const isCollection = node.deck === null;
   const expanded = !collapsedIds.has(node.id);
   const colors = useColors();
+  const { t } = useI18n();
 
   return (
     <View>
@@ -132,6 +136,22 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHisto
           />
         )}
 
+        {/* View button — always in the same position for alignment */}
+        {!isCollection && node.deck?.explanationStatus === 'ready' ? (
+          <TouchableOpacity
+            className="w-10 h-10 items-center justify-center"
+            onPress={() => onView(node)}
+            activeOpacity={0.6}
+            accessibilityLabel={t('deck.viewExplanation')}
+            // @ts-ignore — title is valid on web View for hover tooltip
+            title={t('deck.viewExplanation')}
+          >
+            <Icon name="book" size={16} color={colors.foreground_secondary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
+
         {/* History button */}
         <TouchableOpacity
           className="w-10 h-10 items-center justify-center"
@@ -165,6 +185,7 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHisto
                 onStudy={onStudy}
                 onEdit={onEdit}
                 onHistory={onHistory}
+                onView={onView}
               />
             ))}
           </View>

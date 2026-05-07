@@ -1,4 +1,4 @@
-export type LoadPhase = 'explanation' | 'cards';
+export type LoadPhase = 'explanation' | 'cards' | 'fetching';
 export type CardPhase = 'input' | 'judging' | 'correct' | 'wrong_explaining' | 'wrong_shown';
 export const DID_NOT_KNOW_ANSWER = '(Did not know)';
 

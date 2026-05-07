@@ -64,6 +64,8 @@ export default function Home() {
     notStartedDeckIds?: string[];
   } | null>(null);
 
+  // View explanation handled via navigation to session with explainOnly param
+
   useEffect(() => {
     hydrateSettings().catch(() => {});
     syncReviewTimezone().catch(() => {});
@@ -163,6 +165,14 @@ export default function Home() {
     setHistoryShowActions(false);
     setHistoryStudyContext(null);
   }, []);
+
+  const handleView = useCallback((node: TreeNode) => {
+    if (!node.deck) return;
+    router.push({
+      pathname: '/session',
+      params: { nodeId: node.id, explainOnly: 'true' },
+    });
+  }, [router]);
 
   const closeHistory = useCallback(() => {
     setHistoryNode(null);
@@ -331,7 +341,7 @@ export default function Home() {
                   <Text className="text-foreground-muted text-xs">{t('common.updating')}</Text>
                 </View>
               )}
-              <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} onHistory={handleHistory} />
+              <DeckTree tree={tree} onStudy={handleStudy} onEdit={handleEdit} onHistory={handleHistory} onView={handleView} />
             </>
           )}
         </View>

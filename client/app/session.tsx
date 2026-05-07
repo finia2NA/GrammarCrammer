@@ -11,8 +11,9 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, useColors } from '@/constants/theme';
-import { createDeckFromPath } from '@/lib/api';
+import { createDeckFromPath, getDeck } from '@/lib/api';
 import type { AnalyticsContext, Card, DeckCard } from '@/lib/types';
+import type { LoadPhase } from '@/lib/types';
 import type { CardCount } from '@/constants/session';
 import { useSessionLoader } from '@/hooks/useSessionLoader';
 import { useMultiDeckSession } from '@/hooks/useMultiDeckSession';
@@ -45,7 +46,7 @@ function createStudySessionId() {
 
 export default function Session() {
   const params = useLocalSearchParams<{
-    topic?: string; language?: string; count?: string; nodeId?: string; studyMode?: 'scheduled' | 'early'; deckIds?: string;
+    topic?: string; language?: string; count?: string; nodeId?: string; studyMode?: 'scheduled' | 'early'; deckIds?: string; explainOnly?: string;
   }>();
 
   if (params.nodeId) {
@@ -53,6 +54,12 @@ export default function Session() {
       ? String(params.deckIds).split(',').map(s => s.trim()).filter(Boolean)
       : undefined;
     const studyMode = params.studyMode === 'early' ? 'early' : 'scheduled';
+    const explainOnly = params.explainOnly === 'true';
+
+    if (explainOnly) {
+      return <ExplainOnlyView nodeId={params.nodeId} />;
+    }
+
     return <DeckSession nodeId={params.nodeId} selectedDeckIds={selectedDeckIds} studyMode={studyMode} />;
   }
 
@@ -169,12 +176,51 @@ function DeckSession({
   );
 }
 
+// ─── Explain-only view (from home screen "view" button) ───────────────
+
+function ExplainOnlyView({ nodeId }: { nodeId: string }) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [loading, setLoading] = useState(true);
+  const [topic, setTopic] = useState('');
+  const [clarification, setClarification] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    getDeck(nodeId).then((deck: any) => {
+      if (cancelled || !deck) return;
+      setTopic(deck.topic ?? '');
+      setClarification(deck.clarification ?? null);
+      setExplanation(deck.explanation ?? '');
+    }).catch((err: any) => {
+      console.error('Failed to load deck for viewing:', err);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [nodeId]);
+
+  return (
+    <ExplanationOverlay
+      topic={topic}
+      clarification={clarification}
+      explanation={explanation}
+      wasTruncated={false}
+      loading={loading}
+      loadPhase="fetching"
+      onBack={() => router.replace('/home')}
+      insets={insets}
+    />
+  );
+}
+
 // ─── Shared session UI ──────────────────────────────────────────────────────
 
 interface SessionUIProps {
   studySessionId: string;
   loading: boolean;
-  loadPhase: 'explanation' | 'cards';
+  loadPhase: LoadPhase;
   loadError: string | null;
   setLoadError: (e: string | null) => void;
   cards: (Card | DeckCard)[];

@@ -28,7 +28,7 @@ interface ExplanationOverlayProps {
   wasTruncated: boolean;
   loading: boolean;
   loadPhase: LoadPhase;
-  onStart: () => void;
+  onStart?: () => void;
   onBack: () => void;
   insets: { top: number; bottom: number };
   allDecks?: OverlayDeck[];
@@ -136,14 +136,14 @@ export function ExplanationOverlay({
           <View className="flex-row items-center justify-center gap-3 py-4">
             <ActivityIndicator size="small" color={Colors.primary} />
             <Text className="text-foreground-secondary text-sm">
-              {loadPhase === 'cards' ? t('session.generatingCards') : t('session.generatingExplanation')}
+              {loadPhase === 'cards' ? t('session.generatingCards') : loadPhase === 'fetching' ? t('common.loading') : t('session.generatingExplanation')}
             </Text>
           </View>
-        ) : (
+        ) : onStart ? (
           <TouchableOpacity className="bg-primary rounded-2xl py-4 items-center" onPress={onStart}>
             <Text className="text-primary-foreground font-bold text-base">{t('session.startPractising')}</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
     </View>
   );
