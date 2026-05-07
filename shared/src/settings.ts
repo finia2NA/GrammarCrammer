@@ -9,11 +9,11 @@ export const NEW_DECKS_OPTIONS = [1, 2, 3, 5, 999] as const;
 export const UNLIMITED_NEW_DECKS = 999;
 
 export const SETTING_DEFAULTS: Record<string, string> = {
-  card_order: 'shuffled',
+  card_order: 'sequential',
   case_aware_generation: 'on',
   judge_with_explanation: 'on',
-  feedback_brevity: 'normal',
-  default_card_count: '10',
+  feedback_brevity: 'brief',
+  default_card_count: '5',
   api_key_preference: 'central',
   ui_language: 'en',
   enabled_languages: JSON.stringify(DEFAULT_LANGUAGES),
