@@ -128,7 +128,7 @@ function normalizeBackendInput(input: string): string | null {
     const url = new URL(withScheme);
     if (!url.hostname) return null;
     if (!hasScheme && !url.port && url.protocol === 'http:') url.port = '3001';
-    url.pathname = '/api';
+    url.pathname = '/api/v1';
     url.search = '';
     url.hash = '';
     return url.toString().replace(/\/$/, '');
@@ -147,7 +147,7 @@ function BackendHostModal({ visible, onClose }: { visible: boolean; onClose: () 
     let mounted = true;
     getBackendBaseUrl().then(url => {
       if (!mounted) return;
-      setBackendInput(url?.replace(/^https?:\/\//, '').replace(/\/api$/, '') ?? '');
+      setBackendInput(url?.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '') ?? '');
       setMessage(null);
     });
     return () => { mounted = false; };
