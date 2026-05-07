@@ -31,7 +31,7 @@ export function ThemedSwitch({ value, onValueChange, disabled }: ThemedSwitchPro
           width: 28,
           height: 18,
           borderRadius: 9,
-          backgroundColor: colors.primary,
+          backgroundColor: value ? colors.primary : colors.foreground,
           transform: `translateX(${value ? 16 : 0}px)`,
           transition: 'transform 0.2s ease',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',

@@ -108,7 +108,7 @@ export function ExplanationChat({
                 {msg.content ? (
                   <GrammarMarkdown>{msg.content}</GrammarMarkdown>
                 ) : (
-                  <ActivityIndicator size="small" color={colors.border} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 )}
               </View>
             )}
@@ -116,7 +116,7 @@ export function ExplanationChat({
         ))}
         {loading && (
           <View className="bg-background-warm rounded-xl px-3 py-2 self-start">
-            <ActivityIndicator size="small" color={colors.border} />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
       </ScrollView>
