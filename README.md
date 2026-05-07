@@ -17,7 +17,8 @@ Patterndeck and goes beyond traditional Flashcard apps by fully generating struc
 - Organizes decks in a hierarchical collection system  
 - Uses spaced repetition with AI + user feedback  
 - Supports both quick sessions and long-term study  
-- Imports decks via CSV with optional prewritten content  
+- Imports decks via JSON with optional prewritten content  
+- Exports decks as JSON to preserve work-in-progress grammar collections  
 
 ---
 

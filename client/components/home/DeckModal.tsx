@@ -7,17 +7,17 @@ import { AnimatedTabbed } from '@/components/AnimatedTabbed';
 import type { Language, CardCount } from '@/constants/session';
 import { DEFAULT_LANGUAGES } from '@/constants/session';
 import type { TreeNode } from '@/lib/types';
-import type { CsvImportResult, GrammarCaseSummary } from '@/lib/api';
-import { exportNodeCsv, getNodePath, getDeck, getGrammarCases } from '@/lib/api';
+import type { JsonImportResult, GrammarCaseSummary } from '@/lib/api';
+import { exportNodeJson, getNodePath, getDeck, getGrammarCases } from '@/lib/api';
 import { DeckModalCreateTab } from './DeckModalCreateTab';
-import { DeckModalCsvTab } from './DeckModalCsvTab';
+import { DeckModalJsonTab } from './DeckModalJsonTab';
 import { useColors } from '@/constants/theme';
 import { useEnabledLanguages } from '@/hooks/state/persistent/useSettings';
 import { useI18n } from '@/lib/i18n';
 
-async function triggerCsvDownload(filename: string, csv: string) {
+async function triggerJsonDownload(filename: string, json: string) {
   if (Platform.OS === 'web') {
-    const blob = new Blob([csv], { type: 'text/tab-separated-values;charset=utf-8;' });
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -39,14 +39,14 @@ async function triggerCsvDownload(filename: string, csv: string) {
     throw new Error('Could not prepare a file for export.');
   }
 
-  await FileSystem.writeAsStringAsync(fileUri, csv, {
+  await FileSystem.writeAsStringAsync(fileUri, json, {
     encoding: FileSystem.EncodingType.UTF8,
   });
 
   await Sharing.shareAsync(fileUri, {
-    mimeType: 'text/tab-separated-values',
-    dialogTitle: 'Export CSV',
-    UTI: 'public.comma-separated-values-text',
+    mimeType: 'application/json',
+    dialogTitle: 'Export JSON',
+    UTI: 'public.json',
   });
 }
 
@@ -54,7 +54,7 @@ interface DeckModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: DeckFormData) => void | Promise<void>;
-  onCsvImport?: (data: CsvImportData) => Promise<CsvImportResult>;
+  onJsonImport?: (data: JsonImportData) => Promise<JsonImportResult>;
   onDelete?: () => void;
   onEditDataLoaded?: (path: string) => void;
   editNode?: TreeNode | null;
@@ -72,24 +72,24 @@ export interface DeckFormData {
   regenerateGrammarCases?: boolean;
 }
 
-export interface CsvImportData {
-  csvContent: string;
+export interface JsonImportData {
+  jsonContent: string;
   collectionPath: string;
   language: Language;
   cardCount: CardCount;
 }
 
-export type CsvImportStatus =
+export type JsonImportStatus =
   | { state: 'idle' }
   | { state: 'importing' }
   | { state: 'error'; message: string }
-  | { state: 'done'; result: CsvImportResult };
+  | { state: 'done'; result: JsonImportResult };
 
 export function DeckModal({
   visible,
   onClose,
   onSubmit,
-  onCsvImport,
+  onJsonImport,
   onDelete,
   onEditDataLoaded,
   editNode,
@@ -100,7 +100,7 @@ export function DeckModal({
   const { t } = useI18n();
   const isEdit = editNode !== null && editNode !== undefined;
   const isCollection = isEdit && editNode.deck === null;
-  const canUseCsvTab = !isEdit;
+  const canUseJsonTab = !isEdit;
   const enabledLanguages = useEnabledLanguages(DEFAULT_LANGUAGES);
 
   const [name, setName] = useState('');
@@ -112,9 +112,9 @@ export function DeckModal({
   const [originalExplanation, setOriginalExplanation] = useState('');
   const [grammarCases, setGrammarCases] = useState<GrammarCaseSummary[]>([]);
   const [regenerateGrammarCases, setRegenerateGrammarCases] = useState(false);
-  const [activeTab, setActiveTab] = useState<'create' | 'csv'>('create');
-  const [csvContent, setCsvContent] = useState<string | null>(null);
-  const [importStatus, setImportStatus] = useState<CsvImportStatus>({ state: 'idle' });
+  const [activeTab, setActiveTab] = useState<'create' | 'json'>('create');
+  const [jsonContent, setJsonContent] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<JsonImportStatus>({ state: 'idle' });
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -122,7 +122,7 @@ export function DeckModal({
     if (visible && isEdit && editNode) {
       setLoading(true);
       setActiveTab('create');
-      setCsvContent(null);
+      setJsonContent(null);
       setImportStatus({ state: 'idle' });
       setGrammarCases([]);
       setRegenerateGrammarCases(false);
@@ -172,7 +172,7 @@ export function DeckModal({
       loadEditData();
     } else if (visible) {
       setActiveTab('create');
-      setCsvContent(null);
+      setJsonContent(null);
       setImportStatus({ state: 'idle' });
       setGrammarCases([]);
       setRegenerateGrammarCases(false);
@@ -228,7 +228,7 @@ export function DeckModal({
   }
 
   function handleFileSelected(fileName: string, content: string) {
-    setCsvContent(content);
+    setJsonContent(content);
     setImportStatus({ state: 'idle' });
     if (!name.trim()) {
       const rawName = fileName.replace(/\.[^.]+$/, '');
@@ -239,19 +239,19 @@ export function DeckModal({
   const handleExport = useCallback(async () => {
     if (!editNode) return;
     try {
-      const { filename, csv } = await exportNodeCsv(editNode.id);
-      await triggerCsvDownload(filename, csv);
+      const { filename, json } = await exportNodeJson(editNode.id);
+      await triggerJsonDownload(filename, json);
     } catch (e: any) {
       Alert.alert(t('deck.exportFailed'), e?.message ?? t('deck.unknownError'));
     }
   }, [editNode, t]);
 
-  const handleCsvImport = useCallback(async () => {
-    if (!csvContent || !onCsvImport || importStatus.state === 'importing') return;
+  const handleJsonImport = useCallback(async () => {
+    if (!jsonContent || !onJsonImport || importStatus.state === 'importing') return;
     setImportStatus({ state: 'importing' });
     try {
-      const result = await onCsvImport({
-        csvContent,
+      const result = await onJsonImport({
+        jsonContent,
         collectionPath: name.trim(),
         language,
         cardCount,
@@ -266,29 +266,29 @@ export function DeckModal({
     } catch (e: any) {
       setImportStatus({ state: 'error', message: e?.message ?? t('deck.importFailed') });
     }
-  }, [csvContent, onCsvImport, importStatus.state, name, language, cardCount, t]);
+  }, [jsonContent, onJsonImport, importStatus.state, name, language, cardCount, t]);
 
   const isImporting = importStatus.state === 'importing';
   const canSubmit = name.trim().length > 0 && (isCollection || topic.trim().length > 0);
-  const showingCsvTab = canUseCsvTab && activeTab === 'csv';
-  const csvCanImport = showingCsvTab && csvContent !== null && !isImporting;
+  const showingJsonTab = canUseJsonTab && activeTab === 'json';
+  const jsonCanImport = showingJsonTab && jsonContent !== null && !isImporting;
 
-  const title = showingCsvTab
-    ? t('deck.importCsv')
+  const title = showingJsonTab
+    ? t('deck.importJson')
     : isCollection ? t('deck.editCollection') : isEdit ? t('deck.editDeck') : t('deck.newDeck');
 
-  const confirmText = showingCsvTab
+  const confirmText = showingJsonTab
     ? (isImporting ? t('common.importing') : t('common.import'))
     : submitting
       ? t('common.saving')
       : isEdit
         ? t('common.save')
         : t('common.create');
-  const confirmDisabled = showingCsvTab ? !csvCanImport : !canSubmit || submitting;
-  const handleConfirm = showingCsvTab ? handleCsvImport : handleSubmit;
+  const confirmDisabled = showingJsonTab ? !jsonCanImport : !canSubmit || submitting;
+  const handleConfirm = showingJsonTab ? handleJsonImport : handleSubmit;
 
-  const tabContent = activeTab === 'csv' ? (
-    <DeckModalCsvTab
+  const tabContent = activeTab === 'json' ? (
+    <DeckModalJsonTab
       collectionPath={name}
       onCollectionPathChange={setName}
       language={language}
@@ -357,24 +357,24 @@ export function DeckModal({
       confirmDisabled={confirmDisabled}
       confirmCloses={false}
       confirmConfirmationTitle={
-        !showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases)
+        !showingJsonTab && (promptChanged || explanationChanged || regenerateGrammarCases)
           ? (promptChanged ? t('deck.regenerateTitle') : t('deck.regenerateCasesTitle'))
           : undefined
       }
       confirmConfirmationMessage={
-        !showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases)
+        !showingJsonTab && (promptChanged || explanationChanged || regenerateGrammarCases)
           ? (promptChanged ? t('deck.regenerateMessage') : t('deck.regenerateCasesMessage'))
           : undefined
       }
-      confirmConfirmationActionText={!showingCsvTab && (promptChanged || explanationChanged || regenerateGrammarCases) ? t('deck.confirm') : undefined}
+      confirmConfirmationActionText={!showingJsonTab && (promptChanged || explanationChanged || regenerateGrammarCases) ? t('deck.confirm') : undefined}
     >
-      {canUseCsvTab && (
+      {canUseJsonTab && (
         <AnimatedTabbed
           className="mb-6"
           variant="primary"
           tabs={[
             { value: 'create', label: t('deck.createDeck') },
-            { value: 'csv', label: t('deck.importCsv') },
+            { value: 'json', label: t('deck.importJson') },
           ]}
           value={activeTab}
           onChange={setActiveTab}
@@ -383,7 +383,7 @@ export function DeckModal({
         </AnimatedTabbed>
       )}
 
-      {!canUseCsvTab && tabContent}
+      {!canUseJsonTab && tabContent}
     </PageSheetModal>
   );
 }

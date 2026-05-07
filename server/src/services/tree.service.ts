@@ -121,18 +121,18 @@ export async function getNodePath(userId: string, nodeId: string): Promise<strin
   return parts.join('::');
 }
 
-interface ExportCase { caseKey: string; label: string; ruleSummary: string; generationHint: string; baseWeight: number; }
-interface ExportRow { deckName: string; topic: string; clarification: string; explanation: string; cases: string; }
+interface ExportCase { caseKey: string; label: string; ruleSummary: string; generationHint: string; }
+interface ExportRow { deckName: string; topic: string; clarification: string | null; explanation: string | null; cases: ExportCase[]; }
 
 /** BFS to collect all nodes, then DFS to build export rows with relative paths. */
-export async function getExportRows(
+export async function getExportData(
   userId: string,
   nodeId: string,
-): Promise<{ filename: string; rows: ExportRow[] }> {
+): Promise<{ filename: string; data: ExportRow[] }> {
   const pathStr = await getNodePath(userId, nodeId);
   if (!pathStr) throw new Error('Node not found');
 
-  const filename = pathStr.replace(/::/g, '__') + '.csv';
+  const filename = pathStr.replace(/::/g, '__') + '.json';
 
   const allNodes: Array<{
     id: string; parentId: string | null; name: string;
@@ -152,7 +152,7 @@ export async function getExportRows(
             grammarCases: {
               where: { active: true },
               orderBy: [{ sortOrder: 'asc' }],
-              select: { caseKey: true, label: true, ruleSummary: true, generationHint: true, baseWeight: true },
+              select: { caseKey: true, label: true, ruleSummary: true, generationHint: true },
             },
           },
         },
@@ -188,35 +188,34 @@ export async function getExportRows(
     return parts.join('::');
   }
 
-  const rows: ExportRow[] = [];
+  const data: ExportRow[] = [];
 
-  function serializeCases(cases: ExportCase[]): string {
-    if (cases.length === 0) return '';
-    return JSON.stringify(cases.map(c => ({
+  function buildCases(cases: ExportCase[]): ExportCase[] {
+    return cases.map(c => ({
       caseKey: c.caseKey, label: c.label, ruleSummary: c.ruleSummary,
-      generationHint: c.generationHint, baseWeight: c.baseWeight,
-    })));
+      generationHint: c.generationHint,
+    }));
   }
 
   if (startNode.deck) {
-    rows.push({
+    data.push({
       deckName: startNode.name,
       topic: startNode.deck.topic,
-      clarification: startNode.deck.clarification ?? '',
-      explanation: startNode.deck.explanation ?? '',
-      cases: serializeCases(startNode.deck.grammarCases),
+      clarification: startNode.deck.clarification,
+      explanation: startNode.deck.explanation,
+      cases: buildCases(startNode.deck.grammarCases),
     });
   } else {
     function dfs(id: string) {
       const node = nodeMap.get(id);
       if (!node) return;
       if (node.deck) {
-        rows.push({
+        data.push({
           deckName: getRelativePath(id),
           topic: node.deck.topic,
-          clarification: node.deck.clarification ?? '',
-          explanation: node.deck.explanation ?? '',
-          cases: serializeCases(node.deck.grammarCases),
+          clarification: node.deck.clarification,
+          explanation: node.deck.explanation,
+          cases: buildCases(node.deck.grammarCases),
         });
       }
       for (const childId of node.childIds) dfs(childId);
@@ -224,7 +223,7 @@ export async function getExportRows(
     for (const childId of startNode.childIds) dfs(childId);
   }
 
-  return { filename, rows };
+  return { filename, data };
 }
 
 /** Iterative BFS to get all descendant deck IDs. */

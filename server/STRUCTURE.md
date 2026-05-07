@@ -16,8 +16,8 @@ server/
 │   │
 │   ├── routes/
 │   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key, forgot/reset-password
-│   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids, delete
-│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, review submission, generate-explanation trigger, CSV import
+│   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids, JSON export, delete
+│   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, review submission, generate-explanation trigger, JSON import
 │   │   ├── collections.ts          ← /api/collections — rename, move
 │   │   ├── settings.ts             ← /api/settings — generic key/value + API key management + usage-status
 │   │   ├── notifications.ts        ← /api/notifications — register/unregister push tokens
@@ -88,6 +88,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | GET    | `/:id/path`                    | Breadcrumb path string (e.g. "JP > N5 > Conditionals") |
 | GET    | `/:id/descendant-deck-ids`     | All deck node IDs under a collection               |
 | GET    | `/:id/reviews`                 | Review history for all descendant decks            |
+| GET    | `/:id/export-json`             | Export deck data as pretty-printed JSON (for backup/transfer) |
 | DELETE | `/:id`                         | Delete node (cascades to children and deck)        |
 
 ### `/api/decks`
@@ -102,7 +103,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | POST   | `/:nodeId/mark-studied`   | Set lastStudiedAt to now                                       |
 | POST   | `/:nodeId/review`         | Submit post-session review (AI + user stars, recap, correctCount, totalCount), updates SRS interval |
 | GET    | `/:nodeId/reviews`        | Get all review history records for a deck          |
-| POST   | `/import-csv`             | Bulk-import decks from CSV (multipart, max 5000 data rows)     |
+| POST   | `/import-json`             | Bulk-import decks from JSON (multipart, max 5000 entries)     |
 
 ### `/api/collections`
 

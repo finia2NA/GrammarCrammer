@@ -9,7 +9,7 @@ import type { Language, CardCount } from '@/constants/session';
 import { useScreenSize } from '@/hooks/useScreenSize';
 import { useDeckTree } from '@/hooks/useDeckTree';
 import { DeckTree } from '@/components/home/DeckTree';
-import { DeckModal, type DeckFormData, type CsvImportData } from '@/components/home/DeckModal';
+import { DeckModal, type DeckFormData, type JsonImportData } from '@/components/home/DeckModal';
 import { SettingsModal } from '@/components/home/SettingsModal';
 import { ReviewHistoryModal } from '@/components/home/ReviewHistoryModal';
 import { PlatformButton } from '@/components/PlatformButton';
@@ -19,7 +19,7 @@ import {
   updateDeck,
   deleteNode,
   moveNode,
-  importDecksFromCsv,
+  importDecksFromJson,
   hydrateSettings,
   syncReviewTimezone,
   getSetting,
@@ -238,9 +238,9 @@ export default function Home() {
     }
   }, [editNode, editNodePathStr, refresh, t]);
 
-  const handleCsvImport = useCallback(async (data: CsvImportData) => {
-    const result = await importDecksFromCsv(
-      data.csvContent,
+  const handleJsonImport = useCallback(async (data: JsonImportData) => {
+    const result = await importDecksFromJson(
+      data.jsonContent,
       data.collectionPath,
       data.language,
       data.cardCount,
@@ -417,7 +417,7 @@ export default function Home() {
          visible={deckModalVisible}
          onClose={() => { setDeckModalVisible(false); setEditNode(null); }}
          onSubmit={handleSubmit}
-         onCsvImport={handleCsvImport}
+         onJsonImport={handleJsonImport}
          onDelete={editNode ? handleDelete : undefined}
          onEditDataLoaded={handleEditDataLoaded}
          editNode={editNode}

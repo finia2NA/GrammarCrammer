@@ -243,8 +243,8 @@ export async function getDescendantDeckIds(nodeId: string) {
   return request<{ deckIds: string[] }>(`/tree/${nodeId}/descendant-deck-ids`).then(r => r.deckIds);
 }
 
-export async function exportNodeCsv(nodeId: string) {
-  return request<{ filename: string; csv: string }>(`/tree/${nodeId}/export-csv`);
+export async function exportNodeJson(nodeId: string) {
+  return request<{ filename: string; json: string }>(`/tree/${nodeId}/export-json`);
 }
 
 export async function deleteNode(nodeId: string) {
@@ -318,28 +318,28 @@ export async function markStudied(nodeId: string) {
   return request<{ success: boolean }>(`/decks/${nodeId}/mark-studied`, { method: 'POST' });
 }
 
-export interface CsvImportResult {
+export interface JsonImportResult {
   createdCount: number;
   queuedCount: number;
   failedCount: number;
-  failures: { line: number; context: string; error: string }[];
+  failures: { index: number; context: string; error: string }[];
 }
 
-export async function importDecksFromCsv(
-  csvContent: string,
+export async function importDecksFromJson(
+  jsonContent: string,
   collectionPath: string,
   language: string,
   cardCount: number,
-): Promise<CsvImportResult> {
+): Promise<JsonImportResult> {
   const token = await getAuthToken();
   const baseUrl = await getBaseUrl();
   const formData = new FormData();
-  formData.append('file', new Blob([csvContent], { type: 'text/csv' }), 'import.csv');
+  formData.append('file', new Blob([jsonContent], { type: 'application/json' }), 'import.json');
   formData.append('collectionPath', collectionPath);
   formData.append('language', language);
   formData.append('cardCount', String(cardCount));
 
-  const res = await fetch(`${baseUrl}/decks/import-csv`, {
+  const res = await fetch(`${baseUrl}/decks/import-json`, {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -362,7 +362,7 @@ export async function importDecksFromCsv(
     throw new ApiError(message, res.status, code);
   }
 
-  return res.json() as Promise<CsvImportResult>;
+  return res.json() as Promise<JsonImportResult>;
 }
 
 // ─── Collections ──────────────────────────────────────────────────────────────

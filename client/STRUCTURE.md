@@ -21,9 +21,9 @@ client/
 │   │   ├── DeckTree.tsx                    ← Renders hierarchical collections/decks from the server tree
 │   │   ├── DeckModal.tsx                   ← Tabbed create/edit deck modal (wraps tabs below)
 │   │   ├── DeckModalCreateTab.tsx          ← Manual deck creation form
-│   │   ├── DeckModalCsvTab.tsx             ← CSV bulk-import tab
+│   │   ├── DeckModalJsonTab.tsx            ← JSON bulk-import tab
 │   │   ├── DeckModalSharedCreationFields.tsx ← Shared form fields (topic, language, card count)
-│   │   ├── CsvFileDropZone.tsx / .web.tsx  ← File upload drop zone (platform-split)
+│   │   ├── JsonFileDropZone.tsx / .web.tsx  ← File upload drop zone (platform-split)
 │   │   ├── SettingsModal.tsx               ← UI language, card sort order, API key management, usage
 │   │   ├── AddApiKeyForm.tsx               ← Claude API key entry form
 │   │   ├── UsageBar.tsx                    ← Monthly cost usage visualization

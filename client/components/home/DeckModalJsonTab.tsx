@@ -3,11 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import type { Language, CardCount } from '@/constants/session';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
 import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
-import { CsvFileDropZone } from './CsvFileDropZone';
-import type { CsvImportStatus } from './DeckModal';
+import { JsonFileDropZone } from './JsonFileDropZone';
+import type { JsonImportStatus } from './DeckModal';
 import { useI18n } from '@/lib/i18n';
 
-interface DeckModalCsvTabProps {
+interface DeckModalJsonTabProps {
   collectionPath: string;
   onCollectionPathChange: (value: string) => void;
   language: Language;
@@ -15,11 +15,11 @@ interface DeckModalCsvTabProps {
   cardCount: CardCount;
   onCardCountChange: (value: CardCount) => void;
   onFileSelected: (fileName: string, content: string) => void;
-  importStatus: CsvImportStatus;
+  importStatus: JsonImportStatus;
   enabledLanguages: string[];
 }
 
-export function DeckModalCsvTab({
+export function DeckModalJsonTab({
   collectionPath,
   onCollectionPathChange,
   language,
@@ -29,7 +29,7 @@ export function DeckModalCsvTab({
   onFileSelected,
   importStatus,
   enabledLanguages,
-}: DeckModalCsvTabProps) {
+}: DeckModalJsonTabProps) {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const { t } = useI18n();
@@ -43,7 +43,7 @@ export function DeckModalCsvTab({
     <View>
       <SharedCreationNameField
         label={t('deck.collectionName')}
-        description={t('deck.csvCollectionDescription')}
+        description={t('deck.jsonCollectionDescription')}
         placeholder="Japanese::N5"
         value={collectionPath}
         onChangeText={onCollectionPathChange}
@@ -66,40 +66,46 @@ export function DeckModalCsvTab({
             {t('deck.fileFormatDescription')}
           </Text>
           <View className="bg-surface border border-border rounded-xl px-4 py-3 mb-3">
-            <Text className="text-foreground text-sm font-mono">DeckName&#9;Topic&#9;Clarification&#9;Explanation</Text>
+            <Text className="text-foreground text-sm leading-5 font-mono">{
+`[
+  {
+    "deckName": "...",
+    "topic": "...",
+    "clarification": "...",
+    "explanation": "...",
+    "cases": [...]
+  }
+]`}</Text>
           </View>
           <Text className="text-foreground-secondary text-sm leading-5 mb-1">
-            • Header row is optional. Without it, columns are: <Text className="text-foreground font-mono">DeckName</Text>, <Text className="text-foreground font-mono">Topic</Text>, <Text className="text-foreground font-mono">Clarification</Text>, <Text className="text-foreground font-mono">Explanation</Text>.
+            {t('deck.jsonTopicRequired')}
           </Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-1">
-            • <Text className="text-foreground font-mono">DeckName</Text>, <Text className="text-foreground font-mono">Clarification</Text>, and <Text className="text-foreground font-mono">Explanation</Text> columns can be omitted.
+            {t('deck.jsonOptionalFields')}
           </Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-4">
-            • If <Text className="text-foreground font-mono">DeckName</Text> is blank, <Text className="text-foreground font-mono">Topic</Text> is used as the deck name.
+            {t('deck.jsonExplanationSaved')}
           </Text>
 
           <Text className="text-foreground/80 text-sm font-medium mb-2">{t('deck.deckGeneration')}</Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-1">
-            • Each row creates one subdeck inside the collection.
+            {t('deck.jsonEachEntryCreatesDeck')}
           </Text>
           <Text className="text-foreground-secondary text-sm leading-5 mb-1">
-            • <Text className="text-foreground font-mono">Clarification</Text> gives the model extra guidance while keeping <Text className="text-foreground font-mono">Topic</Text> short.
-          </Text>
-          <Text className="text-foreground-secondary text-sm leading-5 mb-1">
-            • <Text className="text-foreground font-mono">Explanation</Text> is treated as already-generated markdown and is saved directly.
+            {t('deck.jsonClarificationGuidance')}
           </Text>
           <Text className="text-foreground-secondary text-sm leading-5">
-            • Rows without <Text className="text-foreground font-mono">Explanation</Text> generate in the background (up to 5 at a time).
+            {t('deck.jsonBackgroundGeneration')}
           </Text>
           </View>
         </AnimatedCollapsible>
       </View>
 
-      <Text className="text-foreground/80 text-sm font-medium mb-2">{t('deck.csvFile')}</Text>
+      <Text className="text-foreground/80 text-sm font-medium mb-2">{t('deck.jsonFile')}</Text>
       <Text className="text-foreground-secondary text-sm leading-5 mb-3">
-        {t('deck.csvFileDescription')}
+        {t('deck.jsonFileDescription')}
       </Text>
-      <CsvFileDropZone fileName={selectedFileName} onFileSelected={handleFileSelected} />
+      <JsonFileDropZone fileName={selectedFileName} onFileSelected={handleFileSelected} />
 
       <View className="pt-4">
         <SharedCreationOptionsSection
@@ -116,7 +122,7 @@ export function DeckModalCsvTab({
   );
 }
 
-function ImportStatusDisplay({ status }: { status: CsvImportStatus }) {
+function ImportStatusDisplay({ status }: { status: JsonImportStatus }) {
   const { t } = useI18n();
   if (status.state === 'idle') return null;
 
@@ -145,19 +151,25 @@ function ImportStatusDisplay({ status }: { status: CsvImportStatus }) {
     <View className={`mt-4 p-4 rounded-xl ${hasFailures ? 'bg-red-500/10 border border-red-500/30' : 'bg-green-500/10 border border-green-500/30'}`}>
       {hasSuccesses && (
         <Text className="text-foreground text-sm font-semibold mb-1">
-          {t('deck.createdDecks', { count: result.createdCount, deckWord: result.createdCount === 1 ? 'deck' : 'decks' })}
+          {t('deck.createdDecks', {
+            count: result.createdCount,
+            deckWord: result.createdCount === 1 ? t('deck.deckWordSingular') : t('deck.deckWordPlural'),
+          })}
         </Text>
       )}
       {hasFailures && (
         <>
           <Text className="text-red-400 text-sm font-semibold mb-2">
-            {t('deck.failedRows', { count: result.failedCount, rowWord: result.failedCount === 1 ? 'row' : 'rows' })}
+            {t('deck.failedRows', {
+              count: result.failedCount,
+              rowWord: result.failedCount === 1 ? t('deck.entryWordSingular') : t('deck.entryWordPlural'),
+            })}
           </Text>
           <ScrollView style={{ maxHeight: 160 }}>
             {result.failures.map((f, i) => (
               <View key={i} className="mb-2 pl-3 border-l-2 border-red-500/40">
                 <Text className="text-foreground-secondary text-xs">
-                  <Text className="text-foreground font-semibold">{t('deck.line', { line: f.line })}</Text>
+                  <Text className="text-foreground font-semibold">{t('deck.entry', { index: f.index })}</Text>
                   {'  '}
                   {f.error}
                 </Text>

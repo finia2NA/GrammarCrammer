@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getTree, getNode, getNodePath, getDescendantDeckIds, getExportRows, getCollectionReviews } from '../services/tree.service.js';
+import { getTree, getNode, getNodePath, getDescendantDeckIds, getExportData, getCollectionReviews } from '../services/tree.service.js';
 import { getNewDecksStartedToday } from '../services/deck.service.js';
 import { createHash } from 'crypto';
 
@@ -53,14 +53,9 @@ treeRouter.get('/:id/reviews', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-treeRouter.get('/:id/export-csv', async (req, res, next) => {
+treeRouter.get('/:id/export-json', async (req, res, next) => {
   try {
-    const { filename, rows } = await getExportRows(req.userId!, req.params.id);
-    const escape = (s: string) => s.replace(/\r\n|\r|\n/g, '\\n');
-    const lines = ['DeckName\tTopic\tClarification\tExplanation\tCases'];
-    for (const row of rows) {
-      lines.push(`${escape(row.deckName)}\t${escape(row.topic)}\t${escape(row.clarification)}\t${escape(row.explanation)}\t${row.cases}`);
-    }
-    res.json({ filename, csv: lines.join('\n') });
+    const { filename, data } = await getExportData(req.userId!, req.params.id);
+    res.json({ filename, json: JSON.stringify(data, null, 2) });
   } catch (e) { next(e); }
 });

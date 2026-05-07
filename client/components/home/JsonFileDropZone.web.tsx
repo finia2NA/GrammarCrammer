@@ -1,20 +1,22 @@
 import { type ChangeEvent, type DragEvent, useRef, useState } from 'react';
 import { useColors } from '@/constants/theme';
+import { useI18n } from '@/lib/i18n';
 
-interface CsvFileDropZoneProps {
+interface JsonFileDropZoneProps {
   fileName: string | null;
   onFileSelected: (name: string, content: string) => void;
 }
 
-export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZoneProps) {
+export function JsonFileDropZone({ fileName, onFileSelected }: JsonFileDropZoneProps) {
   const colors = useColors();
+  const { t } = useI18n();
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function readFile(file: File | null | undefined) {
     if (!file) return;
     const name = file.name.toLowerCase();
-    if (!name.endsWith('.csv') && !name.endsWith('.tsv') && !name.endsWith('.txt')) return;
+    if (!name.endsWith('.json') && !name.endsWith('.txt')) return;
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -78,15 +80,15 @@ export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZonePro
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+        accept=".json,.txt,application/json,text/plain"
         style={{ display: 'none' }}
         onChange={handleInputChange}
       />
       <div style={{ color: colors.foreground_secondary, fontWeight: 600, marginBottom: 6 }}>
-        {isDragActive ? 'Release to attach CSV' : 'Drop CSV Here'}
+        {isDragActive ? t('json.releaseToAttach') : t('json.dropHere')}
       </div>
       <div style={{ color: colors.foreground_muted, fontSize: 12, marginBottom: 10 }}>
-        Drag and drop works here. Click to browse files.
+        {t('json.browseWeb')}
       </div>
       <button
         type="button"
@@ -106,7 +108,7 @@ export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZonePro
           cursor: 'pointer',
         }}
       >
-        Choose CSV
+        {t('json.choose')}
       </button>
       {fileName ? (
         <div
@@ -121,7 +123,7 @@ export function CsvFileDropZone({ fileName, onFileSelected }: CsvFileDropZonePro
             padding: '6px 10px',
           }}
         >
-          Selected: {fileName}
+          {t('json.selected', { fileName })}
         </div>
       ) : null}
     </div>
