@@ -118,7 +118,7 @@ private final class NativeDateTimePickerPresenter: NSObject, UIAdaptivePresentat
     viewController.presentationController?.delegate = self
     if let sheet = viewController.sheetPresentationController {
       if #available(iOS 16.0, *) {
-        let height: CGFloat = viewController.pickerMode == .date ? 630 : 400
+        let height: CGFloat = viewController.pickerMode == .date ? 575 : 335
         sheet.detents = [
           .custom(identifier: .init("patterndeckPicker")) { context in
             min(height, context.maximumDetentValue)
@@ -292,8 +292,8 @@ private final class NativeDateTimePickerViewController: UIViewController {
     let confirmButton = makeHeaderButton(
       systemName: "checkmark",
       accessibilityLabel: confirmText,
-      foregroundColor: accentColor ?? .label,
-      backgroundColor: UIColor.pdPickerButtonFill
+      foregroundColor: .white,
+      backgroundColor: accentColor ?? .label
     )
     confirmButton.translatesAutoresizingMaskIntoConstraints = false
     confirmButton.addTarget(self, action: #selector(confirmPressed), for: .touchUpInside)
@@ -325,13 +325,13 @@ private final class NativeDateTimePickerViewController: UIViewController {
 
       cancelButton.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
       cancelButton.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
-      cancelButton.widthAnchor.constraint(equalToConstant: 40),
-      cancelButton.heightAnchor.constraint(equalToConstant: 40),
+      cancelButton.widthAnchor.constraint(equalToConstant: 48),
+      cancelButton.heightAnchor.constraint(equalToConstant: 48),
 
       confirmButton.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
       confirmButton.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
-      confirmButton.widthAnchor.constraint(equalToConstant: 40),
-      confirmButton.heightAnchor.constraint(equalToConstant: 40),
+      confirmButton.widthAnchor.constraint(equalToConstant: 48),
+      confirmButton.heightAnchor.constraint(equalToConstant: 48),
 
       titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: cancelButton.trailingAnchor, constant: 12),
       titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: confirmButton.leadingAnchor, constant: -12),
@@ -394,11 +394,14 @@ private final class NativeDateTimePickerViewController: UIViewController {
     let button = UIButton(type: .system)
 
     if #available(iOS 26.0, *) {
-      var configuration = UIButton.Configuration.glass()
-      configuration.image = UIImage(systemName: systemName)
+      var configuration = UIButton.Configuration.prominentGlass()
+      configuration.image = UIImage(systemName: systemName)?.withConfiguration(
+        UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+      )
       configuration.baseForegroundColor = foregroundColor
+      configuration.baseBackgroundColor = backgroundColor
       configuration.cornerStyle = .capsule
-      configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
+      configuration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)
       button.configuration = configuration
     } else if #available(iOS 15.0, *) {
       var configuration = UIButton.Configuration.filled()
