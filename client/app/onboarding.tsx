@@ -43,7 +43,7 @@ import type { TranslationKey } from '@/lib/i18n';
 
 // ─── Card content ────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 const BACKEND_DEBUG_UI_ENABLED = __DEV__ && Constants.expoConfig?.extra?.backendDebugUiEnabled !== false;
 
 const WelcomeCard = memo(function WelcomeCard({ t }: { t: (key: TranslationKey) => string }) {
@@ -79,28 +79,6 @@ const HowItWorksCard = memo(function HowItWorksCard({ t }: { t: (key: Translatio
           </View>
         </View>
       ))}
-    </>
-  );
-});
-
-const AlphaWarningCard = memo(function AlphaWarningCard({ t }: { t: (key: TranslationKey) => string }) {
-  return (
-    <>
-      <Text className="text-3xl font-bold text-foreground mb-3">
-        {t('onboarding.alphaTitle')}
-      </Text>
-      <Text className="text-foreground-secondary text-base leading-7 mb-4">
-        {t('onboarding.alphaBody1')}
-      </Text>
-      <Text className="text-foreground-secondary text-base leading-7">
-        {t('onboarding.alphaBody2')}
-      </Text>
-      <View className="mt-4 flex-row border-l-2 border-foreground-secondary pl-3 gap-2">
-        <Text className="text-sm leading-6">💡</Text>
-        <Text className="text-foreground-secondary text-sm leading-6 flex-1">
-          {t('onboarding.alphaTip')}
-        </Text>
-      </View>
     </>
   );
 });
@@ -395,9 +373,9 @@ export default function Onboarding() {
     }
   }, [accountSuccess, isLogin, handlePostAccountNext]);
 
-  const isForgotStep = step === 3 && showForgotPassword;
-  const isAccountStep = step === 3 && !showApiKeyForm && !showForgotPassword;
-  const isApiKeyStep = step === 3 && showApiKeyForm;
+  const isForgotStep = step === 2 && showForgotPassword;
+  const isAccountStep = step === 2 && !showApiKeyForm && !showForgotPassword;
+  const isApiKeyStep = step === 2 && showApiKeyForm;
   const canGoBack = step > 0 || showApiKeyForm || showForgotPassword;
 
   function handleBack() {
@@ -490,12 +468,11 @@ export default function Onboarding() {
                 {([
                   <WelcomeCard key="welcome" t={t} />,
                   <HowItWorksCard key="how-it-works" t={t} />,
-                  <AlphaWarningCard key="alpha-warning" t={t} />,
                   showForgotPassword
-                    ? <ForgotPasswordCard key="forgot-card" email={email} onEmailChange={setEmail} error={step === 3 ? error : null} loading={loading} sent={forgotSent} />
+                    ? <ForgotPasswordCard key="forgot-card" email={email} onEmailChange={setEmail} error={step === 2 ? error : null} loading={loading} sent={forgotSent} />
                     : showApiKeyForm
                       ? <ApiKeyCard key="api-key-card" apiKey={apiKey} onApiKeyChange={setApiKeyInput} error={error} loading={loading} canSkip={centralKeyAvailable} onSkip={() => { analytics.track('onboarding_skipped_api_key'); router.replace('/home'); }} />
-                      : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 3 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} onForgotPassword={() => { setShowForgotPassword(true); setForgotSent(false); setError(null); }} success={accountSuccess} />,
+                      : <AccountCard key="account-card" email={email} onEmailChange={setEmail} password={password} onPasswordChange={setPassword} error={step === 2 ? error : null} loading={loading} isLogin={isLogin} onToggleMode={() => setIsLogin(v => !v)} onSubmit={handleSubmitAccount} onForgotPassword={() => { setShowForgotPassword(true); setForgotSent(false); setError(null); }} success={accountSuccess} />,
                 ] as const).map((panel, i) => (
                   <View key={i} style={{ width: `${100 / TOTAL_STEPS}%` }} onLayout={e => onPanelLayout(i, e.nativeEvent.layout.height)}>
                     {panel}

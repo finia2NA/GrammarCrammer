@@ -9,7 +9,7 @@ client/
 ├── app/                        ← Expo Router pages (file-based routing)
 │   ├── _layout.tsx             ← Root layout: global CSS, theme vars, analytics, KeyboardProvider, Stack nav
 │   ├── index.tsx               ← Auth guard: checks JWT → /onboarding or /home
-│   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, alpha warning, sign-up, API key
+│   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, sign-up, API key
 │   ├── home.tsx                ← Main screen: deck tree, quick study input, modals
 │   ├── session.tsx             ← Study session: card loop, explanation overlay, chat, SRS rating
 │   ├── edit-explanation.tsx    ← Dedicated Markdown editor: Monaco + live preview + AI chat (web large-screen only)
@@ -146,9 +146,8 @@ Acts as the auth guard. On mount it reads the stored JWT from AsyncStorage, vali
 Multi-step swipe carousel using individual card components from `components/onboarding/`:
 1. Welcome
 2. How it works
-3. Alpha warning (data loss disclaimer)
-4. Account creation (`AccountCard` — email + password, or Apple/Google; includes forgot-password via `ForgotPasswordCard`)
-5. Claude API key entry + validation (`ApiKeyCard`)
+3. Account creation (`AccountCard` — email + password, or Apple/Google; includes forgot-password via `ForgotPasswordCard`)
+4. Claude API key entry + validation (`ApiKeyCard`)
 
 ### `app/home.tsx`
 Main hub. Contains:
