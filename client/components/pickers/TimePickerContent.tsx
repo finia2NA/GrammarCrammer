@@ -1,6 +1,9 @@
+import { useColors } from '@/constants/theme';
+
 interface TimePickerContentProps {
   pickerDate: Date;
   dateTimePickerModule: any;
+  themeVariant?: 'light' | 'dark';
   draftHour?: string;
   draftMinute?: string;
   onDraftDateChange: (value: Date) => void;
@@ -11,8 +14,10 @@ interface TimePickerContentProps {
 export function TimePickerContent({
   pickerDate,
   dateTimePickerModule,
+  themeVariant,
   onDraftDateChange,
 }: TimePickerContentProps) {
+  const colors = useColors();
   const DateTimePicker = dateTimePickerModule?.default;
 
   if (!DateTimePicker) return null;
@@ -23,6 +28,9 @@ export function TimePickerContent({
       mode="time"
       display="spinner"
       is24Hour
+      accentColor={colors.primary}
+      textColor={colors.foreground}
+      themeVariant={themeVariant}
       onChange={(_event: unknown, selected?: Date) => {
         if (!selected) return;
         onDraftDateChange(selected);

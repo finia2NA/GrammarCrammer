@@ -5,6 +5,7 @@ import { dismissPickerKeyboard, openAndroidTimePicker, openIosTimePicker, update
 import { PlatformPopover } from './PlatformPopover';
 import { TimePickerContent } from './TimePickerContent';
 import { TimePickerTrigger } from './TimePickerTrigger';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useColors } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
 
@@ -40,6 +41,7 @@ function useNativeWebTimeInput() {
 
 export function TimePicker({ value, onChange, disabled = false }: TimePickerProps) {
   const colors = useColors();
+  const scheme = useColorScheme();
   const { t } = useI18n();
   const nativePickerModule = useDateTimePickerModule();
   const preferNativeWebTimeInput = useNativeWebTimeInput();
@@ -173,6 +175,7 @@ export function TimePicker({ value, onChange, disabled = false }: TimePickerProp
       <TimePickerContent
         pickerDate={pickerDate}
         dateTimePickerModule={nativePickerModule}
+        themeVariant={scheme}
         draftHour={draftHour}
         draftMinute={draftMinute}
         onDraftDateChange={handleDraftDateChange}

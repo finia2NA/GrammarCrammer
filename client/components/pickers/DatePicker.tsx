@@ -4,6 +4,7 @@ import { DatePickerContent } from './DatePickerContent';
 import { DatePickerTrigger } from './DatePickerTrigger';
 import { dismissPickerKeyboard, openAndroidDatePicker, openIosDatePicker, updateIosPickerAppearance, useDateTimePickerModule } from './dateTimePickerPlatform';
 import { PlatformPopover } from './PlatformPopover';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useColors } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
 
@@ -40,6 +41,7 @@ export function DatePicker({
   iosResetButtonProps,
 }: DatePickerProps) {
   const colors = useColors();
+  const scheme = useColorScheme();
   const { t } = useI18n();
   const nativePickerModule = useDateTimePickerModule();
   const displayPlaceholder = placeholder ?? t('picker.pickDate');
@@ -143,6 +145,7 @@ export function DatePicker({
         draftDate={draftDate}
         month={month}
         dateTimePickerModule={nativePickerModule}
+        themeVariant={scheme}
         onDraftDateChange={setDraftDate}
         onMonthChange={setMonth}
       />

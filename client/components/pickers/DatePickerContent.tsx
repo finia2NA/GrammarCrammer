@@ -6,6 +6,7 @@ interface DatePickerContentProps {
   draftDate: Date | null;
   month?: Date;
   dateTimePickerModule: any;
+  themeVariant?: 'light' | 'dark';
   onDraftDateChange: (value: Date) => void;
   onMonthChange?: (value: Date) => void;
 }
@@ -14,6 +15,7 @@ export function DatePickerContent({
   value,
   draftDate,
   dateTimePickerModule,
+  themeVariant,
   onDraftDateChange,
 }: DatePickerContentProps) {
   const colors = useColors();
@@ -27,6 +29,8 @@ export function DatePickerContent({
       mode="date"
       display="inline"
       accentColor={colors.primary}
+      textColor={colors.foreground}
+      themeVariant={themeVariant}
       onChange={(_event: unknown, selected?: Date) => {
         if (!selected) return;
         onDraftDateChange(selected);
