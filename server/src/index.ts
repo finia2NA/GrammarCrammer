@@ -9,6 +9,7 @@ import { collectionsRouter } from './routes/collections.js';
 import { settingsRouter } from './routes/settings.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { claudeProxyRouter } from './routes/claude-proxy.js';
+import { adminRouter } from './routes/admin.js';
 import { initScheduler } from './services/scheduler.service.js';
 import { shutdown as shutdownAnalytics } from './services/analytics.service.js';
 
@@ -26,6 +27,7 @@ app.use('/api/v1/nodes', collectionsRouter);
 app.use('/api/v1/settings', settingsRouter);
 app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/ai', claudeProxyRouter);
+app.use('/api/v1/admin', adminRouter);
 
 // Health check
 app.get('/api/v1/health', (_req, res) => {

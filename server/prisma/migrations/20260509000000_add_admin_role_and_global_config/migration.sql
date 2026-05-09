@@ -1,0 +1,6 @@
+ALTER TABLE "User" ADD COLUMN "role" TEXT NOT NULL DEFAULT 'user';
+
+CREATE TABLE "GlobalConfig" (
+    "key" TEXT NOT NULL PRIMARY KEY,
+    "value" TEXT NOT NULL
+);

@@ -26,6 +26,8 @@
     "db:migrate": "pnpm --filter server db:migrate",
     "db:generate": "pnpm --filter server db:generate",
     "db:push": "pnpm --filter server db:push",
+    "admin": "bash scripts/admin.sh",
+    "admin:prod": "bash scripts/admin.sh",
     "pods": "cd client/ios && pod install",
     "prebuild": "pnpm --filter client prebuild",
     "prebuild:clean": "pnpm --filter client prebuild:clean",

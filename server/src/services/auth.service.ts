@@ -150,6 +150,7 @@ export async function getMe(userId: string) {
   return {
     id: user.id,
     email: user.email,
+    role: user.role,
     hasApiKey: !!user.claudeApiKey,
     centralKeyAvailable: isCentralKeyAvailable(),
     authMethods,

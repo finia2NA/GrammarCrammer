@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { getAuthToken, clearAuthToken, clearUserId, getBackendBaseUrl } from './storage';
+import { getAuthToken, clearAuthToken, clearUserId, clearUserRole, getBackendBaseUrl } from './storage';
 import { analytics, appSessionId } from './analytics';
 import type { Card, TreeNode, DeckData, ChatMessage, CardAttempt, WordHint, AnalyticsContext } from './types';
 import {
@@ -89,6 +89,7 @@ async function handleHttpError(status: number, bodyJson: any): Promise<never> {
   if (status === 401) {
     await clearAuthToken();
     await clearUserId();
+    await clearUserRole();
     analytics.reset();
     resetLocalSettings();
     router.replace('/onboarding');
@@ -187,7 +188,7 @@ export async function loginWithGoogle(idToken: string) {
 }
 
 export async function getMe() {
-  return request<{ id: string; email: string | null; hasApiKey: boolean; centralKeyAvailable: boolean; authMethods: string[] }>('/auth/me');
+  return request<{ id: string; email: string | null; role: string; hasApiKey: boolean; centralKeyAvailable: boolean; authMethods: string[] }>('/auth/me');
 }
 
 export async function validateApiKey(apiKey: string) {
@@ -354,6 +355,7 @@ export async function importDecksFromJson(
     if (res.status === 401) {
       await clearAuthToken();
       await clearUserId();
+      await clearUserRole();
       analytics.reset();
       router.replace('/onboarding');
       throw new ApiError('Session expired', 401, 'INVALID_TOKEN');
@@ -447,6 +449,7 @@ export interface UsageStatus {
   centralKeyAvailable: boolean;
   preference: 'central' | 'own';
   hasOwnKey: boolean;
+  tier: 'free' | 'paid';
   userLimit: number;
   globalLimit: number;
   globalLimitReached: boolean;
@@ -455,6 +458,43 @@ export interface UsageStatus {
 
 export async function getUsageStatus() {
   return request<UsageStatus>('/settings/usage-status');
+}
+
+// ─── Admin ──────────────────────────────────────────────────────────────────
+
+export type AdminTierFilter = 'all' | 'free' | 'paid';
+
+export interface AdminUser {
+  id: string;
+  email: string | null;
+  role: string;
+  tier: 'free' | 'paid';
+  usage: { central: number; own: number };
+  budget: number;
+  usagePercent: number;
+  createdAt: string;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  config: Record<string, string>;
+  budgets: Record<string, number>;
+  yearMonth: string;
+}
+
+export async function getAdminUsers(params: { tier?: AdminTierFilter; hasUsage?: boolean } = {}) {
+  const query = new URLSearchParams();
+  if (params.tier && params.tier !== 'all') query.set('tier', params.tier);
+  if (params.hasUsage) query.set('hasUsage', 'true');
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return request<AdminUsersResponse>(`/admin/users${suffix}`);
+}
+
+export async function updateAdminConfig(config: Record<string, string>) {
+  return request<{ config: Record<string, string> }>('/admin/config', {
+    method: 'PUT',
+    body: JSON.stringify({ config }),
+  });
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────

@@ -167,7 +167,7 @@ export default function Home() {
   }, []);
 
   const handleView = useCallback((node: TreeNode) => {
-    if (!node.deck) return;
+    if (!isDeckReadyForStudy(node.deck)) return;
     router.push({
       pathname: '/session',
       params: { nodeId: node.id, explainOnly: 'true' },
@@ -216,37 +216,33 @@ export default function Home() {
   }, []);
 
   const handleSubmit = useCallback(async (data: DeckFormData) => {
-    try {
-      if (editNode) {
-        const pathChanged = data.path !== editNodePathStr;
+    if (editNode) {
+      const pathChanged = data.path !== editNodePathStr;
 
-        if (pathChanged) {
-          await moveNode(editNode.id, data.path);
-        }
-
-        if (editNode.deck !== null) {
-          const newName = data.path.split('::').pop()?.trim() ?? data.path;
-          await updateDeck(editNode.id, {
-            name: pathChanged ? undefined : newName,
-            topic: data.topic,
-            clarification: data.clarification,
-            language: data.language,
-            cardCount: data.cardCount,
-            explanation: data.explanation,
-            regenerateGrammarCases: data.regenerateGrammarCases,
-          });
-
-        }
-      } else {
-        await createDeckFromPath(data.path, data.topic, data.language, data.cardCount, data.clarification, data.explanation);
+      if (pathChanged) {
+        await moveNode(editNode.id, data.path);
       }
-      setDeckModalVisible(false);
-      setEditNode(null);
-      refresh();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : t('common.errorGeneric'));
+
+      if (editNode.deck !== null) {
+        const newName = data.path.split('::').pop()?.trim() ?? data.path;
+        await updateDeck(editNode.id, {
+          name: pathChanged ? undefined : newName,
+          topic: data.topic,
+          clarification: data.clarification,
+          language: data.language,
+          cardCount: data.cardCount,
+          explanation: data.explanation,
+          regenerateGrammarCases: data.regenerateGrammarCases,
+        });
+
+      }
+    } else {
+      await createDeckFromPath(data.path, data.topic, data.language, data.cardCount, data.clarification, data.explanation);
     }
-  }, [editNode, editNodePathStr, refresh, t]);
+    setDeckModalVisible(false);
+    setEditNode(null);
+    refresh();
+  }, [editNode, editNodePathStr, refresh]);
 
   const handleJsonImport = useCallback(async (data: JsonImportData) => {
     const result = await importDecksFromJson(

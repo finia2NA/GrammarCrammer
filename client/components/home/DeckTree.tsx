@@ -137,7 +137,7 @@ function TreeRow({ node, depth, collapsedIds, onToggle, onStudy, onEdit, onHisto
         )}
 
         {/* View button — always in the same position for alignment */}
-        {!isCollection && node.deck?.explanationStatus === 'ready' ? (
+        {!isCollection && node.deck?.explanationStatus === 'ready' && node.deck.grammarCaseStatus === 'ready' ? (
           <TouchableOpacity
             className="w-10 h-10 items-center justify-center"
             onPress={() => onView(node)}

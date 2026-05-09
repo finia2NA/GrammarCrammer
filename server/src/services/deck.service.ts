@@ -134,6 +134,7 @@ export async function updateDeck(
   userId: string,
   nodeId: string,
   updates: { name?: string; topic?: string; clarification?: string | null; language?: string; cardCount?: number; explanation?: string },
+  options: { beforeRegenerateExplanation?: () => Promise<void> } = {},
 ): Promise<{ regenerateExplanation: boolean; explanationChanged: boolean }> {
   const node = await prisma.node.findFirst({
     where: { id: nodeId, userId },
@@ -143,10 +144,6 @@ export async function updateDeck(
 
   let regenerate = false;
   let explanationChanged = false;
-
-  if (updates.name !== undefined) {
-    await prisma.node.update({ where: { id: nodeId }, data: { name: updates.name } });
-  }
 
   if (
     updates.topic !== undefined ||
@@ -161,6 +158,13 @@ export async function updateDeck(
     const newLang = updates.language ?? node.deck.language;
     const newCount = updates.cardCount ?? node.deck.cardCount;
     regenerate = newTopic !== node.deck.topic || newClarification !== node.deck.clarification || newLang !== node.deck.language;
+    if (regenerate) {
+      await options.beforeRegenerateExplanation?.();
+    }
+
+    if (updates.name !== undefined) {
+      await prisma.node.update({ where: { id: nodeId }, data: { name: updates.name } });
+    }
 
     await prisma.deck.update({
       where: { nodeId },
@@ -184,6 +188,8 @@ export async function updateDeck(
         data: { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' },
       });
     }
+  } else if (updates.name !== undefined) {
+    await prisma.node.update({ where: { id: nodeId }, data: { name: updates.name } });
   }
 
   return { regenerateExplanation: regenerate, explanationChanged };

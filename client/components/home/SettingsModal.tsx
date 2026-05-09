@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { CARD_ORDER_OPTIONS, FEEDBACK_BREVITY_OPTIONS, KEY_PREFERENCE_OPTIONS, MAX_DECKS_OPTIONS, NEW_DECKS_OPTIONS, UNLIMITED_NEW_DECKS } from '@patterndeck/shared';
 import { useColors } from '@/constants/theme';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
-import { clearAuthToken, clearUserEmail, clearUserId, getUserEmail, getUserId } from '@/lib/storage';
+import { clearAuthToken, clearUserEmail, clearUserId, clearUserRole, getUserEmail, getUserId, getUserRole } from '@/lib/storage';
 import { deleteApiKey, getUsageStatus, hydrateSettings, parseEnabledLanguages, saveSettings } from '@/lib/api';
 import type { UsageStatus } from '@/lib/api';
 import { getSettingsSnapshot, resetLocalSettings } from '@/hooks/state/persistent/settingsStore';
@@ -70,6 +70,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [saving, setSaving] = useState(false);
   const [notificationSetupBusy, setNotificationSetupBusy] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const accountTapCount = useRef(0);
   const accountTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -101,6 +102,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
     getUsageStatus().then(status => { if (mounted) setUsageStatus(status); }).catch(() => { });
     getUserEmail().then(email => { if (mounted) setUserEmail(email); }).catch(() => { });
+    getUserRole().then(role => { if (mounted) setUserRole(role); }).catch(() => { });
     setShowAddKey(false);
     setSaving(false);
 
@@ -168,6 +170,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     await unregisterCurrentPushDevice().catch(() => { });
     await clearAuthToken();
     await clearUserId();
+    await clearUserRole();
     await clearUserEmail();
     analytics.reset();
     resetLocalSettings();
@@ -206,6 +209,15 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   function handleKeyAdded() {
     setShowAddKey(false);
     getUsageStatus().then(setUsageStatus).catch(() => { });
+  }
+
+  function handleOpenAdmin() {
+    onClose();
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open('/admin', '_blank', 'noopener,noreferrer');
+      return;
+    }
+    router.push('/admin');
   }
 
   return (
@@ -297,7 +309,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       {usageStatus && (
         <SectionCard title={t('settings.apiUsage')}>
           {usageStatus.centralKeyAvailable && (
-            <Text className="text-foreground-secondary text-xs leading-5 mb-4">{t('settings.includedUsage')}</Text>
+            <Text className="text-foreground-secondary text-xs leading-5 mb-4">
+              {(usageStatus.tier ?? 'free') === 'free'
+                ? t('settings.freeIncludedUsage')
+                : t('settings.includedUsage')}
+            </Text>
           )}
           {usageStatus.centralKeyAvailable && (
             <SettingsRow label={t('settings.keySource')} description={t('settings.keySourceDescription')}>
@@ -346,6 +362,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <Text className="text-foreground/50 text-xs font-semibold uppercase tracking-widest mb-1">{t('settings.loggedInAs')}</Text>
               <Text className="text-foreground text-sm">{userEmail}</Text>
             </View>
+          )}
+          {userRole === 'admin' && (
+            <TouchableOpacity className="py-3 rounded-xl border items-center mb-4" style={{ borderColor: colors.border }} onPress={handleOpenAdmin} activeOpacity={0.8}>
+              <Text className="text-foreground font-semibold">{t('settings.adminPanel')}</Text>
+            </TouchableOpacity>
           )}
           <View className="mb-4">
             <ConfirmButton label={t('settings.logout')} confirmLabel={t('settings.logoutConfirm')} onConfirm={handleLogout} destructive />

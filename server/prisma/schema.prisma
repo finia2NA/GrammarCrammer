@@ -13,6 +13,7 @@ model User {
   passwordHash String?
   appleId      String?  @unique
   googleId     String?  @unique
+  role         String   @default("user")
   claudeApiKey String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -138,6 +139,11 @@ model Setting {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, key])
+}
+
+model GlobalConfig {
+  key   String @id
+  value String
 }
 
 model PushDevice {

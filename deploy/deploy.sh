@@ -23,7 +23,7 @@ pnpm --filter server build
 
 echo ""
 echo "=== Uploading to server ==="
-ssh ${SERVER} "mkdir -p ${TEMP_DIR}/{server,client,shared,web}"
+ssh ${SERVER} "mkdir -p ${TEMP_DIR}/{server,client,shared,scripts,web}"
 
 # Upload server files (source + dist + prisma, excluding node_modules/.env/db)
 # Include root-level pnpm files so pnpm install --filter works on the VPS
@@ -37,6 +37,8 @@ rsync -az --delete \
 rsync -az \
   package.json pnpm-workspace.yaml pnpm-lock.yaml \
   ${SERVER}:${TEMP_DIR}/
+
+rsync -az scripts/admin.sh ${SERVER}:${TEMP_DIR}/scripts/admin.sh
 
 rsync -az \
   deploy/patterndeck.nginx.conf deploy/patterndeck.service \
@@ -112,6 +114,7 @@ ssh ${SERVER} << 'DEPLOY_EOF'
   cp -r ${TEMP_DIR}/server ${REMOTE_APP}/server
   cp -r ${TEMP_DIR}/client ${REMOTE_APP}/client
   cp -r ${TEMP_DIR}/shared ${REMOTE_APP}/shared
+  cp -r ${TEMP_DIR}/scripts ${REMOTE_APP}/scripts
 
   # Symlink .env files from persistent location
   [ -f ${ENV_DIR}/server.env ] && ln -sf ${ENV_DIR}/server.env ${REMOTE_APP}/server/.env
@@ -128,6 +131,7 @@ ssh ${SERVER} << 'DEPLOY_EOF'
   find ${REMOTE_WEB} -type d -exec chmod o+x {} +
 
   # Install production dependencies (prisma is a prod dep)
+  command -v pnpm >/dev/null 2>&1 || npm install -g pnpm
   cd ${REMOTE_APP}
   sudo -u patterndeck pnpm install --filter server --prod --frozen-lockfile --ignore-scripts
 

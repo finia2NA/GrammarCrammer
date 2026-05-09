@@ -15,6 +15,7 @@ server/
 │   │   └── errorHandler.ts         ← Centralised Express error handler
 │   │
 │   ├── routes/
+│   │   ├── admin.ts                ← /api/admin — admin-only user usage overview + global budget config
 │   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key, forgot/reset-password
 │   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids, JSON export, delete
 │   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, review submission, generate-explanation trigger, JSON import
@@ -25,6 +26,8 @@ server/
 │   │
 │   ├── services/
 │   │   ├── auth.service.ts         ← Registration, login, OAuth, JWT generation, password reset tokens
+│   │   ├── global-config.service.ts ← DB-backed global key/value config, including per-tier budget lookup
+│   │   ├── user-tier.service.ts    ← User tier helper placeholder for future RevenueCat integration
 │   │   ├── deck.service.ts         ← Deck CRUD, explanation status updates, cascading deletes, review submission
 │   │   ├── tree.service.ts         ← Tree queries (full tree, path, descendants)
 │   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared
@@ -50,6 +53,9 @@ server/
 │   │
 │   ├── types/
 │   │   └── index.ts                ← Extended Express Request types (req.user, etc.)
+│   │
+│   ├── cli/
+│   │   └── admin.ts                ← Promote/demote users by role from the command line
 │   │
 │   └── constants/
 │       ├── prompts.ts              ← AI system prompts
@@ -80,7 +86,7 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | POST   | `/login`                | Email + password login, returns JWT          |
 | POST   | `/apple`                | Apple Sign In, optionally stores UI language for new users, returns JWT |
 | POST   | `/google`               | Google OAuth2, optionally stores UI language for new users, returns JWT |
-| GET    | `/me`                   | Current user info + available auth methods   |
+| GET    | `/me`                   | Current user info, role, and available auth methods |
 | POST   | `/validate-key`         | Test a Claude API key, returns validity flag  |
 | POST   | `/forgot-password`      | Send password reset email via Resend          |
 | POST   | `/reset-password`       | Consume reset token, set new password         |
@@ -128,6 +134,16 @@ All routes require `Authorization: Bearer <JWT>` except the auth endpoints.
 | DELETE | `/api-key`         | Remove Claude API key                    |
 | GET    | `/api-key/status`  | Check whether a key is currently stored  |
 | GET    | `/usage-status`    | Central key availability, user's monthly usage, limits |
+
+### `/api/admin`
+
+All routes require an authenticated user with `role = "admin"`.
+
+| Method | Path        | Description                                      |
+| ------ | ----------- | ------------------------------------------------ |
+| GET    | `/users`    | List users with tier, monthly usage, budget, usage percentage; supports `tier` and `hasUsage` filters |
+| GET    | `/config`   | Get all DB-backed global config values           |
+| PUT    | `/config`   | Upsert DB-backed global config values            |
 
 ### `/api/notifications`
 
@@ -205,7 +221,16 @@ Manages cost tracking and spending limits for the central API key.
 - `recordUsage()` — atomically inserts a ledger row and updates the monthly summary in a transaction.
 - `getUserMonthlyUsage()` — O(1) read from the summary table.
 - `getGlobalCentralUsage()` — aggregates across all users for the current month.
-- `canUseCentralKey()` — checks per-user and global limits.
+- `canUseCentralKey()` — checks DB-backed per-tier user budgets and the global limit.
+
+### `global-config.service.ts`
+Reads and writes global key/value config stored in `GlobalConfig`.
+- `getGlobalConfig()` / `setGlobalConfig()` — single-key read and upsert helpers.
+- `getAllGlobalConfig()` — returns all config values as a record.
+- `getUserBudget()` — resolves `free_user_budget` / `paid_user_budget`, defaulting to `$1.00` / `$5.00`.
+
+### `user-tier.service.ts`
+Central place for resolving a user's monetization tier. Currently returns `free` for all users until paid-tier state is integrated.
 
 ### `crypto.service.ts`
 Encrypts and decrypts Claude API keys using AES-256-GCM with a per-user deterministic IV derived from `userId`. Keys are never stored in plaintext.
@@ -225,6 +250,7 @@ User
   passwordHash
   appleId       unique (OAuth)
   googleId      unique (OAuth)
+  role          "user" | "admin" (default "user")
   claudeApiKey  encrypted string (optional)
   nodes[]       → Node
   settings[]    → Setting
@@ -306,6 +332,10 @@ Setting  (arbitrary key-value per user)
   userId + key  composite PK
   value
 
+GlobalConfig  (global admin-managed key-value config)
+  key           String PK
+  value         String
+
 PushDevice
   id            UUID PK
   userId        FK → User
@@ -352,7 +382,6 @@ MonthlyUsageSummary  (denormalized running totals for fast limit checks)
 | `APPLE_CLIENT_ID`                 | No       | Apple Sign In client ID                          |
 | `GOOGLE_CLIENT_ID`                | No       | Google OAuth2 client ID                          |
 | `CENTRAL_API_KEY`                 | No       | Shared Anthropic API key for all users           |
-| `CENTRAL_KEY_USER_MONTHLY_LIMIT`  | No       | Per-user monthly spend limit in USD (default 0)  |
 | `CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT`| No       | Global monthly spend limit in USD (default 0)    |
 | `RESEND_API_KEY`                  | No       | Resend API key for password reset emails         |
 | `APP_URL`                         | No       | Public app URL used in password reset links      |
@@ -361,3 +390,9 @@ MonthlyUsageSummary  (denormalized running totals for fast limit checks)
 | `POSTHOG_HOST`                    | No       | PostHog host URL (default `https://us.i.posthog.com`) |
 | `POSTHOG_ENABLED`                 | No       | Set to `0` to disable server-side analytics      |
 | `PORT`                            | No       | HTTP port (default 3001)                         |
+
+## CLI commands
+
+- `bash scripts/admin.sh add <userId>` — promote a user to admin in local/dev.
+- `bash scripts/admin.sh remove <userId>` — demote an admin back to a regular user in local/dev.
+- `sudo -u patterndeck bash scripts/admin.sh add|remove <userId>` from `/home/patterndeck/app` — run the same wrapper after deployment.

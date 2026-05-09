@@ -190,6 +190,10 @@ function ExplainOnlyView({ nodeId }: { nodeId: string }) {
     let cancelled = false;
     getDeck(nodeId).then((deck: any) => {
       if (cancelled || !deck) return;
+      if (deck.explanationStatus !== 'ready' || deck.grammarCaseStatus !== 'ready') {
+        router.replace('/home');
+        return;
+      }
       setTopic(deck.topic ?? '');
       setClarification(deck.clarification ?? null);
       setExplanation(deck.explanation ?? '');
@@ -199,7 +203,7 @@ function ExplainOnlyView({ nodeId }: { nodeId: string }) {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [nodeId]);
+  }, [nodeId, router]);
 
   return (
     <ExplanationOverlay

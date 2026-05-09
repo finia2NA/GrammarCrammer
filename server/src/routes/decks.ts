@@ -8,6 +8,7 @@ import { capture } from '../services/analytics.service.js';
 import { getNodePath } from '../services/tree.service.js';
 import { getGrammarCaseSummaries, persistImportedCases, type ExtractedGrammarCase } from '../services/grammar-case.service.js';
 import { setGrammarCaseReady } from '../services/deck.service.js';
+import { resolveApiKey } from '../services/claude/shared.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const JSON_MAX_ENTRIES = 5000;
@@ -210,7 +211,12 @@ decksRouter.get('/:nodeId', async (req, res, next) => {
 decksRouter.patch('/:nodeId', async (req, res, next) => {
   try {
     const { name, topic, clarification, language, cardCount, explanation, regenerateGrammarCases } = req.body;
-    const result = await updateDeck(req.userId!, req.params.nodeId, { name, topic, clarification, language, cardCount, explanation });
+    const result = await updateDeck(
+      req.userId!,
+      req.params.nodeId,
+      { name, topic, clarification, language, cardCount, explanation },
+      { beforeRegenerateExplanation: () => resolveApiKey(req.userId!).then(() => undefined) },
+    );
 
     if (result.regenerateExplanation) {
       enqueueExplanation(req.userId!, req.params.nodeId);

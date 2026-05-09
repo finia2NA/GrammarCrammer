@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEYS = {
   AUTH_TOKEN: 'auth_token',
   USER_ID: 'user_id',
+  USER_ROLE: 'user_role',
   USER_EMAIL: 'user_email',
   ONBOARDING_COMPLETE: 'onboarding_complete',
   COLLAPSED_NODES: 'collapsed_nodes',
@@ -32,6 +33,18 @@ export async function setUserId(userId: string): Promise<void> {
 
 export async function clearUserId(): Promise<void> {
   await AsyncStorage.removeItem(KEYS.USER_ID);
+}
+
+export async function getUserRole(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.USER_ROLE);
+}
+
+export async function setUserRole(role: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.USER_ROLE, role);
+}
+
+export async function clearUserRole(): Promise<void> {
+  await AsyncStorage.removeItem(KEYS.USER_ROLE);
 }
 
 export async function getUserEmail(): Promise<string | null> {

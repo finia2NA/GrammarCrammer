@@ -18,7 +18,7 @@ import {
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl, setUserEmail, setUserId } from '@/lib/storage';
+import { clearBackendBaseUrl, getBackendBaseUrl, setAuthToken, setBackendBaseUrl, setUserEmail, setUserId, setUserRole } from '@/lib/storage';
 import {
   register,
   login,
@@ -345,6 +345,7 @@ export default function Onboarding() {
     try {
       const me = await getMe();
       await setUserId(me.id);
+      await setUserRole(me.role);
       analytics.identify(me.id, {
         has_api_key: me.hasApiKey,
         central_key_available: me.centralKeyAvailable,

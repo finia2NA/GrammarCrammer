@@ -29,8 +29,6 @@ export function generateDeckExplanation(userId: string, deckId: string): Promise
 }
 
 async function runExplanation(userId: string, deckId: string, version: number): Promise<void> {
-  const { apiKey, source } = await resolveApiKey(userId);
-
   const deck = await prisma.deck.findUnique({
     where: { nodeId: deckId },
     include: { node: { select: { name: true } } },
@@ -41,6 +39,7 @@ async function runExplanation(userId: string, deckId: string, version: number): 
 
   let fullText = '';
   try {
+    const { apiKey, source } = await resolveApiKey(userId);
     const { cost } = await callTextStream(
       apiKey, SONNET,
       EXPLANATION_PROMPT(deck.language),

@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { config } from '../config.js';
+import { getUserBudget } from './global-config.service.js';
+import { getUserTier } from './user-tier.service.js';
 
 export function currentYearMonth(): string {
   const now = new Date();
@@ -68,7 +70,8 @@ export async function canUseCentralKey(userId: string): Promise<{
   globalUsage: number;
   globalLimit: number;
 }> {
-  const userLimit = config.centralKeyUserMonthlyLimit;
+  const tier = await getUserTier(userId);
+  const userLimit = await getUserBudget(tier);
   const globalLimit = config.centralKeyGlobalMonthlyLimit;
 
   const [userUsageData, globalUsage] = await Promise.all([

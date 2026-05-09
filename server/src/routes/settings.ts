@@ -3,6 +3,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { getAllSettings, getSetting, setSetting, setSettings } from '../services/settings.service.js';
 import { getUserMonthlyUsage, getGlobalCentralUsage } from '../services/usage.service.js';
 import { config, isCentralKeyAvailable } from '../config.js';
+import { getUserBudget } from '../services/global-config.service.js';
+import { getUserTier } from '../services/user-tier.service.js';
 import { prisma } from '../lib/prisma.js';
 import { encrypt } from '../services/crypto.service.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -82,14 +84,19 @@ settingsRouter.get('/usage-status', async (req, res, next) => {
       where: { id: req.userId! },
       select: { claudeApiKey: true },
     });
-    const usage = await getUserMonthlyUsage(req.userId!);
-    const globalUsage = centralAvailable ? await getGlobalCentralUsage() : 0;
+    const [usage, globalUsage, tier] = await Promise.all([
+      getUserMonthlyUsage(req.userId!),
+      centralAvailable ? getGlobalCentralUsage() : Promise.resolve(0),
+      getUserTier(req.userId!),
+    ]);
+    const userLimit = await getUserBudget(tier);
 
     res.json({
       centralKeyAvailable: centralAvailable,
       preference: preference ?? (centralAvailable ? 'central' : 'own'),
       hasOwnKey: !!user?.claudeApiKey,
-      userLimit: config.centralKeyUserMonthlyLimit,
+      tier,
+      userLimit,
       globalLimit: config.centralKeyGlobalMonthlyLimit,
       globalLimitReached: config.centralKeyGlobalMonthlyLimit > 0 && globalUsage >= config.centralKeyGlobalMonthlyLimit,
       usage,

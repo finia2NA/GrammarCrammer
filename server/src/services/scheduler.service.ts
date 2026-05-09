@@ -136,7 +136,7 @@ export async function enqueueGrammarCaseExtraction(
 
 export async function initScheduler() {
   const pendingDecks = await prisma.deck.findMany({
-    where: { explanationStatus: 'pending' },
+    where: { explanationStatus: { in: ['pending', 'generating'] } },
     select: { nodeId: true, node: { select: { userId: true } } },
   });
 

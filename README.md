@@ -176,6 +176,22 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 `pnpm install cp server/.env.example server/.env cp client/.env.example client/.env pnpm db:migrate`
 
+Server `.env`:
+
+```env
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="change-me-to-a-random-string"
+ENCRYPTION_KEY="change-me-32-byte-hex-key-for-aes256"
+PORT=3001
+APPLE_CLIENT_ID=""
+GOOGLE_CLIENT_ID=""
+CENTRAL_API_KEY=""
+CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT=100.00
+POSTHOG_PROJECT_API_KEY=""
+POSTHOG_HOST="https://us.i.posthog.com"
+POSTHOG_ENABLED=0
+```
+
 Client `.env`:
 
 ```env
@@ -203,6 +219,14 @@ iOS native builds use `expo-build-properties` to build React Native from source 
 ### Check
 
 `pnpm lint`
+
+### Admin
+
+Promote or demote users with:
+
+- Local/dev: `bash scripts/admin.sh add <userId>` or `bash scripts/admin.sh remove <userId>`
+- Root shortcut: `pnpm admin add <userId>` or `pnpm admin remove <userId>`
+- Deployed server from `/home/patterndeck/app`: `sudo -u patterndeck bash scripts/admin.sh add <userId>` or `sudo -u patterndeck bash scripts/admin.sh remove <userId>`
 
 ---
 

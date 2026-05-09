@@ -43,7 +43,7 @@ Helpful reference docs:
 - Prisma-backed persistence for users, decks, reviews, notification devices, schedules, and AI usage ledgers.
 - AES-256-GCM encryption for stored user API keys.
 - Background explanation queue for deck generation work.
-- Central API-key usage controls with per-user and global monthly limits.
+- Central API-key usage controls with admin-configurable per-tier user budgets and a global monthly limit.
 - Auth endpoints accept an optional initial `uiLanguage` and store it as a generic user setting for newly created users.
 
 ### AI Flow
@@ -108,7 +108,6 @@ For the full schema, see [server/STRUCTURE.md](server/STRUCTURE.md).
 | `APPLE_CLIENT_ID` | No | Apple Sign In configuration |
 | `GOOGLE_CLIENT_ID` | No | Google Sign-In configuration |
 | `CENTRAL_API_KEY` | No | Shared Anthropic key for users without their own key |
-| `CENTRAL_KEY_USER_MONTHLY_LIMIT` | No | Per-user monthly spend cap for the shared key |
 | `CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT` | No | Global monthly spend cap for the shared key |
 | `RESEND_API_KEY` | No | Resend API key for password-reset email delivery |
 | `APP_URL` | No | Public app URL used in server-generated links |
@@ -167,3 +166,27 @@ The repo includes SSH-oriented deployment scripts in `deploy/`.
 
 - `pnpm setup:server`: one-time Linux server bootstrap
 - `pnpm ship`: build and deploy the client and server
+
+## Admin Operations
+
+Admin access is stored on `User.role` in the database. Promote or demote a user locally from the repo root:
+
+```bash
+bash scripts/admin.sh add <userId>
+bash scripts/admin.sh remove <userId>
+```
+
+The root shortcut is also available:
+
+```bash
+pnpm admin add <userId>
+pnpm admin remove <userId>
+```
+
+On the deployed server, run the same wrapper from the deployed app directory:
+
+```bash
+cd /home/patterndeck/app
+sudo -u patterndeck bash scripts/admin.sh add <userId>
+sudo -u patterndeck bash scripts/admin.sh remove <userId>
+```

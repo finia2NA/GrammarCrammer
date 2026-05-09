@@ -8,6 +8,7 @@ React Native / Expo app. Communicates with the server via `lib/api.ts` — no di
 client/
 ├── app/                        ← Expo Router pages (file-based routing)
 │   ├── _layout.tsx             ← Root layout: global CSS, theme vars, analytics, KeyboardProvider, Stack nav
+│   ├── admin.tsx               ← Admin-only budget settings and user usage monitor
 │   ├── index.tsx               ← Auth guard: checks JWT → /onboarding or /home
 │   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, sign-up, API key
 │   ├── home.tsx                ← Main screen: deck tree, quick study input, modals
@@ -23,9 +24,9 @@ client/
 │   │   ├── DeckModalJsonTab.tsx            ← JSON bulk-import tab
 │   │   ├── DeckModalSharedCreationFields.tsx ← Shared form fields (topic, language, card count)
 │   │   ├── JsonFileDropZone.tsx / .web.tsx  ← File upload drop zone (platform-split)
-│   │   ├── SettingsModal.tsx               ← UI language, card sort order, API key management, usage
+│   │   ├── SettingsModal.tsx               ← UI language, card sort order, API key management, usage, admin entrypoint
 │   │   ├── AddApiKeyForm.tsx               ← Claude API key entry form
-│   │   ├── UsageBar.tsx                    ← Monthly cost usage visualization
+│   │   ├── UsageBar.tsx                    ← Monthly budget usage percentage visualization
 │   │   ├── DueIndicator.tsx                ← SRS due-date badge on deck items
 │   │   ├── LanguagePicker.tsx              ← Language selection dropdown
 │   │   ├── ReviewHistoryModal.tsx           ← Review history coordinator modal
@@ -94,6 +95,7 @@ client/
 │   ├── useSessionCards.ts      ← Card state management during an active session
 │   ├── useMultiDeckSession.ts  ← Assembles a multi-deck session from a collection
 │   ├── useScreenSize.ts        ← Responsive breakpoint / screen dimension hook
+│   ├── useRequireAdmin.ts      ← Redirects non-admin users and gates admin-only UI rendering
 │   ├── use-color-scheme.ts / .web.ts ← Platform-specific color scheme detection
 │   ├── use-theme-color.ts      ← Resolves a theme token to a concrete color value
 │   └── state/
@@ -104,11 +106,11 @@ client/
 ├── lib/
 │   ├── api.ts                  ← All HTTP calls to the server (auth, tree, decks, AI)
 │   ├── analytics.tsx           ← PostHog provider + event helpers
-│   ├── format.ts               ← Date/number formatting utilities
+│   ├── format.ts               ← Date/number formatting utilities, including usage percent formatting
 │   ├── i18n.ts                 ← UI locale detection, translations, and study-language filtering
 │   ├── notifications.ts        ← Expo push token registration + permission request
 │   ├── platformAlert.ts        ← Platform-aware alert (native Alert vs web confirm)
-│   ├── storage.ts              ← AsyncStorage wrapper (getAuthToken / setAuthToken / clearAuthToken)
+│   ├── storage.ts              ← AsyncStorage wrapper (auth token, user id/email/role, collapsed tree state, backend override)
 │   └── types.ts                ← Shared TypeScript types (Card, TreeNode, DeckData, ChatMessage)
 │
 ├── constants/
@@ -177,6 +179,7 @@ The single place all server communication happens. Uses environment-aware base U
 - `generateExplanation` (SSE), `explainRejection` (SSE), `chatAboutCard` (SSE)
 - `generateCards`, `judgeAnswer`
 - `registerPushToken`, `unregisterPushToken`
+- `getAdminUsers`, `updateAdminConfig`
 
 SSE endpoints return an async generator consumed via `streamSSE()`.
 

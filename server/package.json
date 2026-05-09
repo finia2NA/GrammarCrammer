@@ -7,6 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "admin": "tsx src/cli/admin.ts",
+    "admin:prod": "node dist/cli/admin.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

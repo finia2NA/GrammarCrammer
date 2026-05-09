@@ -10,7 +10,7 @@ import { ColorsContext, darkThemeVars, lightThemeVars, dark, light } from '@/con
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getMe, hydrateSettings } from '@/lib/api';
 import { AnalyticsProvider, analytics } from '@/lib/analytics';
-import { getAuthToken, setUserId } from '@/lib/storage';
+import { getAuthToken, setUserId, setUserRole } from '@/lib/storage';
 import { syncPushDeviceRegistrationIfEnabled } from '@/lib/notifications';
 import { useIsStageManagerWindow } from '@/hooks/useIsStageManagerWindow';
 
@@ -43,6 +43,7 @@ export default function RootLayout() {
       if (!token) return;
       const me = await getMe();
       await setUserId(me.id);
+      await setUserRole(me.role);
       analytics.identify(me.id, {
         has_api_key: me.hasApiKey,
         central_key_available: me.centralKeyAvailable,
