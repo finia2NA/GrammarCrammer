@@ -16,16 +16,15 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
   console.error('[error]', err);
 
   if (err instanceof AppError) {
-    if (err.code === 'USAGE_LIMIT') {
-      capture(req.userId, 'usage_limit_hit', {
-        route: req.path,
-        endpoint: req.originalUrl,
-        method: req.method,
-        app_session_id: req.appSessionId,
-        status_code: err.statusCode,
-        error_code: err.code,
-      });
-    }
+    capture(req.userId, err.code === 'USAGE_LIMIT' ? 'usage_limit_hit' : 'app_error', {
+      route: req.path,
+      endpoint: req.originalUrl,
+      method: req.method,
+      app_session_id: req.appSessionId,
+      status_code: err.statusCode,
+      error_code: err.code,
+      error_message: err.message,
+    });
     res.status(err.statusCode).json({
       error: { code: err.code, message: err.message },
     });

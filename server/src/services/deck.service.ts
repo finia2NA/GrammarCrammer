@@ -161,6 +161,9 @@ export async function updateDeck(
     if (regenerate) {
       await options.beforeRegenerateExplanation?.();
     }
+    if (!regenerate && updates.explanation !== undefined) {
+      explanationChanged = updates.explanation !== node.deck.explanation;
+    }
 
     if (updates.name !== undefined) {
       await prisma.node.update({ where: { id: nodeId }, data: { name: updates.name } });
@@ -175,9 +178,11 @@ export async function updateDeck(
         cardCount: newCount,
         ...(regenerate
           ? { explanationStatus: 'pending', grammarCaseStatus: 'pending', explanation: null }
-          : updates.explanation !== undefined
+          : explanationChanged
             ? { explanation: updates.explanation, explanationStatus: 'ready', grammarCaseStatus: 'pending' }
-            : {}),
+            : updates.explanation !== undefined
+              ? { explanation: updates.explanation, explanationStatus: 'ready' }
+              : {}),
       },
     });
   } else if (updates.explanation !== undefined) {
