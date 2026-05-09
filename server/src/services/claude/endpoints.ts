@@ -14,7 +14,7 @@ import {
   WORD_HINT_PROMPT,
 } from '../../constants/prompts.js';
 import { DEBUG_AI } from '../../routes/claude-proxy.js';
-import { callTextStream, callTool, defaultTraceId, HAIKU, recordUsage, resolveApiKey, SONNET } from './shared.js';
+import { callStructuredTool, callTextStream, defaultTraceId } from '../ai-routing.service.js';
 
 type GeneratedCard = {
   translateFrom?: string;
@@ -34,16 +34,13 @@ export async function extractGrammarCases(
   analyticsContext?: AiAnalyticsContext,
   responseLanguage = 'English',
 ): Promise<ExtractedGrammarCase[]> {
-  const { apiKey, source } = await resolveApiKey(userId);
-
-  const { result, cost } = await callTool<{ cases: ExtractedGrammarCase[] }>(
-    apiKey, SONNET,
+  const { result } = await callStructuredTool<{ cases: ExtractedGrammarCase[] }>(
+    userId, 'case-extraction',
     CASE_EXTRACTION_PROMPT(language, responseLanguage),
     JSON.stringify({ topic, studyLanguage: language, responseLanguage, explanation }),
     2500,
     {
       userId,
-      source,
       endpoint: 'case-extraction',
       context: {
         ...analyticsContext,
@@ -53,7 +50,6 @@ export async function extractGrammarCases(
     },
   );
 
-  await recordUsage(userId, source, 'case-extraction', SONNET, cost);
   return Array.isArray(result.cases) ? result.cases : [];
 }
 
@@ -67,10 +63,8 @@ export async function generateCards(
   analyticsContext?: AiAnalyticsContext,
   caseTargets?: GrammarCaseTarget[],
 ) {
-  const { apiKey, source } = await resolveApiKey(userId);
-
-  const { result, cost } = await callTool<{ cards: GeneratedCard[] }>(
-    apiKey, HAIKU,
+  const { result, cost, model, source, provider } = await callStructuredTool<{ cards: GeneratedCard[] }>(
+    userId, 'cards',
     CARD_GEN_PROMPT(language, count, responseLanguage),
     JSON.stringify({
       topic,
@@ -92,7 +86,6 @@ export async function generateCards(
     caseTargets && caseTargets.length > 0 ? 2400 : 2000,
     {
       userId,
-      source,
       endpoint: 'cards',
       context: {
         ...analyticsContext,
@@ -102,14 +95,12 @@ export async function generateCards(
     },
   );
 
-  await recordUsage(userId, source, 'cards', HAIKU, cost);
-
   captureAiGeneration(userId, {
     ...analyticsContext,
     endpoint: 'cards_qc',
     traceId: `${analyticsContext?.traceId ?? defaultTraceId('cards', analyticsContext)}:qc`,
-    model: HAIKU,
-    source,
+    provider,
+    model,
     cost: 0,
     success: true,
     stream: false,
@@ -168,8 +159,6 @@ export async function generateCards(
 }
 
 export async function judgeAnswer(userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal', responseLanguage = 'English', analyticsContext?: AiAnalyticsContext) {
-  const { apiKey, source } = await resolveApiKey(userId);
-
   const userPayload = {
     english: card.english,
     targetLanguage: card.targetLanguage,
@@ -179,29 +168,25 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
   };
   if (DEBUG_AI) console.log('[AI:judge payload]\n', JSON.stringify(userPayload));
 
-  const { result, cost } = await callTool<{ reason: string; correct: boolean }>(
-    apiKey, HAIKU,
+  const { result, cost } = await callStructuredTool<{ reason: string; correct: boolean }>(
+    userId, 'judge',
     JUDGMENT_PROMPT(language, brevity, responseLanguage),
     JSON.stringify(userPayload),
     brevity === 'brief' ? 60 : 120,
     {
       userId,
-      source,
       endpoint: 'judge',
       context: { ...analyticsContext, language: analyticsContext?.language ?? language },
     },
   );
 
   if (DEBUG_AI) console.log('[AI:judge response]', JSON.stringify(result));
-  await recordUsage(userId, source, 'judge', HAIKU, cost);
   return { ...result, cost };
 }
 
 export async function reviewRejection(
   userId: string, card: Card, userAnswer: string, language: string, explanation?: string, brevity: 'brief' | 'normal' = 'normal', responseLanguage = 'English', analyticsContext?: AiAnalyticsContext,
 ) {
-  const { apiKey, source } = await resolveApiKey(userId);
-
   const userPayload = {
     english: card.english,
     targetLanguage: card.targetLanguage,
@@ -211,21 +196,19 @@ export async function reviewRejection(
   };
   if (DEBUG_AI) console.log('[AI:rejection payload]\n', JSON.stringify(userPayload));
 
-  const { result, cost } = await callTool<{ explanation: string; overrideToCorrect: boolean }>(
-    apiKey, SONNET,
+  const { result, cost } = await callStructuredTool<{ explanation: string; overrideToCorrect: boolean }>(
+    userId, 'rejection',
     REJECTION_PROMPT(language, brevity, responseLanguage),
     JSON.stringify(userPayload),
     brevity === 'brief' ? 200 : 400,
     {
       userId,
-      source,
       endpoint: 'rejection',
       context: { ...analyticsContext, language: analyticsContext?.language ?? language },
     },
   );
 
   if (DEBUG_AI) console.log('[AI:rejection response]', JSON.stringify(result));
-  await recordUsage(userId, source, 'rejection', SONNET, cost);
   return { ...result, cost };
 }
 
@@ -236,7 +219,6 @@ export async function streamChat(
   messages: Array<{ role: string; content: string }>,
   analyticsContext?: AiAnalyticsContext,
 ) {
-  const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
   req.on('close', () => controller.abort());
 
@@ -244,17 +226,15 @@ export async function streamChat(
 
   try {
     const { cost } = await callTextStream(
-      apiKey, SONNET, systemPrompt, messages, 600,
+      userId, 'chat', systemPrompt, messages, 600,
       (chunk) => sendChunk(res, { type: 'text', text: chunk }),
       controller.signal,
       {
         userId,
-        source,
         endpoint: 'chat',
         context: analyticsContext,
       },
     );
-    await recordUsage(userId, source, 'chat', SONNET, cost);
     sendDone(res, { cost });
   } catch (e) {
     if (!controller.signal.aborted) {
@@ -277,22 +257,19 @@ export async function rateSession(
   responseLanguage = 'English',
   analyticsContext?: AiAnalyticsContext,
 ): Promise<{ stars: number; recap: string; cost: number }> {
-  const { apiKey, source } = await resolveApiKey(userId);
-
   const normalizedCards = cards.map(c => ({
     english: c.english,
     targetLanguage: c.targetLanguage,
     answers: Array.isArray(c.answers) && c.answers.length > 0 ? c.answers : [c.targetLanguage],
   }));
 
-  const { result, cost } = await callTool<{ stars: number; recap: string }>(
-    apiKey, HAIKU,
+  const { result, cost } = await callStructuredTool<{ stars: number; recap: string }>(
+    userId, 'rate-session',
     SESSION_RATING_PROMPT(language, responseLanguage),
     JSON.stringify({ topic, cards: normalizedCards }),
     200,
     {
       userId,
-      source,
       endpoint: 'rate-session',
       context: {
         ...analyticsContext,
@@ -302,7 +279,6 @@ export async function rateSession(
     },
   );
 
-  await recordUsage(userId, source, 'rate-session', HAIKU, cost);
   return { stars: result.stars, recap: result.recap, cost };
 }
 
@@ -314,8 +290,6 @@ export async function explainSentence(
   responseLanguage = 'English',
   analyticsContext?: AiAnalyticsContext,
 ): Promise<{ explanation: string; cost: number }> {
-  const { apiKey, source } = await resolveApiKey(userId);
-
   const userPayload = {
     english: card.english,
     targetLanguage: card.targetLanguage,
@@ -324,21 +298,19 @@ export async function explainSentence(
   };
   if (DEBUG_AI) console.log('[AI:explain-sentence payload]\n', JSON.stringify(userPayload));
 
-  const { result, cost } = await callTool<{ explanation: string }>(
-    apiKey, HAIKU,
+  const { result, cost } = await callStructuredTool<{ explanation: string }>(
+    userId, 'explain-sentence',
     SENTENCE_REVEAL_PROMPT(language, responseLanguage),
     JSON.stringify(userPayload),
     300,
     {
       userId,
-      source,
       endpoint: 'explain-sentence',
       context: { ...analyticsContext, language: analyticsContext?.language ?? language },
     },
   );
 
   if (DEBUG_AI) console.log('[AI:explain-sentence response]', JSON.stringify(result));
-  await recordUsage(userId, source, 'explain-sentence', HAIKU, cost);
   return { explanation: result.explanation, cost };
 }
 
@@ -351,21 +323,17 @@ export async function generateWordHint(
   responseLanguage = 'English',
   analyticsContext?: AiAnalyticsContext,
 ): Promise<{ infinitive: string; with_annotation: string; word_type: string; cost: number }> {
-  const { apiKey, source } = await resolveApiKey(userId);
-
-  const { result, cost } = await callTool<{ infinitive: string; with_annotation: string; word_type: string }>(
-    apiKey, HAIKU,
+  const { result, cost } = await callStructuredTool<{ infinitive: string; with_annotation: string; word_type: string }>(
+    userId, 'word-hint',
     WORD_HINT_PROMPT(language, responseLanguage),
     JSON.stringify({ english, targetLanguage, word }),
     150,
     {
       userId,
-      source,
       endpoint: 'word-hint',
       context: { ...analyticsContext, language: analyticsContext?.language ?? language },
     },
   );
 
-  await recordUsage(userId, source, 'word-hint', HAIKU, cost);
   return { ...result, cost };
 }

@@ -5,6 +5,12 @@ import { prisma } from '../lib/prisma.js';
 import { getAllGlobalConfig, getUserBudget, setGlobalConfig } from '../services/global-config.service.js';
 import { currentYearMonth } from '../services/usage.service.js';
 import { getUserTier, type UserTier } from '../services/user-tier.service.js';
+import {
+  fetchProviderModels,
+  getAiRoutingAdminPayload,
+  getProviderAvailability,
+  saveAiRoutingConfig,
+} from '../services/ai-routing.service.js';
 
 export const adminRouter = Router();
 
@@ -93,5 +99,30 @@ adminRouter.put('/config', async (req, res, next) => {
     }
     await Promise.all((entries as [string, string][]).map(([key, value]) => setGlobalConfig(key, value)));
     res.json({ config: await getAllGlobalConfig() });
+  } catch (e) { next(e); }
+});
+
+adminRouter.get('/ai-providers', async (_req, res, next) => {
+  try {
+    res.json({ providers: getProviderAvailability() });
+  } catch (e) { next(e); }
+});
+
+adminRouter.get('/ai-providers/:provider/models', async (req, res, next) => {
+  try {
+    res.json(await fetchProviderModels(req.params.provider));
+  } catch (e) { next(e); }
+});
+
+adminRouter.get('/ai-routing', async (_req, res, next) => {
+  try {
+    res.json(await getAiRoutingAdminPayload());
+  } catch (e) { next(e); }
+});
+
+adminRouter.put('/ai-routing', async (req, res, next) => {
+  try {
+    const routing = await saveAiRoutingConfig(req.body.routing);
+    res.json({ routing });
   } catch (e) { next(e); }
 });

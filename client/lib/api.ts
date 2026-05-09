@@ -497,6 +497,88 @@ export async function updateAdminConfig(config: Record<string, string>) {
   });
 }
 
+export type AiProvider = 'anthropic' | 'openai' | 'openrouter' | 'deepseek' | 'mistral' | 'kimi' | 'qwen';
+export type AiEndpoint =
+  | 'cards'
+  | 'judge'
+  | 'rate-session'
+  | 'explain-sentence'
+  | 'word-hint'
+  | 'explanation'
+  | 'case-extraction'
+  | 'rejection'
+  | 'chat'
+  | 'explanation-edit';
+
+export interface AiModelRef {
+  provider: AiProvider;
+  model: string;
+}
+
+export interface AiEndpointRoute {
+  primary: AiModelRef;
+  fallback?: AiModelRef | null;
+}
+
+export type AiRoutingConfig = Record<AiEndpoint, AiEndpointRoute>;
+
+export interface AiProviderInfo {
+  provider: AiProvider;
+  label: string;
+  configured: boolean;
+  baseUrl: string;
+  modelListSupport: 'live' | 'static';
+  lastModelFetchStatus?: { ok: boolean; at: string; error?: string };
+}
+
+export interface AiProviderModel {
+  id: string;
+  name?: string;
+  contextLength?: number;
+  inputPrice?: number;
+  outputPrice?: number;
+  supportsTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+}
+
+export interface AiEndpointMeta {
+  label: string;
+  description: string;
+  mode: 'tool' | 'stream' | 'edit';
+}
+
+export interface AiRoutingPayload {
+  routing: AiRoutingConfig;
+  defaults: AiRoutingConfig;
+  providers: AiProviderInfo[];
+  endpoints: Record<AiEndpoint, AiEndpointMeta>;
+}
+
+export async function getAiProviders() {
+  return request<{ providers: AiProviderInfo[] }>('/admin/ai-providers');
+}
+
+export async function getAiProviderModels(provider: AiProvider) {
+  return request<{
+    provider: AiProvider;
+    configured: boolean;
+    modelListUnavailable: boolean;
+    models: AiProviderModel[];
+    error?: string;
+  }>(`/admin/ai-providers/${provider}/models`);
+}
+
+export async function getAiRouting() {
+  return request<AiRoutingPayload>('/admin/ai-routing');
+}
+
+export async function updateAiRouting(routing: AiRoutingConfig) {
+  return request<{ routing: AiRoutingConfig }>('/admin/ai-routing', {
+    method: 'PUT',
+    body: JSON.stringify({ routing }),
+  });
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 export async function registerPushDevice(expoPushToken: string, platform: string) {

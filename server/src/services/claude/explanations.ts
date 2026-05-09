@@ -5,7 +5,7 @@ import { sseHeaders, sendChunk, sendDone, sendError } from '../../lib/sse.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import type { AiAnalyticsContext } from '../analytics.service.js';
 import { EXPLANATION_PROMPT } from '../../constants/prompts.js';
-import { callTextStream, recordUsage, resolveApiKey, SONNET } from './shared.js';
+import { callTextStream } from '../ai-routing.service.js';
 
 const activeVersion = new Map<string, number>();
 
@@ -39,9 +39,8 @@ async function runExplanation(userId: string, deckId: string, version: number): 
 
   let fullText = '';
   try {
-    const { apiKey, source } = await resolveApiKey(userId);
     const { cost } = await callTextStream(
-      apiKey, SONNET,
+      userId, 'explanation',
       EXPLANATION_PROMPT(deck.language),
       [{ role: 'user', content: JSON.stringify({ topic: deck.topic, ...(deck.clarification?.trim() ? { clarification: deck.clarification.trim() } : {}) }) }],
       4096,
@@ -49,7 +48,6 @@ async function runExplanation(userId: string, deckId: string, version: number): 
       undefined,
       {
         userId,
-        source,
         endpoint: 'explanation',
         context: {
           deckId,
@@ -60,7 +58,6 @@ async function runExplanation(userId: string, deckId: string, version: number): 
         },
       },
     );
-    await recordUsage(userId, source, 'explanation', SONNET, cost);
     if (activeVersion.get(deckId) === version) {
       await setExplanation(deckId, fullText);
       enqueueCaseExtractionAfterExplanation(userId, deckId, {
@@ -80,7 +77,6 @@ async function runExplanation(userId: string, deckId: string, version: number): 
 }
 
 export async function streamExplanation(req: Request, res: Response, userId: string, deckId: string) {
-  const { apiKey, source } = await resolveApiKey(userId);
   const deck = await prisma.deck.findUnique({
     where: { nodeId: deckId },
     include: { node: { select: { name: true } } },
@@ -97,7 +93,7 @@ export async function streamExplanation(req: Request, res: Response, userId: str
   let fullText = '';
   try {
     const { wasTruncated, cost } = await callTextStream(
-      apiKey, SONNET,
+      userId, 'explanation',
       EXPLANATION_PROMPT(deck.language),
       [{ role: 'user', content: JSON.stringify({ topic: deck.topic, ...(deck.clarification?.trim() ? { clarification: deck.clarification.trim() } : {}) }) }],
       4096,
@@ -108,7 +104,6 @@ export async function streamExplanation(req: Request, res: Response, userId: str
       controller.signal,
       {
         userId,
-        source,
         endpoint: 'explanation',
         context: {
           deckId,
@@ -119,7 +114,6 @@ export async function streamExplanation(req: Request, res: Response, userId: str
         },
       },
     );
-    await recordUsage(userId, source, 'explanation', SONNET, cost);
     await setExplanation(deckId, fullText);
     enqueueCaseExtractionAfterExplanation(userId, deckId, {
       deckId,
@@ -141,7 +135,6 @@ export async function streamExplanationGeneric(
   req: Request, res: Response,
   userId: string, topic: string, language: string, responseLanguage = 'English', analyticsContext?: AiAnalyticsContext,
 ) {
-  const { apiKey, source } = await resolveApiKey(userId);
   const controller = new AbortController();
   req.on('close', () => controller.abort());
 
@@ -149,7 +142,7 @@ export async function streamExplanationGeneric(
 
   try {
     const { wasTruncated, cost } = await callTextStream(
-      apiKey, SONNET,
+      userId, 'explanation',
       EXPLANATION_PROMPT(language, responseLanguage),
       [{ role: 'user', content: JSON.stringify({ topic, studyLanguage: language, responseLanguage }) }],
       4096,
@@ -157,7 +150,6 @@ export async function streamExplanationGeneric(
       controller.signal,
       {
         userId,
-        source,
         endpoint: 'explanation',
         context: {
           ...analyticsContext,
@@ -166,7 +158,6 @@ export async function streamExplanationGeneric(
         },
       },
     );
-    await recordUsage(userId, source, 'explanation', SONNET, cost);
     sendDone(res, { cost, wasTruncated });
   } catch (e) {
     if (!controller.signal.aborted) {

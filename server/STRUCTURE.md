@@ -1,6 +1,6 @@
 # Server Structure
 
-Express 5 + Prisma API server. Handles auth, deck/collection storage, spaced-repetition scheduling, push notifications, and proxies all Anthropic API calls on behalf of the client.
+Express 5 + Prisma API server. Handles auth, deck/collection storage, spaced-repetition scheduling, push notifications, and routes all AI calls on behalf of the client.
 
 ## Directory map
 
@@ -15,7 +15,7 @@ server/
 │   │   └── errorHandler.ts         ← Centralised Express error handler
 │   │
 │   ├── routes/
-│   │   ├── admin.ts                ← /api/admin — admin-only user usage overview + global budget config
+│   │   ├── admin.ts                ← /api/admin — admin-only usage, budget config, AI routing, provider model discovery
 │   │   ├── auth.ts                 ← /api/auth — register, login, Apple, Google, me, validate-key, forgot/reset-password
 │   │   ├── tree.ts                 ← /api/tree — full tree, single node, path, descendant-deck-ids, JSON export, delete
 │   │   ├── decks.ts                ← /api/decks — CRUD, mark-studied, review submission, generate-explanation trigger, JSON import
@@ -33,9 +33,10 @@ server/
 │   │   ├── settings.service.ts     ← Generic user settings persistence; falls back to SETTING_DEFAULTS from @patterndeck/shared
 │   │   ├── crypto.service.ts       ← AES-256-GCM encrypt/decrypt for API keys
 │   │   ├── usage.service.ts        ← Cost tracking: ledger recording, monthly summaries, limit checks
+│   │   ├── ai-routing.service.ts   ← Provider-neutral AI routing, model discovery, fallbacks, pricing/cost estimates
 │   │   ├── claude.service.ts       ← Compatibility re-export for the Claude service modules
-│   │   ├── claude/                 ← Split Claude service implementation
-│   │   │   ├── shared.ts           ← Anthropic transport, key resolution, pricing, usage analytics helpers
+│   │   ├── claude/                 ← Public AI feature implementation, backed by ai-routing.service
+│   │   │   ├── shared.ts           ← Compatibility re-exports for legacy imports
 │   │   │   ├── explanations.ts     ← Deck/generic explanation generation and SSE streaming
 │   │   │   ├── endpoints.ts        ← Cards, judging, rejection, chat, session rating, sentence/word hints
 │   │   │   ├── edit.ts             ← Agentic explanation editor
@@ -144,6 +145,10 @@ All routes require an authenticated user with `role = "admin"`.
 | GET    | `/users`    | List users with tier, monthly usage, budget, usage percentage; supports `tier` and `hasUsage` filters |
 | GET    | `/config`   | Get all DB-backed global config values           |
 | PUT    | `/config`   | Upsert DB-backed global config values            |
+| GET    | `/ai-providers` | List AI providers, configured status, base URL, and model-list support |
+| GET    | `/ai-providers/:provider/models` | Fetch live provider models when available, or curated fallback IDs |
+| GET    | `/ai-routing` | Get current endpoint model routing, defaults, provider availability, and endpoint metadata |
+| PUT    | `/ai-routing` | Save endpoint primary/fallback provider+model routing config |
 
 ### `/api/notifications`
 
@@ -156,13 +161,13 @@ All routes require an authenticated user with `role = "admin"`.
 
 | Method | Path                    | Description                                               |
 | ------ | ----------------------- | --------------------------------------------------------- |
-| POST   | `/cards`                | Generate flashcards for a topic; saved decks use grammar-case targets (Haiku, JSON response) |
-| POST   | `/judge`                | Judge a user's answer (Haiku, JSON response)             |
-| POST   | `/explain-sentence`     | Explain the correct sentence when learner skips (Haiku)  |
-| POST   | `/explanation/stream`   | Stream grammar explanation (Sonnet, SSE)                 |
-| POST   | `/explanation/edit`     | AI explanation editor: apply search/replace tool calls to Markdown (Sonnet, JSON response) |
-| POST   | `/rejection/stream`     | Stream explanation of a wrong answer (Sonnet, SSE)       |
-| POST   | `/chat/stream`          | Stream chat about the current card (Sonnet, SSE)         |
+| POST   | `/cards`                | Generate flashcards for a topic; saved decks use grammar-case targets (default Haiku, structured tool response) |
+| POST   | `/judge`                | Judge a user's answer (default Haiku, structured tool response) |
+| POST   | `/explain-sentence`     | Explain the correct sentence when learner skips (default Haiku) |
+| POST   | `/explanation/stream`   | Stream grammar explanation (default Sonnet, SSE) |
+| POST   | `/explanation/edit`     | AI explanation editor: apply search/replace tool calls to Markdown (default Sonnet, tool response) |
+| POST   | `/rejection/stream`     | Stream explanation of a wrong answer (default Sonnet, SSE) |
+| POST   | `/chat/stream`          | Stream chat about the current card (default Sonnet, SSE) |
 
 SSE streams emit newline-delimited JSON events:
 ```json
@@ -172,16 +177,20 @@ SSE streams emit newline-delimited JSON events:
 
 ## Key services
 
+### `ai-routing.service.ts`
+Provider-neutral AI transport and routing layer for Anthropic, OpenAI, OpenRouter, DeepSeek, Mistral, Kimi/Moonshot, and Qwen/DashScope.
+- Stores admin endpoint routing in `GlobalConfig` under `ai_routing_config`; defaults keep Haiku for high-volume structured tasks and Sonnet for quality-sensitive/streaming tasks.
+- Provides live provider availability and model discovery for the admin UI, without exposing secret keys.
+- Supports native Anthropic tool use/streaming and OpenAI-compatible chat completions/tool calls for the other providers.
+- Retries one fallback model on technical failures only; streaming fallback is allowed only before any text chunk has been sent.
+- Personal Anthropic keys remain Anthropic-only and never fall back to server provider keys.
+- Records analytics and usage with actual provider/model; usage ledger model values include the provider prefix for cross-provider cost tracking.
+
 ### `claude/` and `claude.service.ts`
-Owns all Anthropic API communication. `claude.service.ts` re-exports the split implementation modules for existing imports.
+Feature-level AI functions. `claude.service.ts` re-exports the split implementation modules for existing imports, while the transport/model choice is handled by `ai-routing.service.ts`.
 - Uses server-to-server `fetch` — no client-side API key exposure.
-- Two models:
-  - **Sonnet 4.6** — explanations, grammar-case extraction, rejection feedback, chat
-  - **Haiku 4.5** — card generation, answer judgment (non-streamed JSON)
-- `resolveApiKey(userId)` — determines which API key to use (user's own or central server key) based on user preference and limit checks. Throws 429 if central key limits are exceeded.
-- Every public AI function records usage via `recordUsage()` after the call completes.
 - `generateDeckExplanation(userId, deckId)` — generates and persists explanation, updating `explanationStatus` on the Deck from `pending → generating → ready` (or `error`), then queues grammar-case extraction for saved-deck card coverage.
-- `editExplanation(userId, explanation, instruction, messages, analyticsContext?)` — agentic explanation editor; sends the current Markdown document + instruction to Claude Sonnet with `replace_text`, `insert_after`, and `rewrite_all` tools; applies all returned tool calls sequentially; returns `{ explanation, summary, cost }`.
+- `editExplanation(userId, explanation, instruction, messages, analyticsContext?)` — agentic explanation editor; sends the current Markdown document + instruction with `replace_text`, `insert_after`, and `rewrite_all` tools; applies all returned tool calls sequentially; returns `{ explanation, summary, cost }`.
 
 ### `grammar-case.service.ts`
 Maintains per-deck grammar subcases used for coverage-aware card generation.
@@ -362,8 +371,8 @@ UsageLedger  (append-only audit trail)
   userId        FK → User
   yearMonth     "2026-04"
   source        "central" | "own"
-  endpoint      "cards" | "judge" | "explanation" | "case-extraction" | "rejection" | "chat"
-  model         model ID string
+  endpoint      "cards" | "judge" | "explanation" | "case-extraction" | "rejection" | "chat" | ...
+  model         provider-prefixed model ID string, e.g. "anthropic:claude-sonnet-4-6"
   cost          Float (dollars, high precision)
   createdAt
 
@@ -381,7 +390,20 @@ MonthlyUsageSummary  (denormalized running totals for fast limit checks)
 | `ENCRYPTION_KEY`                  | Yes      | 32-byte hex key for AES-256-GCM API key storage  |
 | `APPLE_CLIENT_ID`                 | No       | Apple Sign In client ID                          |
 | `GOOGLE_CLIENT_ID`                | No       | Google OAuth2 client ID                          |
-| `CENTRAL_API_KEY`                 | No       | Shared Anthropic API key for all users           |
+| `ANTHROPIC_API_KEY`               | No       | Shared Anthropic API key for all users           |
+| `CENTRAL_API_KEY`                 | No       | Legacy alias for `ANTHROPIC_API_KEY`             |
+| `OPENAI_API_KEY`                  | No       | OpenAI API key for admin-configured routing      |
+| `OPENROUTER_API_KEY`              | No       | OpenRouter API key for admin-configured routing  |
+| `DEEPSEEK_API_KEY`                | No       | DeepSeek API key for admin-configured routing    |
+| `MISTRAL_API_KEY`                 | No       | Mistral API key for admin-configured routing     |
+| `KIMI_API_KEY`                    | No       | Kimi/Moonshot API key for admin-configured routing |
+| `QWEN_API_KEY`                    | No       | Qwen/DashScope API key for admin-configured routing |
+| `OPENAI_BASE_URL`                 | No       | Override OpenAI-compatible base URL              |
+| `OPENROUTER_BASE_URL`             | No       | Override OpenRouter base URL                     |
+| `DEEPSEEK_BASE_URL`               | No       | Override DeepSeek base URL                       |
+| `MISTRAL_BASE_URL`                | No       | Override Mistral base URL                        |
+| `KIMI_BASE_URL`                   | No       | Override Kimi/Moonshot base URL                  |
+| `QWEN_BASE_URL`                   | No       | Override Qwen/DashScope base URL                 |
 | `CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT`| No       | Global monthly spend limit in USD (default 0)    |
 | `RESEND_API_KEY`                  | No       | Resend API key for password reset emails         |
 | `APP_URL`                         | No       | Public app URL used in password reset links      |

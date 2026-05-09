@@ -73,8 +73,10 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ### AI Pipeline
 
-- Sonnet: explanations, grammar-case extraction, chat, feedback  
-- Haiku: card generation, answer evaluation  
+- Admin-configurable AI routing by endpoint with Anthropic defaults
+- Sonnet by default: explanations, grammar-case extraction, chat, feedback
+- Haiku by default: card generation, answer evaluation
+- Optional provider/model fallback on technical failures before any streamed text is sent
 - Saved deck explanations are split into grammar subcases asynchronously so future card generation can balance coverage and learner difficulty  
 - Case-aware generation can be disabled in settings, and extracted cases can be reviewed or regenerated from deck editing  
 - Prompts distinguish UI response language from the language being studied  
@@ -92,6 +94,8 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 ### Server-Side AI Routing
 - Prevents API key exposure  
 - Enables centralized cost tracking and budget enforcement  
+- Supports Anthropic, OpenAI, OpenRouter, DeepSeek, Mistral, Kimi/Moonshot, and Qwen/DashScope server keys
+- Lets admins choose primary and fallback models per AI endpoint
 - Tradeoff: added latency vs direct client calls  
 
 ---
@@ -111,10 +115,11 @@ client/   React Native / Expo app (iOS, Android, web) server/   Express + Prisma
 
 ---
 
-### Model Separation (Sonnet vs Haiku)
-- Haiku used for high-volume, low-cost tasks  
-- Sonnet used for quality-sensitive outputs, including grammar-case extraction  
-- Balances cost vs output quality  
+### Model Separation and Fallbacks
+- Haiku defaults are used for high-volume, low-cost tasks
+- Sonnet defaults are used for quality-sensitive outputs, including grammar-case extraction
+- Admin routing can replace either class with other providers or add a fallback model
+- Personal Anthropic keys remain Anthropic-only and do not fall back to server provider keys
 
 ---
 
@@ -186,6 +191,20 @@ PORT=3001
 APPLE_CLIENT_ID=""
 GOOGLE_CLIENT_ID=""
 CENTRAL_API_KEY=""
+ANTHROPIC_API_KEY=""
+OPENAI_API_KEY=""
+OPENROUTER_API_KEY=""
+DEEPSEEK_API_KEY=""
+MISTRAL_API_KEY=""
+KIMI_API_KEY=""
+QWEN_API_KEY=""
+# Optional provider base URL overrides:
+# OPENAI_BASE_URL=""
+# OPENROUTER_BASE_URL=""
+# DEEPSEEK_BASE_URL=""
+# MISTRAL_BASE_URL=""
+# KIMI_BASE_URL=""
+# QWEN_BASE_URL=""
 CENTRAL_KEY_GLOBAL_MONTHLY_LIMIT=100.00
 POSTHOG_PROJECT_API_KEY=""
 POSTHOG_HOST="https://us.i.posthog.com"

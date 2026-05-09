@@ -24,6 +24,9 @@ interface AiGenerationEvent extends AiAnalyticsContext {
   provider?: string;
   model: string;
   source?: 'central' | 'own';
+  fallback?: boolean;
+  fallbackFromProvider?: string;
+  fallbackFromModel?: string;
   inputTokens?: number;
   outputTokens?: number;
   cost?: number;
@@ -119,6 +122,9 @@ export function captureAiGeneration(userId: string, event: AiGenerationEvent): v
       $ai_latency: event.latencyMs !== undefined ? event.latencyMs / 1000 : undefined,
       endpoint: event.endpoint,
       api_key_source: event.source,
+      fallback: event.fallback,
+      fallback_from_provider: event.fallbackFromProvider,
+      fallback_from_model: event.fallbackFromModel,
       success: event.success,
       error_code: event.errorCode,
       error_message: event.errorMessage,

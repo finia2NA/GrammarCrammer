@@ -8,7 +8,7 @@ React Native / Expo app. Communicates with the server via `lib/api.ts` — no di
 client/
 ├── app/                        ← Expo Router pages (file-based routing)
 │   ├── _layout.tsx             ← Root layout: global CSS, theme vars, analytics, KeyboardProvider, Stack nav
-│   ├── admin.tsx               ← Admin-only budget settings and user usage monitor
+│   ├── admin.tsx               ← Admin-only budget settings, AI routing controls, and user usage monitor
 │   ├── index.tsx               ← Auth guard: checks JWT → /onboarding or /home
 │   ├── onboarding.tsx          ← Multi-step carousel: welcome, how-it-works, sign-up, API key
 │   ├── home.tsx                ← Main screen: deck tree, quick study input, modals
@@ -179,7 +179,7 @@ The single place all server communication happens. Uses environment-aware base U
 - `generateExplanation` (SSE), `explainRejection` (SSE), `chatAboutCard` (SSE)
 - `generateCards`, `judgeAnswer`
 - `registerPushToken`, `unregisterPushToken`
-- `getAdminUsers`, `updateAdminConfig`
+- `getAdminUsers`, `updateAdminConfig`, `getAiProviders`, `getAiProviderModels`, `getAiRouting`, `updateAiRouting`
 
 SSE endpoints return an async generator consumed via `streamSSE()`.
 
