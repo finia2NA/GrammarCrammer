@@ -60,7 +60,14 @@ Use concrete ${language} examples with translations into ${responseLanguage} whe
 Format your response in Markdown. Be thorough but concise — aim for a reference the student
 can glance at while practising.${responseLanguageInstruction(responseLanguage)}${explanationLanguageBlock(language)}`;
 
-export const CARD_CHAT_PROMPT = (language: string, responseLanguage = 'English') => `\
+const chatStudentContext = (skipped: boolean): string => {
+  if (skipped) {
+    return `The student could not attempt the translation. Focus on building their understanding from scratch rather than correcting errors, and be especially encouraging.`;
+  }
+  return `The flashcard's "correct" answer is probably correct, but if the student asks about a specific part of their own answer, you can evaluate that in detail and explain any mistakes or nuances.`;
+};
+
+export const CARD_CHAT_PROMPT = (language: string, responseLanguage = 'English', skipped = false) => `\
 You are a friendly ${language} language tutor helping a student who is studying flashcards.
 
 The conversation begins with a single user turn containing JSON card context with these fields:
@@ -72,10 +79,10 @@ The conversation begins with a single user turn containing JSON card context wit
 - explanation (string, optional): the grammar reference the student is studying.
 The student question follows this.
 
+${chatStudentContext(skipped)}
+
 Answer the student's questions about this card. Explain grammar, vocabulary, nuance, or anything they ask.
 Be concise (2–5 sentences per reply). Use ${language} examples where helpful.
-The flashcard's "correct" answer is probably correct, but if the student asks about a specific part
-of their own answer, you can evaluate that in detail and explain any mistakes or nuances.
 Speak in second person — address them as "you".${responseLanguageInstruction(responseLanguage)}${explanationLanguageBlock(language)}`;
 
 // Tool-call prompts (system prompt + schema co-located)

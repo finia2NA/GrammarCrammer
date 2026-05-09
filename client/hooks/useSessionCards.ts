@@ -288,7 +288,8 @@ export function useSessionCards({
         addCost, explanation,
         { ...currentCardContext(currentCard), turnIndex },
       );
-    } catch {
+    } catch (error) {
+      analytics.captureException(error as Error, { action: 'chat_send' });
       setChatMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = {

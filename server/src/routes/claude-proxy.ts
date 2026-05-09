@@ -220,11 +220,11 @@ claudeProxyRouter.post('/explanation/edit', async (req, res, next) => {
 claudeProxyRouter.post('/chat/stream', async (req, res, next) => {
   try {
     const { card, userAnswer, language, wasCorrect, messages, explanation } = req.body;
-    if (!card || !userAnswer || !language || wasCorrect === undefined || !messages) {
+    if (!card || userAnswer === undefined || userAnswer === null || !language || wasCorrect === undefined || !messages) {
       throw new AppError(400, 'MISSING_FIELDS', 'card, userAnswer, language, wasCorrect, and messages are required.');
     }
     logAI(req.userId!, 'chat', 'sonnet');
-    const systemPrompt = CARD_CHAT_PROMPT(language, responseLanguage(req.body));
+    const systemPrompt = CARD_CHAT_PROMPT(language, responseLanguage(req.body), userAnswer === '');
     const cardContext = {
       english: card.english,
       targetLanguage: card.targetLanguage,
