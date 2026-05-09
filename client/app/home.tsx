@@ -132,10 +132,17 @@ export default function Home() {
     }
 
     const maxDecksRaw = await getSetting('max_decks_per_session');
+    const newDecksPerDayRaw = await getSetting('new_decks_per_day');
     const maxDecks = Math.max(1, parseInt(maxDecksRaw ?? '3', 10) || 3);
+    const newDecksPerDay = Math.max(0, parseInt(newDecksPerDayRaw ?? '1', 10) || 1);
+    const newDeckCapacity = Math.max(0, newDecksPerDay - newDecksStartedToday);
 
-    if (dueDeckIds.length > 0) {
-      startStudy({ nodeId: node.id, studyMode: 'scheduled', deckIds: dueDeckIds.slice(0, maxDecks) });
+    const selectedDueDeckIds = dueDeckIds.slice(0, maxDecks);
+    const selectedNewDeckIds = notStartedDeckIds.slice(0, Math.min(maxDecks - selectedDueDeckIds.length, newDeckCapacity));
+    const scheduledDeckIds = [...selectedDueDeckIds, ...selectedNewDeckIds];
+
+    if (scheduledDeckIds.length > 0) {
+      startStudy({ nodeId: node.id, studyMode: 'scheduled', deckIds: scheduledDeckIds });
       return;
     }
 
@@ -145,10 +152,10 @@ export default function Home() {
     setHistoryStudyContext({
       nodeId: node.id,
       studyMode: 'early',
-      deckIds: notStartedDeckIds.slice(0, maxDecks),
+      deckIds: notStartedDeckIds.slice(0, Math.min(maxDecks, newDeckCapacity)),
       notStartedDeckIds,
     });
-  }, [router]);
+  }, [newDecksStartedToday, router]);
 
   const handleEdit = useCallback((node: TreeNode) => {
     setEditNode(node);

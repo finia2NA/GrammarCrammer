@@ -499,6 +499,7 @@ export async function getNewDecksStartedToday(userId: string): Promise<number> {
     where: {
       studiedAt: { gte: start, lt: end },
       deck: { node: { userId } },
+      eventType: 'review',
     },
     select: { deckId: true },
     distinct: ['deckId'],
@@ -511,6 +512,7 @@ export async function getNewDecksStartedToday(userId: string): Promise<number> {
     where: {
       deckId: { in: deckIdsStudiedToday },
       studiedAt: { lt: start },
+      eventType: 'review',
     },
     select: { deckId: true },
     distinct: ['deckId'],
