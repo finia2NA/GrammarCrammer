@@ -23,7 +23,7 @@ client/
 │   │   ├── DeckModal.tsx                   ← Tabbed create/edit deck modal (wraps tabs below)
 │   │   ├── DeckModalCreateTab.tsx          ← Manual deck creation form
 │   │   ├── DeckModalJsonTab.tsx            ← JSON bulk-import tab
-│   │   ├── DeckModalSharedCreationFields.tsx ← Shared form fields (topic, language, card count)
+│   │   ├── DeckModalSharedCreationFields.tsx ← Shared form fields and IME-safe modal text input
 │   │   ├── JsonFileDropZone.tsx / .web.tsx  ← File upload drop zone (platform-split)
 │   │   ├── SettingsModal.tsx               ← UI language, card sort order, API key management, usage, admin entrypoint
 │   │   ├── AddApiKeyForm.tsx               ← Claude API key entry form

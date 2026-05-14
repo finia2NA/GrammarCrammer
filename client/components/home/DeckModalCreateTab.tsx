@@ -2,7 +2,7 @@ import { useRef, useState, type RefObject } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { useColors } from '@/constants/theme';
 import type { Language, CardCount } from '@/constants/session';
-import { SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
+import { DeckModalTextInput, SharedCreationNameField, SharedCreationOptionsSection } from './DeckModalSharedCreationFields';
 import { NeedsConfirmationButton } from '@/components/NeedsConfirmationButton';
 import { usePageSheetScrolling } from '@/components/PageSheetScrollContext';
 import { AnimatedCollapsible } from '@/components/AnimatedCollapsible';
@@ -118,7 +118,7 @@ export function DeckModalCreateTab({
             <Text className="text-foreground-secondary text-xs mb-2">
               {t('deck.topicDescription')}
             </Text>
-            <TextInput
+            <DeckModalTextInput
               ref={topicRef}
               className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-base mb-6"
               placeholder={t('deck.topicPlaceholder')}
@@ -136,7 +136,7 @@ export function DeckModalCreateTab({
             <Text className="text-foreground-secondary text-xs mb-2">
               {t('deck.clarificationDescription')}
             </Text>
-            <TextInput
+            <DeckModalTextInput
               ref={clarificationRef}
               className="bg-background-muted border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm mb-6"
               placeholder={t('deck.clarificationPlaceholder')}
@@ -196,7 +196,7 @@ export function DeckModalCreateTab({
                   </TouchableOpacity>
                   <AnimatedCollapsible expanded={explanationExpanded} keepMounted>
                     <View className="px-4 pb-4">
-                      <TextInput
+                      <DeckModalTextInput
                         ref={explanationRef}
                         className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted text-sm"
                         placeholder={t('deck.generatedExplanationPlaceholder')}
