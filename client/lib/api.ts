@@ -551,6 +551,7 @@ export interface AiEndpointMeta {
   label: string;
   description: string;
   mode: 'tool' | 'stream' | 'edit';
+  toolUseThinkingFallback?: 'disable-thinking' | 'two-turn';
 }
 
 export interface AiRoutingPayload {

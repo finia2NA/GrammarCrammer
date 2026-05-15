@@ -3,11 +3,13 @@ import type { AiEndpoint, AiModelRef, AiProvider } from './ai-routing.service.js
 
 export type ToolCallMode = 'standard' | 'thinking-two-turn' | 'thinking-disabled';
 export type ToolTaskKind = 'single' | 'multi-edit';
+export type ToolUseThinkingFallback = 'disable-thinking' | 'two-turn';
 
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
   cost?: number;
+  modelUsage?: Array<{ model: string; inputTokens: number; outputTokens: number }>;
 }
 
 type ToolCall = { name?: string; input?: Record<string, string> };
@@ -20,7 +22,7 @@ export type ToolUseTask =
       prompt: PromptWithTool;
       userMessage: string;
       maxTokens: number;
-      requiresThinking: boolean;
+      thinkingFallback: ToolUseThinkingFallback;
     }
   | {
       kind: 'multi-edit';
@@ -29,7 +31,7 @@ export type ToolUseTask =
       system: string;
       messages: ChatMessage[];
       maxTokens: number;
-      requiresThinking: boolean;
+      thinkingFallback: ToolUseThinkingFallback;
     };
 
 export interface ToolUseRequestConfig {
@@ -85,17 +87,31 @@ function addUsage(a: TokenUsage, b: TokenUsage): TokenUsage {
     inputTokens: a.inputTokens + b.inputTokens,
     outputTokens: a.outputTokens + b.outputTokens,
     cost: a.cost !== undefined || b.cost !== undefined ? (a.cost ?? 0) + (b.cost ?? 0) : undefined,
+    modelUsage: [...(a.modelUsage ?? []), ...(b.modelUsage ?? [])],
+  };
+}
+
+function withModelUsage(usage: TokenUsage, model: string): TokenUsage {
+  return {
+    ...usage,
+    modelUsage: [{ model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }],
   };
 }
 
 function parseToolArgs<T>(args: string | object | undefined): T {
   if (args === undefined) throw new Error('No tool call in provider response');
-  return typeof args === 'string' ? JSON.parse(args) as T : args as T;
+  if (typeof args !== 'string') return args as T;
+  try {
+    return JSON.parse(args) as T;
+  } catch (error) {
+    const preview = args.length > 240 ? `${args.slice(0, 240)}...` : args;
+    throw new Error(`Malformed tool call arguments from provider: ${(error as Error).message}. Arguments preview: ${preview}`);
+  }
 }
 
 function effectiveToolCallMode(provider: AiProvider, configuredMode: ToolCallMode, task: ToolUseTask): ToolCallMode {
   if (provider !== 'deepseek') return 'standard';
-  if (configuredMode === 'thinking-two-turn' && !task.requiresThinking) return 'thinking-disabled';
+  if (configuredMode === 'thinking-two-turn' && task.thinkingFallback === 'disable-thinking') return 'thinking-disabled';
   return configuredMode;
 }
 
@@ -127,6 +143,18 @@ ${instruction}
 
 Prior reasoning summary:
 ${reasoningText.trim() || '(No summary returned.)'}`;
+}
+
+function deepSeekFormattingMaxTokens(task: ToolUseTask): number {
+  return Math.max(task.maxTokens, task.kind === 'single' ? 256 : 1024);
+}
+
+function deepSeekReasoningMaxTokens(task: ToolUseTask): number {
+  return Math.max(task.maxTokens, task.kind === 'single' ? 512 : 1024);
+}
+
+function deepSeekFormattingModel(model: string): string {
+  return model === 'deepseek-v4-pro' ? 'deepseek-v4-flash' : model;
 }
 
 async function postJson(config: ToolUseRequestConfig, url: string, body: unknown): Promise<unknown> {
@@ -181,13 +209,14 @@ async function callAnthropicTool<T>(config: ToolUseRequestConfig, task: ToolUseT
 async function callOpenAiCompatible<T>(
   config: ToolUseRequestConfig,
   task: ToolUseTask,
-  options?: { thinking?: { type: 'enabled' | 'disabled' }; system?: string; messages?: ChatMessage[] },
+  options?: { thinking?: { type: 'enabled' | 'disabled' }; system?: string; messages?: ChatMessage[]; maxTokens?: number; model?: string },
 ): Promise<ToolUseResult<T>> {
   const system = options?.system ?? taskSystem(task);
   const messages = options?.messages ?? taskMessages(task);
+  const model = options?.model ?? config.route.model;
   const body = {
-    model: config.route.model,
-    max_tokens: task.maxTokens,
+    model,
+    max_tokens: options?.maxTokens ?? task.maxTokens,
     messages: toOpenAiMessages(system, messages),
     tools: taskTools(task).map(openAiTool),
     tool_choice: task.kind === 'single' ? 'required' : 'auto',
@@ -199,7 +228,7 @@ async function callOpenAiCompatible<T>(
     choices?: Array<{ message?: { content?: string; tool_calls?: Array<{ function?: { name?: string; arguments?: string | object } }> } }>;
   };
   const message = data.choices?.[0]?.message;
-  const usage = parseUsage(data.usage);
+  const usage = withModelUsage(parseUsage(data.usage), model);
 
   if (task.kind === 'single') {
     const args = message?.tool_calls?.[0]?.function?.arguments;
@@ -219,7 +248,7 @@ async function callOpenAiCompatible<T>(
 async function callDeepSeekThinkingTwoTurn<T>(config: ToolUseRequestConfig, task: ToolUseTask): Promise<ToolUseResult<T>> {
   const reasoningBody = {
     model: config.route.model,
-    max_tokens: task.maxTokens,
+    max_tokens: deepSeekReasoningMaxTokens(task),
     messages: toOpenAiMessages(deepSeekReasoningSystem(task), taskMessages(task)),
     thinking: { type: 'enabled' },
   };
@@ -228,11 +257,13 @@ async function callDeepSeekThinkingTwoTurn<T>(config: ToolUseRequestConfig, task
     choices?: Array<{ message?: { content?: string } }>;
   };
   const reasoningText = reasoningData.choices?.[0]?.message?.content ?? '';
-  const reasoningUsage = parseUsage(reasoningData.usage);
+  const reasoningUsage = withModelUsage(parseUsage(reasoningData.usage), config.route.model);
   const formatting = await callOpenAiCompatible<T>(config, task, {
     thinking: { type: 'disabled' },
     system: deepSeekFormattingSystem(task, reasoningText),
     messages: taskMessages(task),
+    maxTokens: deepSeekFormattingMaxTokens(task),
+    model: deepSeekFormattingModel(config.route.model),
   });
 
   return {

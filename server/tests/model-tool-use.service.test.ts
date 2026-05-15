@@ -64,7 +64,7 @@ async function testAnthropicSingleToolShape() {
       prompt,
       userMessage: 'User message',
       maxTokens: 100,
-      requiresThinking: false,
+      thinkingFallback: 'disable-thinking',
     });
 
     assert.deepEqual(result.result, { ok: true, note: 'done' });
@@ -90,7 +90,7 @@ async function testOpenAiRequiredToolChoice() {
       prompt,
       userMessage: 'User message',
       maxTokens: 100,
-      requiresThinking: true,
+      thinkingFallback: 'disable-thinking',
     });
 
     assert.deepEqual(result.result, { ok: true, note: 'parsed' });
@@ -98,9 +98,10 @@ async function testOpenAiRequiredToolChoice() {
   });
 }
 
-async function testDeepSeekSimpleEndpointDisablesThinking() {
+async function testDeepSeekCardsCanUseTwoTurns() {
   await withMockFetch([
-    { usage: { prompt_tokens: 1, completion_tokens: 1 }, choices: [{ message: { tool_calls: [{ function: { arguments: { ok: true, note: 'fast' } } }] } }] },
+    { usage: { prompt_tokens: 1, completion_tokens: 2 }, choices: [{ message: { content: 'Make a useful card.' } }] },
+    { usage: { prompt_tokens: 3, completion_tokens: 4 }, choices: [{ message: { tool_calls: [{ function: { arguments: { ok: true, note: 'card' } } }] } }] },
   ], async (calls) => {
     await executeToolUse(config('deepseek', 'deepseek-v4-flash', 'thinking-two-turn'), {
       kind: 'single',
@@ -108,7 +109,26 @@ async function testDeepSeekSimpleEndpointDisablesThinking() {
       prompt,
       userMessage: 'User message',
       maxTokens: 100,
-      requiresThinking: false,
+      thinkingFallback: 'two-turn',
+    });
+
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[0]?.body.thinking, { type: 'enabled' });
+    assert.deepEqual(calls[1]?.body.thinking, { type: 'disabled' });
+  });
+}
+
+async function testDeepSeekJudgeCanDisableThinking() {
+  await withMockFetch([
+    { usage: { prompt_tokens: 1, completion_tokens: 1 }, choices: [{ message: { tool_calls: [{ function: { arguments: { ok: true, note: 'quick' } } }] } }] },
+  ], async (calls) => {
+    await executeToolUse(config('deepseek', 'deepseek-v4-flash', 'thinking-two-turn'), {
+      kind: 'single',
+      endpoint: 'judge',
+      prompt,
+      userMessage: 'User message',
+      maxTokens: 300,
+      thinkingFallback: 'disable-thinking',
     });
 
     assert.equal(calls.length, 1);
@@ -127,16 +147,24 @@ async function testDeepSeekThinkingEndpointUsesTwoTurns() {
       prompt,
       userMessage: 'User message',
       maxTokens: 100,
-      requiresThinking: true,
+      thinkingFallback: 'two-turn',
     });
 
     assert.deepEqual(result.result, { ok: true, note: 'accepted' });
     assert.equal(calls.length, 2);
+    assert.equal(calls[0]?.body.model, 'deepseek-v4-pro');
+    assert.equal(calls[1]?.body.model, 'deepseek-v4-flash');
     assert.equal(calls[0]?.body.tools, undefined);
+    assert.equal(calls[0]?.body.max_tokens, 512);
     assert.deepEqual(calls[0]?.body.thinking, { type: 'enabled' });
     assert.deepEqual(calls[1]?.body.thinking, { type: 'disabled' });
+    assert.equal(calls[1]?.body.max_tokens, 256);
     assert.equal(result.usage.inputTokens, 28);
     assert.equal(result.usage.outputTokens, 32);
+    assert.deepEqual(result.usage.modelUsage, [
+      { model: 'deepseek-v4-pro', inputTokens: 11, outputTokens: 13 },
+      { model: 'deepseek-v4-flash', inputTokens: 17, outputTokens: 19 },
+    ]);
   });
 }
 
@@ -154,7 +182,7 @@ async function testMultiEditPreservesTextAndTools() {
       system: 'Edit system',
       messages: [{ role: 'user', content: 'Edit this' }],
       maxTokens: 100,
-      requiresThinking: true,
+      thinkingFallback: 'two-turn',
     });
 
     assert.equal(result.text, 'Updated the sentence.');
@@ -165,7 +193,8 @@ async function testMultiEditPreservesTextAndTools() {
 async function main() {
   await testAnthropicSingleToolShape();
   await testOpenAiRequiredToolChoice();
-  await testDeepSeekSimpleEndpointDisablesThinking();
+  await testDeepSeekCardsCanUseTwoTurns();
+  await testDeepSeekJudgeCanDisableThinking();
   await testDeepSeekThinkingEndpointUsesTwoTurns();
   await testMultiEditPreservesTextAndTools();
 

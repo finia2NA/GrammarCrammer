@@ -191,7 +191,7 @@ Provider-neutral AI transport and routing layer for Anthropic, OpenAI, OpenRoute
 Provider-specific structured tool-call transport used by `ai-routing.service.ts`.
 - Preserves Claude's native Messages API tool-use request/response shape for existing structured endpoints.
 - Normalizes OpenAI-compatible function-call responses into typed tool results and multi-edit tool calls.
-- Handles DeepSeek V4 tool-call modes, including disabled-thinking single turns for simple endpoints and two-turn thinking/formatting calls for reasoning-sensitive endpoints.
+- Handles DeepSeek V4 tool-call modes using endpoint metadata: in-session quick tool endpoints disable thinking, while pre-session or reasoning-sensitive endpoints use a two-turn thinking/formatting flow with V4 Flash for the formatting turn when the reasoning turn used V4 Pro.
 
 ### `claude/` and `claude.service.ts`
 Feature-level AI functions. `claude.service.ts` re-exports the split implementation modules for existing imports, while the transport/model choice is handled by `ai-routing.service.ts`.

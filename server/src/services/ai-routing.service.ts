@@ -9,7 +9,7 @@ import { getGlobalConfig, setGlobalConfig } from './global-config.service.js';
 import { getSetting } from './settings.service.js';
 import { canUseCentralKey, recordUsage } from './usage.service.js';
 import { UI_LOCALE_LANGUAGE_NAMES, isUiLocale } from '@patterndeck/shared';
-import { executeToolUse, type TokenUsage, type ToolCallMode } from './model-tool-use.service.js';
+import { executeToolUse, type TokenUsage, type ToolCallMode, type ToolUseThinkingFallback } from './model-tool-use.service.js';
 
 export const SONNET = 'claude-sonnet-4-6';
 export const HAIKU = 'claude-haiku-4-5-20251001';
@@ -109,17 +109,17 @@ const PRICE: Record<string, { input: number; output: number }> = {
   'qwen3-235b-a22b-instruct-2507': { input: 0.287, output: 0.92 },
 };
 
-export const AI_ENDPOINT_METADATA: Record<AiEndpoint, { label: string; description: string; mode: 'tool' | 'stream' | 'edit'; requiresThinking?: boolean }> = {
-  cards: { label: 'Cards', description: 'Generate flashcards for a grammar topic.', mode: 'tool', requiresThinking: false },
-  judge: { label: 'Judge Answer', description: 'Judge a learner translation attempt.', mode: 'tool', requiresThinking: true },
-  'rate-session': { label: 'Rate Session', description: 'Rate and summarize a study session.', mode: 'tool', requiresThinking: false },
-  'explain-sentence': { label: 'Explain Sentence', description: 'Explain a revealed card answer.', mode: 'tool', requiresThinking: true },
-  'word-hint': { label: 'Word Hint', description: 'Generate dictionary-form vocabulary hints.', mode: 'tool', requiresThinking: false },
+export const AI_ENDPOINT_METADATA: Record<AiEndpoint, { label: string; description: string; mode: 'tool' | 'stream' | 'edit'; toolUseThinkingFallback?: ToolUseThinkingFallback }> = {
+  cards: { label: 'Cards', description: 'Generate flashcards for a grammar topic.', mode: 'tool', toolUseThinkingFallback: 'two-turn' },
+  judge: { label: 'Judge Answer', description: 'Judge a learner translation attempt.', mode: 'tool', toolUseThinkingFallback: 'disable-thinking' },
+  'rate-session': { label: 'Rate Session', description: 'Rate and summarize a study session.', mode: 'tool', toolUseThinkingFallback: 'disable-thinking' },
+  'explain-sentence': { label: 'Explain Sentence', description: 'Explain a revealed card answer.', mode: 'tool', toolUseThinkingFallback: 'two-turn' },
+  'word-hint': { label: 'Word Hint', description: 'Generate dictionary-form vocabulary hints.', mode: 'tool', toolUseThinkingFallback: 'disable-thinking' },
   explanation: { label: 'Explanation', description: 'Generate streamed grammar explanations.', mode: 'stream' },
-  'case-extraction': { label: 'Case Extraction', description: 'Extract grammar coverage cases from explanations.', mode: 'tool', requiresThinking: true },
-  rejection: { label: 'Rejection Review', description: 'Review a rejected learner answer.', mode: 'tool', requiresThinking: true },
+  'case-extraction': { label: 'Case Extraction', description: 'Extract grammar coverage cases from explanations.', mode: 'tool', toolUseThinkingFallback: 'two-turn' },
+  rejection: { label: 'Rejection Review', description: 'Review a rejected learner answer.', mode: 'tool', toolUseThinkingFallback: 'two-turn' },
   chat: { label: 'Card Chat', description: 'Stream tutor chat about the current card.', mode: 'stream' },
-  'explanation-edit': { label: 'Explanation Edit', description: 'Apply tool-based edits to Markdown explanations.', mode: 'edit', requiresThinking: true },
+  'explanation-edit': { label: 'Explanation Edit', description: 'Apply tool-based edits to Markdown explanations.', mode: 'edit', toolUseThinkingFallback: 'two-turn' },
 };
 
 export const DEFAULT_AI_ROUTING_CONFIG: AiRoutingConfig = Object.fromEntries(
@@ -240,6 +240,14 @@ export function calcCost(model: string, inputTokens: number, outputTokens: numbe
   const direct = PRICE[model];
   const p = cached ?? curated ?? direct ?? { input: provider === 'anthropic' ? 3.00 : 0, output: provider === 'anthropic' ? 15.00 : 0 };
   return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
+}
+
+function calcUsageCost(route: AiModelRef, usage: TokenUsage): number {
+  if (usage.cost !== undefined) return usage.cost;
+  if (usage.modelUsage?.length) {
+    return usage.modelUsage.reduce((sum, item) => sum + calcCost(item.model, item.inputTokens, item.outputTokens, route.provider), 0);
+  }
+  return calcCost(route.model, usage.inputTokens, usage.outputTokens, route.provider);
 }
 
 export function errorMessage(error: unknown): string {
@@ -646,7 +654,7 @@ async function callRouteTool<T>(
     prompt,
     userMessage,
     maxTokens,
-    requiresThinking: AI_ENDPOINT_METADATA[endpoint].requiresThinking ?? false,
+    thinkingFallback: AI_ENDPOINT_METADATA[endpoint].toolUseThinkingFallback ?? 'disable-thinking',
   });
   if (response.result === undefined) throw new Error('No tool result in provider response');
   return { result: response.result, usage: response.usage };
@@ -674,7 +682,7 @@ export async function callStructuredTool<T>(
       const response = await callRouteTool<T>(route, credentials, endpoint, prompt, userMessage, maxTokens);
       usage = response.usage;
       const latencyMs = Date.now() - startedAt;
-      const cost = usage.cost ?? calcCost(route.model, usage.inputTokens, usage.outputTokens, route.provider);
+      const cost = calcUsageCost(route, usage);
       captureAttempt({ ...ctx, output: response.result }, usage, cost, latencyMs, true);
       await recordUsage(userId, credentials.source, endpoint, usageModelId(route), cost);
       return { result: response.result, cost, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, latencyMs, model: route.model, provider: route.provider, source: credentials.source };
@@ -830,7 +838,7 @@ export async function callTextStream(
         : await callOpenAiTextStream(route, apiKey, system, messages, maxTokens, wrappedChunk, signal);
       usage = response.usage;
       const latencyMs = Date.now() - startedAt;
-      const cost = usage.cost ?? calcCost(route.model, usage.inputTokens, usage.outputTokens, route.provider);
+      const cost = calcUsageCost(route, usage);
       captureAttempt(ctx, usage, cost, latencyMs, true);
       await recordUsage(userId, credentials.source, endpoint, usageModelId(route), cost);
       return { wasTruncated: response.wasTruncated, cost, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, latencyMs, model: route.model, provider: route.provider, source: credentials.source };
@@ -876,7 +884,7 @@ export async function callEditTools(
         system,
         messages,
         maxTokens,
-        requiresThinking: AI_ENDPOINT_METADATA['explanation-edit'].requiresThinking ?? false,
+        thinkingFallback: AI_ENDPOINT_METADATA['explanation-edit'].toolUseThinkingFallback ?? 'disable-thinking',
       });
       usage = response.usage;
       const toolCalls = response.toolCalls ?? [];

@@ -192,7 +192,7 @@ export async function judgeAnswer(userId: string, card: Card, userAnswer: string
     userId, 'judge',
     JUDGMENT_PROMPT(language, brevity, responseLanguage),
     JSON.stringify(userPayload),
-    brevity === 'brief' ? 60 : 120,
+    300,
     {
       userId,
       endpoint: 'judge',
